@@ -546,7 +546,13 @@ const DG={
  delCode(id){const L=codes(),j=L.findIndex(x=>x.id==id);if(j>=0)L.splice(j,1);save();closeM(1);render();toast('Descrição apagada')},
  /* página do menu */
  tab(k){S.f.dt=k;render();scrollTo(0,0)},
- novo(){DG.next='diag';newOS()},
+ novo(){if(!db.vehicles.length){DG.next='diag';return newOS()}
+  modal('Diagnosticar qual carro?',[['veh','Veículo','busca',db.vehicles.map(v=>[v.id,vlabel(v),(cl(v.cli).nome||'')+' '+(v.cor||''),cl(v.cli).nome]),0]],{},f=>{if(!f.veh){DG.next='diag';return newOS()}DG.escolhe(f.veh)},'<p class="muted" style="margin:0">Carro que ainda não está cadastrado? Deixe em branco e toque em Salvar.</p>')},
+ escolhe(vid){const v=vh(vid),ab=db.orders.filter(o=>o.veh==vid&&['Aberta','Em andamento','Aguardando peças'].includes(o.status)).sort((a,b)=>String(b.aberta||'').localeCompare(String(a.aberta||''))||String(b.num).localeCompare(String(a.num)));
+  if(!ab.length){DG.next='diag';return newOS({cli:v.cli,veh:vid})}
+  $('#modal').innerHTML=`<div class="ov"><div class="md" role="dialog" aria-modal="true"><h2 style="margin-top:0">${esc(vlabel(v))} já tem O.S. aberta</h2><p class="muted" style="margin:0 0 10px">Use a O.S. que já existe para não ficar com duas do mesmo carro.</p>
+   ${ab.map(o=>{const n=(o.items||[]).length;return`<button type="button" class="${o===ab[0]?'pr':''}" style="width:100%;text-align:left;margin:0 0 8px;display:block" onclick="closeM(1);DG.open('${o.id}')"><b>Usar a O.S. ${esc(o.num)}</b><small style="display:block;opacity:.85">${esc(o.status)} · entrada ${D(o.aberta)} · ${n?plural(n,'item','itens'):'sem itens'}${started(o)?' · já tem diagnóstico':''}</small></button>`}).join('')}
+   <div class="bar" style="margin:6px 0 0"><button type="button" onclick="closeM(1)">Cancelar</button><span class="sp"></span><button type="button" onclick="closeM(1);DG.next='diag';newOS({cli:'${v.cli}',veh:'${vid}'})">Abrir O.S. nova</button></div></div></div>`},
  open(id){go('diag',id)},
  delCaso(id){const C=casos(),j=C.findIndex(x=>x.id==id);if(j>=0)C.splice(j,1);db.orders.forEach(o=>{if(o.dg&&o.dg.caso==id){o.dg.caso=null;o.dg.fim=false}});save();render();toast('Caso excluído')},
  cq(v){carregaXB();UI.cq=v;const b=$('#dgcqo');if(b)b.innerHTML=consulta()},
