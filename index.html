@@ -652,7 +652,32 @@ function editItem(w,n,os){const i=w.items[n];if(!i)return;const lk=!!i.pid;
   w.items[n]=it;save();render();toast('Item atualizado')},0,()=>{if(os)rmOS(n);else{w.items.splice(n,1);save();render()}})}
 function addItem(w,pre){modal('Adicionar item',[['t','Tipo','select',['Serviço','Peça','Mão de obra']],['d','Descrição','text',0,1],['det','Detalhes (opcional)'],['q','Quantidade','number',0,1],['v','Valor unitário (R$)','number',0,1],['custo','Custo unitário (R$, opcional - usado no lucro)','number'],['ncm','NCM da peça (opcional, 8 dígitos)'],['ctrib','Cód. tributação nacional do serviço (opcional)']],{q:1,t:'Serviço',...(pre||{})},o=>{if(!(+o.q>0))return toast('Quantidade inválida');if(!(+o.v>=0))return toast('Valor inválido');if(o.custo!==''&&o.custo!=null&&!(+o.custo>=0))return toast('Custo inválido');const it={...o,q:+o.q,v:+o.v};if(o.custo===''||o.custo==null)delete it.custo;else it.custo=+o.custo;w.items.push(it);save();render()})}
 function saveQuote(quiet){const q=S.q;if(!q.cli){if(!quiet)toast('Escolha ou cadastre o cliente');return}if(!q.veh)q.veh='';
- if(q.novo){delete q.novo;db.qseq++;db.quotes.push(q)}else db.quotes[db.quotes.findIndex(x=>x.id==q.id)]=q;save();if(!quiet)toast('Orçamento salvo')}
+ if(q.novo){delete q.novo;db.qseq++;db.quotes.push(q)}else db.quotes[db.quotes.findIndex(x=>x.id==q.id)]=q;save();if(!quiet){const o=q.os&&od(q.os);if(o&&o.id&&qDif(q,o).tem)return qSync();toast('Orçamento salvo')}}
+/* orçamento que já virou O.S.: levar as mudanças para a O.S. */
+const qKey=i=>i.iid||('d:'+(i.t||'')+'|'+String(i.d||'').trim().toLowerCase());
+function qDif(q,o){const oi=new Map((o.items||[]).map(i=>[qKey(i),i])),qk=new Set((q.items||[]).map(qKey)),novos=[],alt=[];
+ (q.items||[]).forEach(n=>{const x=oi.get(qKey(n));if(!x)novos.push(n);else if(['t','d','q','v','pid'].some(k=>String(x[k]??'')!==String(n[k]??''))||(DONO()&&String(x.custo??'')!==String(n.custo??'')))alt.push([x,n])});
+ const so=(o.items||[]).filter(i=>!qk.has(qKey(i))),dd=(+q.desc||0)!==(+o.desc||0);return{novos,alt,so,dd,tem:!!(novos.length||alt.length||dd)}}
+function qNF(o){return NF().some(n=>n.os==o.id&&['autorizado','processando','pendente','enviando'].includes(n.status))}
+function qSync(){const q=S.q,o=q&&q.os&&od(q.os);if(!o||!o.id)return;saveQuote(1);const D=qDif(q,o);
+ if(!D.tem)return toast('A O.S. '+o.num+' já está igual ao orçamento');
+ if(qNF(o))return toast('A O.S. '+o.num+' tem nota fiscal emitida. Cancele a nota antes de mudar os valores.');
+ const it=i=>`${e(i.d||i.t)} · ${(+i.q||0)!=1?e(String(i.q))+' × ':''}${R(+i.v||0)}`,novo={...o,items:[...(o.items||[]).filter(i=>!D.alt.some(([x])=>x===i)),...D.alt.map(([,n])=>n),...D.novos],desc:q.desc},pg=paid(o);
+ $('#modal').innerHTML=`<div class="ov"><div class="md" role="dialog" aria-modal="true"><h2 style="margin-top:0">Atualizar a O.S. ${e(o.num)}?</h2>
+  ${D.novos.length?`<p style="margin:8px 0 4px"><b>Entram na O.S.</b></p><ul style="margin:0;padding-left:20px">${D.novos.map(i=>`<li>${it(i)}</li>`).join('')}</ul>`:''}
+  ${D.alt.length?`<p style="margin:10px 0 4px"><b>Mudam</b></p><ul style="margin:0;padding-left:20px">${D.alt.map(([x,n])=>`<li>${it(x)} → <b>${it(n)}</b></li>`).join('')}</ul>`:''}
+  ${D.dd?`<p style="margin:10px 0 4px"><b>Desconto:</b> ${R(+o.desc||0)} → ${R(+q.desc||0)}</p>`:''}
+  ${D.so.length?`<p class="muted" style="margin:10px 0 4px">Continuam na O.S. (foram lançados só nela): ${D.so.map(i=>e(i.d||i.t)).join(', ')}</p>`:''}
+  <p style="margin:12px 0 0;font-size:17px">Total da O.S.: ${R(oTot(o))} → <b>${R(oTot(novo))}</b></p>
+  ${pg?`<p class="muted" style="margin:4px 0 0">Já recebido: ${R(pg)}. A receber passa a ser ${R(Math.max(0,oTot(novo)-pg))}.</p>`:''}
+  ${['Concluída','Entregue'].includes(o.status)?`<p style="color:#C98200;margin:8px 0 0">Esta O.S. já está ${e(o.status)}.</p>`:''}
+  <div class="bar" style="margin:14px 0 0"><button type="button" onclick="closeM()">Agora não</button><span class="sp"></span><button type="button" class="pr" onclick="qSyncOk()">Atualizar a O.S.</button></div></div></div>`}
+function qSyncOk(){const q=S.q,o=q&&q.os&&od(q.os);if(!o||!o.id)return closeM();const D=qDif(q,o);let est=0;
+ D.alt.forEach(([x,n])=>{const c=JSON.parse(JSON.stringify(n));
+  if(x.baixa){if(String(x.pid||'')!==String(c.pid||'')||(+x.q||0)!==(+c.q||0)){if(x.pid&&(+x.q||0)>0){MV().push({id:uid(),pid:x.pid,tipo:'E',q:+x.q||0,data:today(),obs:'Ajuste do orçamento '+q.n+' na O.S. '+o.num});est++}delete c.baixa}else c.baixa=true}else delete c.baixa;
+  Object.keys(x).forEach(k=>delete x[k]);Object.assign(x,c)});
+ D.novos.forEach(n=>{const c=JSON.parse(JSON.stringify(n));delete c.baixa;o.items.push(c)});
+ if(D.dd)o.desc=q.desc;const rb=baixaOS(o);save();closeM();render();toast('O.S. '+o.num+' atualizada com o orçamento');if(rb&&rb.n)setTimeout(()=>avisoBaixa(rb),1800)}
 function approve(){saveQuote(1);modal('Aceite do cliente',[['nome','Nome de quem aprova (assinatura)','text',0,1]],{},o=>{Object.assign(S.q,{status:'Aprovado',aprov:{nome:o.nome,data:today()}});saveQuote();render()},`<p class="muted">${TERMOS}</p>`)}
 function makeOS(){saveQuote(1);const q=S.q;const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:q.cli,veh:q.veh,qid:q.id,problema:q.obs||'',mec:'',status:'Aberta',items:JSON.parse(JSON.stringify(q.items)),desc:q.desc,ck:{},laudo:{data:today()},fotos:(q.fotos||[]).map(f=>({id:uid(),t:'Foto do veículo',src:f.src,obs:f.obs})),pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);q.os=o.id;const rb=baixaOS(o);saveQuote(1);go('order',o.id);avisoBaixa(rb)}
@@ -685,7 +710,7 @@ async function waQuote(){const q=S.q;if(!q.cli)return toast('Escolha ou cadastre
  const ok=await waDoc(genPDF,q,c.tel,`Olá, ${c.nome}! Tudo bem?\n\nEsse documento é o orçamento do serviço${v?' do seu '+v:''}, Nº ${q.n}.\nValor total: ${R(sum(q.items,q.desc))}${q.prazo?'\nPrazo: '+q.prazo:''}\n\nFicando de acordo, é só me avisar para darmos andamento. Qualquer dúvida, estou à disposição.\n\n${empNome()}`);
  if(ok&&q.status=='Rascunho'){q.status='Aguardando';saveQuote(1);render()}}
 function Vquote(){const q=S.q,vs=db.vehicles.filter(v=>v.cli==q.cli),ro=q.status=='Aprovado',qo=q.os&&od(q.os);
- return (qo?`<div class="fbar" style="border-color:#C98200">${svgi('alert')}<span>Este orçamento já virou a <b>O.S. ${e(qo.num)}</b>. Alterações aqui não mudam a O.S.</span><button class="sm" onclick="go('order','${qo.id}')">Abrir O.S.</button></div>`:'')+head({back:'qBack()',kick:'Orçamento',title:'Nº '+e(q.n),c:SC[q.status],right:pill(q.status),sub:hsub(e(cl(q.cli).nome||'Escolha o cliente'),`${e(q.veh?vlabel(vh(q.veh)):'Sem veículo')}${q.prazo?' · prazo '+e(q.prazo):''}`,'Total',`<span class="qtot">${R(sum(q.items,q.desc))}</span>`),acts:`<button class="wa sm" onclick="waQuote()">WhatsApp</button><button class="sm" onclick="genPDF(S.q)">PDF</button>${q.os?`<span class="sp"></span><button class="sm pr" onclick="go('order','${q.os}')">Abrir O.S.</button>`:''}`})+`
+ return (qo?(()=>{const D=qDif(q,qo);return D.tem?`<div class="fbar" style="border-color:#C98200">${svgi('alert')}<span>A <b>O.S. ${e(qo.num)}</b> está diferente deste orçamento: ${R(oTot(qo))} na O.S. e ${R(sum(q.items,q.desc))} aqui.</span><button class="sm pr" onclick="qSync()">Atualizar O.S.</button></div>`:`<div class="fbar">${svgi('oscheck')}<span>Este orçamento virou a <b>O.S. ${e(qo.num)}</b> e está igual a ela. Se mudar algo aqui, use “Atualizar O.S.”.</span><button class="sm" onclick="go('order','${qo.id}')">Abrir O.S.</button></div>`})():'')+head({back:'qBack()',kick:'Orçamento',title:'Nº '+e(q.n),c:SC[q.status],right:pill(q.status),sub:hsub(e(cl(q.cli).nome||'Escolha o cliente'),`${e(q.veh?vlabel(vh(q.veh)):'Sem veículo')}${q.prazo?' · prazo '+e(q.prazo):''}`,'Total',`<span class="qtot">${R(sum(q.items,q.desc))}</span>`),acts:`<button class="wa sm" onclick="waQuote()">WhatsApp</button><button class="sm" onclick="genPDF(S.q)">PDF</button>${q.os?`<span class="sp"></span><button class="sm pr" onclick="go('order','${q.os}')">Abrir O.S.</button>`:''}`})+`
  <div class="card"><div class="g2"><div class="lb"><div class="cbhd"><span>Cliente</span><button type="button" class="sm" onclick="qNovoCli()">+ Novo cliente</button></div>${combo('q-cli',{items:toItems(cliArr()),value:q.cli,ph:'Digite o nome do cliente...',pick:id=>qs('cli',id),novo:t=>qNovoCli(t),novoTxt:'Cadastrar novo cliente'})}</div>
  <div class="lb"><div class="cbhd"><span>Veículo</span><button type="button" class="sm" onclick="qNovoVeh()" ${q.cli?'':'disabled'}>+ Novo veículo</button></div><select onchange="qs('veh',this.value)" ${q.cli?'':'disabled'}>${vs.length?`<option value="" ${q.veh?'':'selected'}>Sem veículo</option>`+vs.map(v=>`<option value="${v.id}" ${v.id==q.veh?'selected':''}>${e(vlabel(v))}</option>`).join(''):`<option value="">${q.cli?'Sem veículo (opcional)':'Escolha o cliente primeiro'}</option>`}</select></div>
  <label>Prazo<input value="${e(q.prazo)}" placeholder="Ex.: 3 dias úteis" onchange="qs('prazo',this.value)"></label>
@@ -1796,7 +1821,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.6.3';
+const APP_VER='2.6.4';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
