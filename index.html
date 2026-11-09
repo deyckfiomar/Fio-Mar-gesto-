@@ -713,7 +713,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  <div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button><button onclick="genOS(od(S.id))">Gerar PDF da O.S.</button><span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>`;
  if(S.tab=='check')b=`<div class="bar"><button class="pr" onclick="genChecklist(od(S.id))">Gerar PDF do checklist</button></div><div class="card">${CK.map((n,i)=>{const c=o.ck[n]||{};return`<div class="ck"><b>${n}</b><select onchange="ckSet('${n}','s',this.value)">${['—','OK','Atenção','Defeito'].map(x=>`<option ${c.s==x?'selected':''}>${x}</option>`).join('')}</select><input type="text" placeholder="Observação" value="${e(c.obs)}" onchange="ckSet('${n}','obs',this.value)"><div class="fbs">${c.foto?`<img class="ckimg" ${fimg(c.foto)} height="34" alt="foto de ${e(n)}" onclick="verFoto(this.src)">`:''}${fotoBtns(`ckFoto('${n}',this.files[0])`,{ico:1,um:1})}</div></div>`}).join('')}</div>`;
  if(S.tab=='laudo')b=Vlaudo(o);
- if(S.tab=='diag')b=typeof DGtab=='function'?DGtab(o):'';
+ if(S.tab=='diag')b=typeof DGrec=='function'?DGrec(o):'';
  if(S.tab=='fotos')b=`<div class="card"><div class="bar"><select id="ft" style="width:auto;margin:0">${FT.map(x=>`<option>${x}</option>`).join('')}</select><span class="sp"></span><div class="fbs">${fotoBtns('addFotos([...this.files])',{cls:''})}</div></div></div>
  <div class="ph">${o.fotos.map((f,i)=>`<figure><img ${fimg(f.src)} alt="${e(f.t)}" onclick="verFoto(this.src)"><figcaption><b>${e(f.t)}</b><br><input value="${e(f.obs)}" placeholder="Observação" onchange="od(S.id).fotos[${i}].obs=this.value;save()"><button class="sm" style="margin-top:4px" onclick="od(S.id).fotos.splice(${i},1);save();render()">Remover</button></figcaption></figure>`).join('')}</div>${o.fotos.length?'':'<p class="muted">As fotos ficam vinculadas a esta O.S. como prova do que foi encontrado e executado.</p>'}`;
  if(S.tab=='nf')b=Vnf(o);
@@ -1753,7 +1753,7 @@ entradas:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0
 notas:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/>',
 out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
 inst:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>'};
-ICO.diag='<path d="M3 12h4l2-6 4 12 2-6h6"/>';ICO.osdiag=ICO.diag;
+ICO.diag='<path d="M3 12h4l2-6 4 12 2-6h6"/>';ICO.cam='<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';ICO.img='<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>';ICO.osdiag=ICO.diag;
 const svgi=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]||''}</svg>`;
 function navHtml(){const L=NAVX(),c=db.cfg||{},nm=c.nome||'Fio-Mar',
  on=k=>S.v==k||(k=='entradas'&&S.v=='entrada')||(k=='quotes'&&S.v=='quote')||(k=='orders'&&['order','recibo'].includes(S.v))||(k=='stock'&&S.v=='prod')||(k=='agenda'&&S.v=='agsvc'),
@@ -1784,7 +1784,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.5.0';
+const APP_VER='2.6.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

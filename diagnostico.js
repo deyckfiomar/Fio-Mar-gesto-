@@ -258,6 +258,42 @@ function autoCode(c){if(!c||DB[c])return null;
  if(c[0]=='U')return montaX(c,(fab?'Código do fabricante':'Código genérico')+' — rede de comunicação entre módulos','','rede','com',2,fab);
  return montaX(c,(fab?'Código do fabricante':'Código genérico')+' — '+SYS[c[0]].toLowerCase(),'','geral','func',2,fab)}
 
+
+/* ================= FOTO DO SCANNER (leitura de texto no próprio celular) =================
+   Usa Tesseract.js (grátis, roda no aparelho). Na primeira vez baixa o leitor (~10 MB) e depois fica guardado. */
+const OCR_JS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let ocrW=null,ocrP=null;
+function ocrScript(){return window.Tesseract?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=OCR_JS;s.onload=ok;s.onerror=()=>no(new Error('sem internet para baixar o leitor'));document.head.appendChild(s)})}
+function ocrWorker(log){if(ocrW)return Promise.resolve(ocrW);if(ocrP)return ocrP;
+ ocrP=ocrScript().then(()=>Tesseract.createWorker(['por','eng'],1,{logger:m=>log&&log(m)})).then(w=>{ocrW=w;return w}).catch(e=>{ocrP=null;throw e});return ocrP}
+/* prepara a foto: reduz, cinza, inverte tela escura e estica o contraste */
+function ocrPrep(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();
+ im.onload=()=>{const k=Math.min(1,2000/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const x=cv.getContext('2d');x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);const d=x.getImageData(0,0,w,h),p=d.data;let sum=0;const g=new Uint8ClampedArray(w*h);
+  for(let i=0,j=0;i<p.length;i+=4,j++){const v=(p[i]*299+p[i+1]*587+p[i+2]*114)/1000;g[j]=v;sum+=v}
+  const inv=sum/(w*h)<110,hs=new Array(256).fill(0);for(let j=0;j<g.length;j++){if(inv)g[j]=255-g[j];hs[g[j]]++}
+  let lo=0,hi=255,acc=0;const cut=g.length*.02;while(lo<255&&(acc+=hs[lo])<cut)lo++;acc=0;while(hi>0&&(acc+=hs[hi])<cut)hi--;const sc=hi>lo?255/(hi-lo):1;
+  for(let i=0,j=0;i<p.length;i+=4,j++){const v=Math.max(0,Math.min(255,(g[j]-lo)*sc));p[i]=p[i+1]=p[i+2]=v}x.putImageData(d,0,0);ok(cv)};
+ im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('não consegui abrir a imagem'))};im.src=u})}
+/* acha códigos e descrições no texto lido */
+const OCR_ST=/\b(ativo|ativa|ativos|pendente|permanente|hist[oó]rico|memorizad[oa]|intermitente|confirmad[oa]|armazenad[oa]|presente|passado|current|stored|pending|permanent|history|historic|confirmed|active|status|estado|mil\s*on|mil\s*off)\b[:\s]*/gi;
+const OCR_RX=/(^|[^A-Za-z0-9])([PBCUpbcu])\s?([0-3OoIl|])\s?([0-9A-Fa-fOoIl|Ss])\s?([0-9A-Fa-fOoIl|Ss])\s?([0-9A-Fa-fOoIl|Ss])(?![A-Za-z0-9])/g;
+const ocrFix=(ch,pos)=>{ch=ch.toUpperCase();if(ch=='O')return'0';if(ch=='I'||ch=='L'||ch=='|')return'1';if(ch=='S')return'5';return ch};
+function lerScanner(txt){const L=String(txt||'').replace(/\r/g,'').split('\n').map(x=>x.replace(/[ \t]+/g,' ').trim());const out=[],seen=new Set();
+ const limpa=s=>String(s||'').replace(OCR_ST,' ').replace(/^[\s\-–—:;.,|>»*•·]+|[\s\-–—:;,|<«*•·]+$/g,'').replace(/\s{2,}/g,' ').trim();
+ L.forEach((ln,i)=>{const hits=[...ln.matchAll(OCR_RX)];hits.forEach((m,k)=>{const code=m[2].toUpperCase()+[m[3],m[4],m[5],m[6]].map((c,j)=>ocrFix(c,j+1)).join('');
+   const raw=m[3]+m[4]+m[5]+m[6],dig=(raw.match(/[0-9]/g)||[]).length,conv=(raw.match(/[OoIl|Ss]/g)||[]).length;
+   if(!(dig>=2||(dig>=1&&!conv)))return;
+   if(!/^[PBCU][0-3][0-9A-F]{3}$/.test(code)||seen.has(code))return;seen.add(code);
+   const ini=m.index+m[0].length,fim=k+1<hits.length?hits[k+1].index:ln.length;let desc=limpa(ln.slice(ini,fim));
+   if(desc.replace(/[^A-Za-zÀ-ú]/g,'').length<6){const nx=[];for(let j=i+1;j<L.length&&j<=i+2;j++){if(!L[j]||OCR_RX.test(L[j])){OCR_RX.lastIndex=0;break}OCR_RX.lastIndex=0;nx.push(L[j])}desc=limpa((desc+' '+nx.join(' ')).trim())}
+   out.push({code,desc:desc.replace(/[^A-Za-zÀ-ú0-9()]+$/,'').slice(0,160)})})});
+ return out}
+/* as duas descrições falam da mesma coisa? */
+const OCR_SW=new Set('de do da dos das o a os as e em no na nos nas com para por um uma ou the of and to in on with for at circuito circuit sistema system sinal signal'.split(' '));
+function ocrToks(s){return new Set(norm(String(s||'')).replace(/[^a-z0-9 ]/g,' ').split(' ').filter(w=>w.length>2&&!OCR_SW.has(w)))}
+function parecido(a,b){const A=ocrToks(a),B=ocrToks(b);if(!A.size||!B.size)return false;let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.min(A.size,B.size)>=.5}
+
 /* ================= SINTOMAS ================= */
 const SG=[['Partida',['gira-nao-pega','partida-frio','partida-quente','nao-gira']],['Funcionamento',['marcha-lenta','morre','falha-aceleracao','perda-potencia','vibracao','detonacao','consumo']],['Temperatura e óleo',['superaquecimento','agua-oleo','consumo-oleo','pressao-oleo','vazamento-oleo']],['Ruído e fumaça',['ruido-motor','fumaca-preta','fumaca-branca']],['Elétrica',['bateria','luz-injecao']]];
 const SY=[
@@ -373,6 +409,7 @@ function stepSin(o){const d=dgOf(o),v=vOf(o),L=lOf(o);
   ${lc.length?`<div class="dg-sugrow">Códigos no laudo: ${lc.map(c=>`<button type="button" class="sm" onclick="DG.addCode('${c}')">+ ${c}</button>`).join('')}</div>`:''}
   <div class="dg-row"><input id="dgcode" class="dg-code" placeholder="P0171" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Código de falha" value="${esc(UI.code)}" oninput="DG.cin(this.value)" onkeydown="if(event.key=='Enter'){event.preventDefault();DG.addCode()}"><button type="button" class="pr" onclick="DG.addCode()">Adicionar</button></div>
   <div class="dg-prev" id="dgprev">${codePrev(o)}</div>
+  ${fotoBtns()}
   ${d.cod.map(c=>codeCard(o,c)).join('')}
  </div>
  <div class="card"><div class="dg-h"><b>Sintomas</b><small class="muted">o que o carro apresenta</small></div>
@@ -436,7 +473,7 @@ function dgInfo(o){const d=o.dg;if(!d||!started(o))return['Não iniciado','var(-
  const n=Object.values(d.t||{}).filter(x=>x&&x.r).length,f=Object.values(d.t||{}).filter(x=>x&&x.r=='falha').length;return[n?plural(n,'teste','testes'):'Em andamento',f?KR:KA]}
 
 /* ================= AÇÕES ================= */
-const cur=()=>S.v=='order'?od(S.id):null;
+const cur=()=>(S.v=='order'||(S.v=='diag'&&S.id))?od(S.id):null;
 const commit=o=>{save();if(typeof osTabsRefresh=='function')osTabsRefresh()};
 function commitDrafts(o){const d=dgOf(o);let n=0;const p=parseCode(UI.code);
  if(p.ok){if(!d.cod.includes(p.code)){d.cod.push(p.code);n++}UI.code=''}
@@ -510,7 +547,7 @@ const DG={
  /* página do menu */
  tab(k){S.f.dt=k;render();scrollTo(0,0)},
  novo(){DG.next='diag';newOS()},
- open(id){go('order',id,'diag')},
+ open(id){go('diag',id)},
  delCaso(id){const C=casos(),j=C.findIndex(x=>x.id==id);if(j>=0)C.splice(j,1);db.orders.forEach(o=>{if(o.dg&&o.dg.caso==id){o.dg.caso=null;o.dg.fim=false}});save();render();toast('Caso excluído')},
  cq(v){carregaXB();UI.cq=v;const b=$('#dgcqo');if(b)b.innerHTML=consulta()},
  casoQ(v){UI.casoQ=v;const b=$('#dgcasos');if(b)b.innerHTML=casosList()},
@@ -533,17 +570,77 @@ function fillLaudo(o){const d=dgOf(o),L=lOf(o);let n=0;
 
 /* ================= PÁGINA "DIAGNÓSTICO" NO MENU ================= */
 const DCOL='#C0392B';
-function Vdiag(){const k=S.f.dt||'and',O=db.orders.filter(started),and=O.filter(o=>!o.dg.fim);
+
+/* ================= FOTO DO SCANNER: telas e ações ================= */
+function fotoBtns(){return`<div class="dg-foto"><button type="button" onclick="document.getElementById('dgcam').click()">${svgi('cam')} Câmera</button><button type="button" onclick="document.getElementById('dggal').click()">${svgi('img')} Galeria</button><small class="muted">Foto da tela do scanner: leio os códigos e as descrições</small>
+ <input id="dgcam" type="file" accept="image/*" capture="environment" hidden onchange="DG.foto(this)"><input id="dggal" type="file" accept="image/*" hidden onchange="DG.foto(this)"></div>`}
+function fotoProg(msg,pct){const b=$('#dgocrp');if(!b)return;b.querySelector('span').textContent=msg;const i=b.querySelector('i');if(i)i.style.width=Math.round((pct||0)*100)+'%'}
+function fotoRev(){const F=DG._foto,o=cur(),v=o?vOf(o):{};
+ const rows=F.itens.map((x,i)=>{const r=lookupV(x.code,v),baseT=r&&r.auto!='fab'?r.t:'',enB=r?(r.en||(XB&&XB[x.code]?XB[x.code][1]:'')):'',dif=x.desc&&baseT&&!parecido(x.desc,baseT)&&!(enB&&parecido(x.desc,enB)),igual=x.desc&&baseT&&!dif;
+  x.dif=dif;x.base=baseT;if(x.esc==null)x.esc=dif?'':(x.desc&&!baseT?'scan':'base');
+  return`<div class="dg-ocr${x.on?'':' off'}"><label class="dg-ocrh"><input type="checkbox" ${x.on?'checked':''} onchange="DG.fotoSet(${i},'on',this.checked)"><input class="dg-code sm" value="${esc(x.code)}" aria-label="Código" onchange="DG.fotoSet(${i},'code',this.value)">${dif?mb('Descrições diferentes',KA):igual?mb('Confere com a base',KG):!baseT&&x.desc?mb('Nova: vem do scanner',KB):''}</label>
+  ${dif?`<p class="dg-ocrq"><b>O scanner e a base dizem coisas diferentes. Qual manter?</b></p>
+   <label class="dg-opt${x.esc=='scan'?' on':''}"><input type="radio" name="dgo${i}" ${x.esc=='scan'?'checked':''} onchange="DG.fotoSet(${i},'esc','scan')"><span><small>Do scanner</small><textarea rows="2" oninput="DG.fotoSet(${i},'desc',this.value,1)">${esc(x.desc)}</textarea></span></label>
+   <label class="dg-opt${x.esc=='base'?' on':''}"><input type="radio" name="dgo${i}" ${x.esc=='base'?'checked':''} onchange="DG.fotoSet(${i},'esc','base')"><span><small>Da base${r&&r.custom?' (da oficina)':''}</small><b>${esc(baseT)}</b></span></label>`
+  :x.desc&&!baseT?`<label class="dg-opt on"><span><small>Descrição lida no scanner (pode corrigir)</small><textarea rows="2" oninput="DG.fotoSet(${i},'desc',this.value,1)">${esc(x.desc)}</textarea></span></label>${r?`<small class="muted">A base só tinha a sugestão genérica: “${esc(r.t)}”.</small>`:''}`
+  :`<p class="muted" style="margin:6px 0 0">${esc(baseT||(r?r.t:'Sem descrição'))}</p>`}</div>`}).join('');
+ const n=F.itens.filter(x=>x.on).length,falta=F.itens.some(x=>x.on&&x.dif&&!x.esc);
+ $('#modal').innerHTML=`<div class="ov"><div class="md dg-ocrm" role="dialog" aria-modal="true"><h2 style="margin-top:0">${plural(F.itens.length,'código encontrado','códigos encontrados')}</h2>
+  <p class="muted" style="margin:0 0 10px">Confira o que li na foto. Desmarque o que estiver errado ou corrija o código.</p>${rows}
+  <details style="margin-top:10px"><summary class="muted">Ver o texto lido na foto</summary><pre class="dg-ocrt">${esc(F.txt)}</pre></details>
+  <div class="bar" style="margin:12px 0 0"><button type="button" onclick="closeM(1)">Cancelar</button><span class="sp"></span><button type="button" class="pr" ${n&&!falta?'':'disabled'} onclick="DG.fotoOk()">${falta?'Escolha qual descrição manter':'Adicionar '+plural(n,'código','códigos')}</button></div></div></div>`}
+Object.assign(DG,{
+ async foto(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const o=cur();if(!o)return;carregaXB();
+  $('#modal').innerHTML=`<div class="ov"><div class="md" role="dialog" aria-modal="true" aria-live="polite"><h2 style="margin-top:0">Lendo a foto do scanner</h2><div id="dgocrp" class="dg-ocrp"><span>Preparando a imagem…</span><div><i></i></div></div><p class="muted">Na primeira vez o leitor é baixado (cerca de 10 MB). Depois funciona mais rápido e sem internet.</p><div class="bar" style="margin:12px 0 0"><span class="sp"></span><button type="button" onclick="DG._foto=null;closeM(1)">Cancelar</button></div></div></div>`;
+  const tk=DG._fotoTk=Date.now();
+  try{const cv=await ocrPrep(f);fotoProg(ocrW?'Lendo o texto…':'Baixando o leitor…',.05);
+   const w=await ocrWorker(m=>{if(DG._fotoTk!=tk)return;if(m.status=='recognizing text')fotoProg('Lendo o texto…',m.progress);else if(/load|init/i.test(m.status))fotoProg('Baixando o leitor…',(m.progress||0)*.9)});
+   const r=await w.recognize(cv);if(DG._fotoTk!=tk||!$('#dgocrp'))return;const txt=r.data.text||'';
+   await (XBload||Promise.resolve());const it=lerScanner(txt).map(x=>({...x,on:!dgOf(o).cod.includes(x.code),esc:null}));
+   if(!it.length){$('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Não achei códigos na foto</h2><ul><li>Fotografe de frente, sem reflexo, com a tela inteira aparecendo.</li><li>Se a lista for longa, tire uma foto de cada parte.</li><li>Ou digite o código no campo.</li></ul>${txt.trim()?`<details><summary class="muted">Ver o texto lido</summary><pre class="dg-ocrt">${esc(txt)}</pre></details>`:''}<div class="bar" style="margin:12px 0 0"><span class="sp"></span><button type="button" class="pr" onclick="closeM(1)">Entendi</button></div></div></div>`;return}
+   DG._foto={itens:it,txt};fotoRev()}
+  catch(e){$('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Não consegui ler a foto</h2><p>${esc(e&&e.message||String(e))}. Confira a internet na primeira vez (para baixar o leitor) ou digite o código.</p><div class="bar"><span class="sp"></span><button type="button" class="pr" onclick="closeM(1)">Entendi</button></div></div></div>`}},
+ fotoSet(i,k,val,quiet){const x=DG._foto&&DG._foto.itens[i];if(!x)return;
+  if(k=='code'){const p=parseCode(val);if(!p.ok)return toast('Código inválido: '+val);x.code=p.code;x.esc=null}else x[k]=val;
+  if(k=='desc'){x.esc='scan';if(quiet){const rb=document.querySelector('input[name="dgo'+i+'"]');if(rb)rb.checked=true;document.querySelectorAll('#modal .dg-opt').forEach(l=>{const q=l.querySelector('input[type=radio]');if(q&&q.name=='dgo'+i)l.classList.toggle('on',q.checked)});
+   const F=DG._foto,n=F.itens.filter(y=>y.on).length,falta=F.itens.some(y=>y.on&&y.dif&&!y.esc),bt=$('#modal .bar .pr');if(bt){bt.disabled=!(n&&!falta);bt.textContent=falta?'Escolha qual descrição manter':'Adicionar '+plural(n,'código','códigos')}return}}
+  fotoRev()},
+ fotoOk(){const F=DG._foto,o=cur();if(!F||!o)return;if(F.itens.some(y=>y.on&&y.dif&&!y.esc))return toast('Escolha qual descrição manter');const d=dgOf(o),v=vOf(o),L=codes();let n=0,s=0;
+  F.itens.filter(x=>x.on).forEach(x=>{if(!d.cod.includes(x.code)){d.cod.push(x.code);n++}
+   if(x.esc=='scan'&&x.desc.trim()){const r=lookupV(x.code,v),fab=ctype(x.code)!='Genérico (SAE)',modelo=fab&&v.modelo?v.modelo:'',id=x.code+(modelo?'--'+dkey(modelo).replace(/ /g,'-').slice(0,60):'');
+    const old=L.find(y=>y.id==id),rec={...(old||{}),id,code:x.code,modelo,t:x.desc.trim(),m:(old&&old.m)||(r?r.m:''),s:(old&&old.s)||(r?r.s:2),ca:(old&&old.ca&&old.ca.length)?old.ca:(r?r.ca:[]),tests:(old&&old.tests&&old.tests.length)?old.tests:(r?r.tests:['codes']),at:today(),fonte:'scanner'};
+    const j=L.findIndex(y=>y.id==id);if(j>=0)L[j]=rec;else L.push(rec);s++}});
+  DG._foto=null;commit(o);closeM(1);render();toast((n?plural(n,'código adicionado','códigos adicionados'):'Nenhum código novo')+(s?' · '+plural(s,'descrição do scanner salva','descrições do scanner salvas'):''))},
+});
+
+/* ================= O.S.: SÓ O REGISTRO (o trabalho é feito no menu Diagnóstico) ================= */
+function DGrec(o){const d=o.dg,v=vOf(o);
+ if(!d||!started(o))return`<div class="card dg-rec">${empty('diag','Nenhum diagnóstico registrado nesta O.S.')}<button class="pr" style="width:100%" onclick="DG.open('${o.id}')">Fazer o diagnóstico</button></div>`;
+ const[s,col]=dgInfo(o),feitos=Object.entries(d.t||{}).filter(([k,x])=>x&&x.r&&TESTS[k]);
+ const R={ok:['OK',KG],falha:['Fora do esperado',KR],inc:['Inconclusivo',KA]};
+ return`<div class="card dg-rec"><div class="dg-h"><b>Registro do diagnóstico</b>${mb(s,col)}</div>
+  ${d.cod.length?`<small class="muted">Códigos de falha</small>${d.cod.map(c=>{const r=lookupV(c,v);return`<div class="dg-cc"><span class="dg-ro">${esc(c)}</span><span class="dg-cct"><b>${esc(r?r.t:'Sem descrição')}</b></span><span></span></div>`}).join('')}`:''}
+  ${d.sin.length?`<small class="muted">Sintomas</small><div class="dg-chips" style="margin:4px 0 8px">${d.sin.map(x=>SYM[x]?mb(esc(SYM[x].t)):'').join(' ')}</div>`:''}
+  ${feitos.length?`<small class="muted">Testes feitos</small><ul class="dg-recl">${feitos.map(([k,x])=>`<li>${mb(R[x.r]?R[x.r][0]:x.r,R[x.r]?R[x.r][1]:KA)} ${esc(TESTS[k].n)}${x.v?' — <b>'+esc(x.v)+'</b>':''}</li>`).join('')}</ul>`:''}
+  ${d.fim?`<div class="dg-recf"><small class="muted">Defeito encontrado</small><b>${esc(d.def||'')}</b>${d.sis?mb(esc(d.sis),KB):''}${d.tc&&TESTS[d.tc]?`<div><small class="muted">Confirmado com:</small> ${esc(TESTS[d.tc].n)}</div>`:''}${d.sol?`<div><small class="muted">Solução:</small> ${esc(d.sol)}</div>`:''}</div>`:''}
+  <button style="width:100%;margin-top:10px" class="${d.fim?'':'pr'}" onclick="DG.open('${o.id}')">${d.fim?'Ver no Diagnóstico':'Continuar o diagnóstico'}</button></div>`}
+/* página de trabalho dentro do menu Diagnóstico */
+function Vtrab(o){const v=vh(o.veh),c=cl(o.cli),[s,col]=dgInfo(o);
+ return`<div class="dg-top"><button type="button" class="sm" onclick="go('diag')">← Diagnósticos</button><span class="sp"></span><button type="button" class="sm" onclick="go('order','${o.id}','diag')">Abrir O.S. ${esc(o.num)}</button></div>
+ <div class="card dg-car"><div><b style="font-size:18px">${esc(vlabel(v))}</b><small class="muted" style="display:block">${esc(c.nome||'Sem cliente')} · O.S. ${esc(o.num)}${v.km?' · '+esc(v.km)+' km':''}</small></div>${mb(s,col)}</div>`+DGtab(o)}
+
+function Vdiag(){if(S.id){const o0=od(S.id);if(o0)return Vtrab(o0)}
+ const k=S.f.dt||'and',O=db.orders.filter(started),and=O.filter(o=>!o.dg.fim);
  const T=[['and','Em andamento'],['casos','Casos resolvidos'],['cons','Consulta'],['cod','Códigos'],['val','Valores'],['calc','Calculadoras'],['eq','Equipamentos']];
  let b='';
  if(k=='and'){const conc=O.filter(o=>o.dg.fim).slice(-10).reverse();
-  b=sech('Em andamento',and.length?plural(and.length,'carro','carros'):'')+(and.slice().reverse().map(dgCard).join('')||empty('diag','Nenhum diagnóstico em andamento. Abra uma O.S. e toque na aba Diagnóstico, ou use o botão “+ Diagnosticar”.'))+
+  b=sech('Em andamento',and.length?plural(and.length,'carro','carros'):'')+(and.slice().reverse().map(dgCard).join('')||empty('diag','Nenhum diagnóstico em andamento. Toque em “+ Diagnosticar” para começar.'))+
    (conc.length?sech('Concluídos recentemente','')+conc.map(dgCard).join(''):'')+
-   `<div class="card dg-how"><b>Como funciona</b><ol><li>Na O.S., abra a aba <b>Diagnóstico</b>.</li><li>Informe os <b>códigos de falha</b> e os <b>sintomas</b>.</li><li>Veja o <b>caminho rápido</b> dos casos parecidos, as causas prováveis e faça os testes marcando o resultado.</li><li>Achou o defeito? Salve: ele entra nos <b>Casos resolvidos</b> e preenche o <b>Laudo</b> da O.S.</li></ol></div>`}
+   `<div class="card dg-how"><b>Como funciona</b><ol><li>Toque em <b>+ Diagnosticar</b> (ou num carro em andamento).</li><li>Informe os <b>códigos de falha</b>: digite ou tire uma <b>foto da tela do scanner</b>. Depois os <b>sintomas</b>.</li><li>Veja o <b>caminho rápido</b> dos casos parecidos, as causas prováveis e faça os testes marcando o resultado.</li><li>Achou o defeito? Salve: ele entra nos <b>Casos resolvidos</b> e preenche o <b>Laudo</b> da O.S. Na O.S. fica só o registro.</li></ol></div>`}
  if(k=='casos')b=srchIn('Buscar código, sintoma, defeito ou modelo',UI.casoQ,'DG.casoQ(this.value)')+topCodes()+`<div id="dgcasos">${casosList()}</div>`;
  if(k=='cons')b=srchIn('Código (P0301) ou sintoma (falha ao acelerar)',UI.cq,'DG.cq(this.value)')+`<div class="dg-chips" style="margin:8px 0 12px">${['P0171','P0300','P0335','falha ao acelerar','barulho no motor','esquentando','partida a frio'].map(x=>`<button type="button" class="dg-chip" onclick="document.getElementById('dgcqi').value='${x}';DG.cq('${x}')">${x}</button>`).join('')}</div><div id="dgcqo">${consulta()}</div>`;
  if(k=='cod'){const L=codes().slice().sort((a,b)=>String(a.code).localeCompare(b.code));
-  b=`<p class="muted">Descrições de códigos cadastradas pela oficina. Para cadastrar, adicione o código na aba Diagnóstico de uma O.S. e toque em “+ Descrição”.</p>`+(L.map(x=>lcard({c:KB,n:`<span class="dg-ro sm">${esc(x.code)}</span>`,pill:mb(x.modelo?'Só '+esc(x.modelo):'Todos os veículos',KB),t:esc(x.t),m:esc((x.ca||[]).slice(0,3).join(' · ')),f:`<span class="sp"></span><button class="sm dg" onclick="confirmDel(this,()=>{const L=db.dcodes,j=L.findIndex(y=>y.id=='${esc(x.id)}');if(j>=0)L.splice(j,1);save();render()})">Apagar</button>`})).join('')||empty('notas','Nenhum código descrito pela oficina ainda.'))}
+  b=`<p class="muted">Descrições de códigos cadastradas pela oficina. Elas são criadas quando você edita a descrição de um código ou escolhe a descrição do scanner na foto.</p>`+(L.map(x=>lcard({c:KB,n:`<span class="dg-ro sm">${esc(x.code)}</span>`,pill:mb(x.modelo?'Só '+esc(x.modelo):'Todos os veículos',KB),t:esc(x.t),m:esc((x.ca||[]).slice(0,3).join(' · ')),f:`<span class="sp"></span><button class="sm dg" onclick="confirmDel(this,()=>{const L=db.dcodes,j=L.findIndex(y=>y.id=='${esc(x.id)}');if(j>=0)L.splice(j,1);save();render()})">Apagar</button>`})).join('')||empty('notas','Nenhum código descrito pela oficina ainda.'))}
  if(k=='val')b=srchIn('Filtrar: bateria, MAP, compressão, óleo…',UI.vq,'DG.vq(this.value)')+`<p class="muted" style="margin:8px 0">Valores típicos para motores gasolina, etanol e flex. Confirme sempre no manual da montadora.</p><div id="dgvals">${valsHTML()}</div>`;
  if(k=='calc'){b=calcHTML();setTimeout(calcAll,0)}
  if(k=='eq'){const s=eqSet();b=`<div class="card"><b>Equipamentos da oficina</b><p class="muted" style="margin:4px 0 10px">Os testes que usam equipamento não marcado vão para o fim da lista no diagnóstico.</p><div class="dg-eqlist">${Object.keys(EQ).map(x=>`<label><input type="checkbox" ${s.has(x)?'checked':''} onchange="DG.eq('${x}',this.checked)">${EQ[x]}</label>`).join('')}</div></div>`}
@@ -566,7 +663,7 @@ function testList(ids){const av=eqSet();return ids.map(t=>{const x=TESTS[t];retu
 function casesBox(f){const cs=casos().filter(f);return cs.length?`<div class="card dg-fast"><b>Na sua oficina · ${plural(cs.length,'caso resolvido','casos resolvidos')}</b>${cs.slice(-4).reverse().map(casoHTML).join('')}</div>`:''}
 function consulta(){const raw=String(UI.cq||'').trim();if(!raw)return'';const p=parseCode(raw);
  if(p.ok&&raw.replace(/\s/g,'').length<=6){const v=p.code,r=lookupV(v,undefined);
-  if(!r)return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${v}</span><span class="dg-cct"><b>Código ainda sem descrição</b><small class="muted">${SYS[v[0]]} · ${ctype(v)}</small></span></div><p class="muted">Para cadastrar a descrição, adicione o código na aba Diagnóstico de uma O.S. e toque em “+ Descrição”.</p><a class="btn" style="text-decoration:none" href="https://www.google.com/search?q=${encodeURIComponent(v+' código de falha')}" target="_blank" rel="noopener">Pesquisar no Google ↗</a></div>`;
+  if(!r)return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${v}</span><span class="dg-cct"><b>Código ainda sem descrição</b><small class="muted">${SYS[v[0]]} · ${ctype(v)}</small></span></div><p class="muted">Para cadastrar a descrição, adicione o código num diagnóstico e toque em “+ Descrição”.</p><a class="btn" style="text-decoration:none" href="https://www.google.com/search?q=${encodeURIComponent(v+' código de falha')}" target="_blank" rel="noopener">Pesquisar no Google ↗</a></div>`;
   return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${r.c}</span><span class="dg-cct"><b>${esc(r.t)}</b>${!r.custom&&r.en?`<small class="muted" style="display:block">SAE: ${esc(r.en)}</small>`:''}${mb('Gravidade '+SEV[r.s],r.s==3?KR:r.s==2?KA:KG)} ${r.custom?mb('Descrição da oficina',KB):r.auto?mb(r.auto=='fab'?'Sugestão automática':'Base ampliada',r.auto=='fab'?KA:KB):''}</span></div>${r.m?`<p>${esc(r.m)}</p>`:''}<b>Causas prováveis</b><ol>${r.ca.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><b>Testes, nesta ordem</b>${testList(r.tests)}</div>`}
  const ss=matchSym(raw);let h=ss.length?casesBox(c=>(c.sin||[]).includes(ss[0].id)):'';
  h+=ss.map((s,i)=>`<div class="card"><b style="font-size:18px">${esc(s.t)}</b>${s.ca.length?`<p style="margin:6px 0 2px"><b>Causas prováveis</b></p><ol>${s.ca.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}${i==0?`<b>Testes, nesta ordem</b>${testList(s.tests)}`:`<details><summary>Ver ${s.tests.length} testes</summary>${testList(s.tests)}</details>`}</div>`).join('');
@@ -666,13 +763,24 @@ const css=`
 .dg-out.bad{background:color-mix(in srgb,#B4472E 12%,var(--sf));border-color:transparent}.dg-out.bad>b{color:#B4472E}
 .dg-cyl{display:grid;gap:5px;margin-top:6px}.dg-cyl div{display:grid;grid-template-columns:30px 1fr 48px;gap:8px;align-items:center;font:500 13px ui-monospace,Menlo,monospace}.dg-cyl i{height:12px;border-radius:2px;background:linear-gradient(90deg,var(--c) var(--w),var(--ln) var(--w))}.dg-cyl span:last-child{text-align:right}
 @media (max-width:760px){.dg-stp{flex-direction:column;align-items:flex-start;gap:2px}.dg-stp span{font-size:12px}.dg-tin{grid-template-columns:1fr}.dg-tools{grid-template-columns:1fr}.dg-causes li{grid-template-columns:auto minmax(0,1fr)}.dg-causes li button{grid-column:2;justify-self:start}}
+
+.dg-foto{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 10px}.dg-foto button{display:inline-flex;gap:6px;align-items:center}.dg-foto button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}.dg-foto small{flex-basis:100%}
+.dg-ocr{border:1px solid var(--ln);border-radius:10px;padding:10px;margin:8px 0}.dg-ocr.off{opacity:.55}.dg-ocrh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0}.dg-ocrh input[type=checkbox]{width:22px;height:22px}
+.dg-ocrh .dg-code.sm{width:96px;font-size:16px;padding:6px 8px;margin:0}.dg-ocrq{margin:8px 0 4px}
+.dg-opt{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--ln);border-radius:8px;padding:8px;margin:6px 0;cursor:pointer}.dg-opt.on{border-color:${KB};box-shadow:0 0 0 1px ${KB} inset}
+.dg-opt input[type=radio]{margin-top:4px;width:20px;height:20px}.dg-opt span{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}.dg-opt textarea{width:100%;margin:0;min-height:52px}
+.dg-ocrp span{display:block;margin-bottom:8px}.dg-ocrp div{height:8px;border-radius:4px;background:var(--ln);overflow:hidden}.dg-ocrp i{display:block;height:100%;width:3%;background:${KB};transition:width .3s}
+.dg-ocrm .bar{position:sticky;bottom:-16px;background:inherit;padding:10px 0 4px;margin-bottom:-4px!important;border-top:1px solid var(--ln)}
+.dg-ocrt{white-space:pre-wrap;font-size:12px;max-height:180px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px}
+.dg-top{display:flex;gap:8px;align-items:center;margin:0 0 10px}.dg-car{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.dg-rec small.muted{display:block;margin:8px 0 4px}.dg-recl{list-style:none;padding:0;margin:0}.dg-recl li{padding:4px 0}.dg-recf{border-top:1px solid var(--ln);margin-top:8px;padding-top:4px}.dg-recf b{display:block;font-size:17px}
 `;
 const st=document.createElement('style');st.id='dg-css';st.textContent=css;document.head.appendChild(st);
 
 /* ================= LIGAÇÃO COM O GESTOR ================= */
-DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
+DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
 /* "+ Diagnosticar": depois de criar a O.S., abre direto na aba Diagnóstico */
-if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){tab=DG.next;DG.next=null}return _go(v,id,tab,f)}}
+if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){DG.next=null;return _go('diag',id)}return _go(v,id,tab,f)}}
 /* ao trocar de O.S., limpa o que estava digitado */
-let _last=null;const _rs=setInterval(()=>{if(S&&S.v=='order'&&S.id!==_last){_last=S.id;UI.code='';UI.sym='';UI.tf='todos'}},400);
+let _last=null;const _rs=setInterval(()=>{if(S&&(S.v=='order'||S.v=='diag')&&S.id&&S.id!==_last){_last=S.id;UI.code='';UI.sym='';UI.tf='todos'}},400);
 })(window);
