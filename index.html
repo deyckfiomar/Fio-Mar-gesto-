@@ -309,10 +309,15 @@ async function syncRemoto(force){if(!SB||!SES||!OF||PEND||BLOQ||CONF||SYNCING||D
 setInterval(()=>syncRemoto(),60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')syncRemoto(1)});
 
-let SEMOF=false;
+let SEMOF=false,SEMDADOS=false,TSN=null;
+const sk=()=>'snap_'+(SES&&SES.user?SES.user.id:'')+'_'+(OF||'');
+/* guarda a última versão da nuvem neste aparelho (para abrir sem internet sem perder nada) */
+function snapSalva(){clearTimeout(TSN);TSN=setTimeout(()=>{if(SES&&OF&&!DIRTY&&!SEMDADOS&&RS.s.v)IDB.set(sk(),{db:cp(db),s:{v:RS.s.v,b:RS.s.b},p:{v:RS.p.v,b:RS.p.b},ts:Date.now()}).catch(()=>{})},2000)}
 /* carrega a oficina. quieto=1: atualização em segundo plano (não mexe se a pessoa começou a editar) */
 async function pull(quieto){if(!OF)return;const{data,error}=await SB.from('wab_data').select('id,data,updated_at').in('id',DONO()?[OF,OF+':dono']:[OF]);
- if(error){if(!quieto)toast('Erro ao carregar os dados: '+error.message);return}
+ if(error){if(quieto)return;const sn=await IDB.get(sk()).catch(()=>null);
+  if(sn&&sn.db){db=cleanDb(sn.db);RS.s={...sn.s};RS.p={...sn.p};DIRTY=false;SEMDADOS=false;toast('Sem internet: mostrando os dados salvos neste aparelho ('+new Date(sn.ts).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})+')');return}
+  SEMDADOS=true;toast('Sem internet e sem cópia neste aparelho. Conecte uma vez para carregar os dados.');return}
  if(quieto&&DIRTY)return;
  const g=id=>(data||[]).find(x=>x.id==id),s=g(OF),p=g(OF+':dono');SEMOF=false;CONF=false;
  if(!s&&!DONO()){SEMOF=true;db=load();return}
@@ -321,7 +326,7 @@ async function pull(quieto){if(!OF)return;const{data,error}=await SB.from('wab_d
  db=montaDb(raw,p?normP(p.data):null);DIRTY=false;
  /* dono: cria as linhas que faltam e tira da linha da equipe o que é só do dono (versões antigas) */
  if(DONO()&&(!s||!p||leg)){DIRTY=true;await push();if(leg&&!DIRTY)toast('Custos, despesas e notas agora ficam visíveis só para o dono')}
- fixEstoque()}
+ SEMDADOS=false;fixEstoque();snapSalva()}
 function semOfView(){$('#nav').style.display='none';$('#main').innerHTML=`<div class="card" style="max-width:440px;margin:8vh auto"><h1>Oficina sendo preparada</h1><p>Você faz parte da equipe de <b>${e(OFS&&OFS.nome||'uma oficina')}</b>, mas o dono ainda não abriu o app para preparar os dados.</p><p class="muted">Peça ao dono para entrar no app uma vez. Depois toque em “Verificar novamente”.</p><div class="bar"><button class="pr" onclick="pull().then(render)">Verificar novamente</button><span class="sp"></span><button onclick="doOut()">Sair</button></div></div>`}
 let PUSHING=null;
 async function push(){if(PUSHING){await PUSHING.catch(()=>{});if(!DIRTY)return}PUSHING=push0();try{return await PUSHING}finally{PUSHING=null}}
@@ -333,7 +338,7 @@ async function junta(k,tent){if(tent>=3)return conflito();let r=null;try{r=await
  sp[k]=mergeDb(RS[k].b||{},sp[k],cp(rem));RS[k].b=rem;RS[k].v=r.data.updated_at;db=montaDb(sp.s,sp.p);DIRTY=true;
  if(k=='s'){if(Date.now()-JUNTOU>60000)toast('Alterações de outra pessoa da equipe foram juntadas às suas');JUNTOU=Date.now()}
  if(!$('#modal').innerHTML&&!/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||''))render(1);return push0(tent+1)}
-async function push0(tent){tent=tent||0;if(!SB||!SES||!OF||PEND||BLOQ||CONF||SEMOF)return;clearTimeout(TS);DIRTY=false;const sp=splitDb(db);
+async function push0(tent){tent=tent||0;if(!SB||!SES||!OF||PEND||BLOQ||CONF||SEMOF||SEMDADOS)return;clearTimeout(TS);DIRTY=false;const sp=splitDb(db);
  for(const k of RKS()){const st=RS[k],part=sp[k];if(st.b&&JS(part)===JS(st.b))continue;
   const row={data:part,updated_at:new Date().toISOString()};let data,error;
   try{const q=st.v?SB.from('wab_data').update(row).eq('id',RID(k)).eq('updated_at',st.v):SB.from('wab_data').insert({id:RID(k),...row});({data,error}=await q.select('updated_at'))}catch(x){error={message:x&&x.message||'sem conexão'}}
@@ -343,7 +348,7 @@ async function push0(tent){tent=tent||0;if(!SB||!SES||!OF||PEND||BLOQ||CONF||SEM
   if(st.v&&!(data&&data.length)){const c=await SB.from('wab_data').select('updated_at').eq('id',RID(k)).maybeSingle();
    if(c.data&&c.data.updated_at!=st.v){DIRTY=true;return junta(k,tent)}DIRTY=true;reagenda();return toast('Não foi possível salvar. Verifique sua conexão e permissões.')}
   st.v=data&&data[0]?data[0].updated_at:row.updated_at;st.b=part}
- RTRY=0;clearTimeout(RTT);if(!DIRTY){clearTimeout(TL);IDB.del(pk())}else{guardaLocal();clearTimeout(TS);TS=setTimeout(push,300)}}
+ RTRY=0;clearTimeout(RTT);if(!DIRTY){clearTimeout(TL);IDB.del(pk());snapSalva()}else{guardaLocal();clearTimeout(TS);TS=setTimeout(push,300)}}
 function conflito(){CONF=true;$('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Dados alterados em outro aparelho</h2><p>A oficina foi atualizada por outra pessoa ou aparelho várias vezes seguidas e não foi possível juntar as alterações automaticamente. O salvamento foi pausado para não apagar nada.</p><p class="muted">Recomendado: recarregar os dados mais recentes. O que você alterou aqui desde a última sincronização será descartado.</p><div class="bar"><button type="button" onclick="resolveConf(0)">Manter os dados deste aparelho</button><span class="sp"></span><button type="button" class="pr" onclick="resolveConf(1)">Recarregar dados novos</button></div></div></div>`}
 async function resolveConf(reload){closeM();if(reload){IDB.del(pk());await pull();render();toast('Dados atualizados')}else{const{data}=await SB.from('wab_data').select('id,updated_at').in('id',RKS().map(RID));RKS().forEach(k=>{const x=(data||[]).find(y=>y.id==RID(k));RS[k].v=x?x.updated_at:null;RS[k].b=null});CONF=false;DIRTY=true;await push();toast('Seus dados foram mantidos')}}
 const IDB=(()=>{let P;const op=()=>P=P||new Promise((ok,no)=>{try{const r=indexedDB.open('fiomar',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(x){no(x)}});
@@ -353,13 +358,13 @@ const pk=()=>'pend_'+(SES&&SES.user?SES.user.id:'')+'_'+(OF||'');let TL=null,RTR
 const verAt=()=>J({s:RS.s.v,p:DONO()?RS.p.v:null});
 function guardaLocal(){clearTimeout(TL);TL=setTimeout(()=>{if(SES&&OF&&DIRTY)IDB.set(pk(),{data:JSON.parse(JSON.stringify(db)),base:verAt(),ts:Date.now()})},400)}
 function reagenda(){clearTimeout(RTT);const ms=Math.min(60000,4000*2**RTRY);RTRY++;RTT=setTimeout(()=>{if(DIRTY&&!CONF)push()},ms)}
-addEventListener('online',()=>{if(DIRTY&&!CONF){RTRY=0;push()}});
+addEventListener('online',()=>{if(SEMDADOS&&SES&&OF){pull().then(()=>{if(!SEMDADOS){render();toast('Conectado: dados carregados')}});return}if(DIRTY&&!CONF){RTRY=0;push()}});
 async function recPend(){if(!SES||PEND||BLOQ||!OF)return;const p=await IDB.get(pk());if(!p||!p.data)return;
  if(JSON.stringify(p.data)===JSON.stringify(db)){IDB.del(pk());return}
  if(p.base===verAt()){db=cleanDb(p.data);save();render();toast('Alterações feitas sem internet foram recuperadas e salvas');return}
- $('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Alterações não salvas neste aparelho</h2><p>Este aparelho tem alterações feitas sem internet em ${new Date(p.ts).toLocaleString('pt-BR')}, mas a oficina também foi alterada em outro lugar depois disso.</p><p class="muted">Escolha qual versão manter. A outra será descartada.</p><div class="bar"><button type="button" onclick="IDB.del(pk());closeM()">Manter a da nuvem</button><span class="sp"></span><button type="button" class="pr" onclick="usaPend()">Usar a deste aparelho</button></div></div></div>`}
+ $('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Alterações não salvas neste aparelho</h2><p>Este aparelho tem alterações feitas sem internet em ${new Date(p.ts).toLocaleString('pt-BR')}, mas a oficina também foi alterada em outro lugar depois disso.</p><p class="muted">Escolha qual versão manter. A outra será descartada.</p>${(p.data.orders||[]).length+(p.data.clients||[]).length<0.8*(db.orders.length+db.clients.length)?`<p style="color:${KR}"><b>Atenção:</b> a versão deste aparelho tem ${(p.data.clients||[]).length} clientes e ${(p.data.orders||[]).length} O.S.; a da nuvem tem ${db.clients.length} clientes e ${db.orders.length} O.S. Usar a deste aparelho apagaria dados.</p>`:''}<div class="bar"><button type="button" onclick="IDB.del(pk());closeM()">Manter a da nuvem</button><span class="sp"></span><button type="button" class="pr" onclick="usaPend()">Usar a deste aparelho</button></div></div></div>`}
 async function usaPend(){const p=await IDB.get(pk());closeM();if(!p)return;db=cleanDb(p.data);RKS().forEach(k=>RS[k].b=null);DIRTY=true;await push();render();toast('Alterações deste aparelho salvas')}
-function save(){DIRTY=true;clearTimeout(TS);TS=setTimeout(push,700);guardaLocal()}
+function save(){if(SEMDADOS){toast('Sem internet: conecte uma vez para carregar os dados antes de editar. Nada foi salvo.');return}DIRTY=true;clearTimeout(TS);TS=setTimeout(push,700);guardaLocal()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden'&&DIRTY){clearTimeout(TS);push()}});
 addEventListener('pagehide',()=>{if(DIRTY){clearTimeout(TS);push()}});
 /* entrar: descobre a oficina e o papel, carrega os dados e começa os trabalhos de fundo */
@@ -445,7 +450,7 @@ async function login(){const em=$('#le').value.trim(),pw=$('#lp').value;$('#lerr
  const{data,error}=await SB.auth.signInWithPassword({email:em,password:pw});
  if(error){if(/not confirmed/i.test(error.message)){$('#lerr').innerHTML='Confirme o e-mail pelo link enviado antes de entrar. <a href="#" onclick="resend();return false">Reenviar e-mail</a>';return}$('#lerr').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos.':'Erro: '+error.message;return}
  SES=data.session;await entra();S.v='dash';render()}
-async function doOut(){clearTimeout(TS);if(DIRTY)await push();await SB.auth.signOut();SES=null;ADM=false;OF=null;PAPEL='';OFS=null;BLOQ=false;PEND=false;REQ=null;RS.s={v:null,b:null};RS.p={v:null,b:null};CONF=false;DIRTY=false;document.body.classList.remove('colab');db=load();S.v='dash';render()}
+async function doOut(){clearTimeout(TS);if(DIRTY)await push();if(!DIRTY){clearTimeout(TSN);await IDB.del(sk()).catch(()=>{})}SEMDADOS=false;await SB.auth.signOut();SES=null;ADM=false;OF=null;PAPEL='';OFS=null;BLOQ=false;PEND=false;REQ=null;RS.s={v:null,b:null};RS.p={v:null,b:null};CONF=false;DIRTY=false;document.body.classList.remove('colab');db=load();S.v='dash';render()}
 function dlBlob(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();toast('PDF baixado')}
 function toast(t){const o=$('#toast');o.textContent=t;o.style.display='block';setTimeout(()=>o.style.display='none',2400)}
 const cl=id=>db.clients.find(x=>x.id==id)||{};
@@ -754,8 +759,15 @@ function delClient(id){if(!DONO())return toast('Apenas o dono da oficina pode ex
 function delVeh(id){if(!DONO())return toast('Apenas o dono da oficina pode excluir');if(db.orders.some(o=>o.veh==id)||db.quotes.some(q=>q.veh==id))return toast('Este veículo tem orçamentos ou O.S. Exclua-os antes');db.appts=AG().filter(a=>a.veh!=id);db.vehicles=db.vehicles.filter(v=>v.id!=id);save();render();toast('Veículo excluído')}
 function delQuote(){if(!DONO())return toast('Apenas o dono da oficina pode excluir');db.quotes=db.quotes.filter(x=>x.id!=S.q.id);save();toast('Orçamento excluído');go('quotes')}
 function delOS(){if(!DONO())return toast('Apenas o dono da oficina pode excluir');const id=S.id;if(NF().some(n=>n.os==id&&n.modo=='api'&&['autorizado','processando','pendente','enviando'].includes(n.status)))return toast('Esta O.S. tem nota fiscal emitida. Cancele a nota antes de excluir.');(od(id).items||[]).forEach(i=>{if(i.baixa&&i.pid)MV().push({id:uid(),pid:i.pid,tipo:'E',q:+i.q||0,data:today(),obs:'Estorno O.S. '+od(id).num+' excluída'})});db.orders=db.orders.filter(o=>o.id!=id);db.quotes.forEach(q=>{if(q.os==id)delete q.os});save();toast('O.S. excluída');go('orders')}
-function backup(){if(!DONO())return;const t=JSON.stringify(db);const ok=()=>toast('Backup copiado ('+Math.round(t.length/1024)+' KB). Cole em um arquivo seguro.');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(ok,()=>modal('Backup',[['b','Copie todo o texto abaixo','area']],{b:t},()=>{}))}
-function restore(){if(!DONO())return;modal('Restaurar backup',[['b','Cole aqui o texto do backup','area']],{},o=>{try{const d=JSON.parse(o.b);if(!d.clients||!d.orders||!d.quotes||!d.vehicles)throw 0;db=cleanDb(d);save();render();toast('Backup restaurado')}catch(x){toast('Texto de backup inválido')}},'<p class="muted">Isto substitui todos os dados atuais.</p>')}
+function backup(){if(!DONO())return;const em=new Date(),pac={app:'Fio-Mar Gestor',versao:APP_VER,em:em.toISOString(),oficina:OF||'',db},t=JSON.stringify(pac),nome='fiomar-backup-'+today()+'.json';
+ try{const b=new Blob([t],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000);
+  try{localStorage.setItem('fm_bkp',today())}catch(x){}toast('Backup salvo em Downloads: '+nome+' ('+(t.length>1e6?(t.length/1e6).toFixed(1)+' MB':Math.round(t.length/1024)+' KB')+'). Guarde também no Google Drive.');render(1)}
+ catch(x){toast('Não consegui gerar o arquivo de backup')}}
+function bkpData(){try{return localStorage.getItem('fm_bkp')||''}catch(x){return''}}
+function restore(){if(!DONO())return;const i=document.createElement('input');i.type='file';i.accept='.json,application/json,.txt,text/plain';
+ i.onchange=()=>{const f=i.files&&i.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{let d,info='';try{const j=JSON.parse(rd.result);d=j&&j.db?j.db:j;if(j&&j.em)info=' de '+new Date(j.em).toLocaleString('pt-BR');if(!d||!Array.isArray(d.clients)||!Array.isArray(d.orders)||!Array.isArray(d.vehicles))throw 0}catch(x){return toast('Arquivo de backup inválido')}
+  $('#modal').innerHTML=`<div class="ov"><div class="md" role="dialog" aria-modal="true"><h2 style="margin-top:0">Restaurar backup${e(info)}?</h2><p>O arquivo tem <b>${d.clients.length}</b> clientes, <b>${d.vehicles.length}</b> veículos e <b>${d.orders.length}</b> O.S.</p><p class="muted">Isto <b>substitui todos os dados atuais</b> da oficina, em todos os aparelhos. Antes de restaurar, vou baixar um backup dos dados de agora.</p><div class="bar" style="margin:12px 0 0"><button onclick="closeM()">Cancelar</button><span class="sp"></span><button class="dg" id="rsok">Restaurar</button></div></div></div>`;
+  $('#rsok').onclick=()=>{backup();db=cleanDb(d);save();closeM();render();toast('Backup restaurado')}};rd.readAsText(f)};i.click()}
 const CFG0={pagto:'Dinheiro, cartão de crédito, cartão de débito, pix ou link de pagamento.',garantia:'3 meses de garantia.'};
 function qFotos(fs){S.q.fotos=S.q.fotos||[];[...fs].forEach(f=>picRef(f,d=>{S.q.fotos.push({src:d,obs:''});render()}))}
 function editCfg(){const c=db.cfg||{};modal('Dados da oficina',[['nome','Nome fantasia','text',0,1],['razao','Razão social'],['cnpj','CNPJ'],['end','Endereço'],['cidade','Cidade, UF e CEP'],['email','E-mail','email'],['tel1','Telefone 1','tel'],['tel2','Telefone 2','tel'],['pixtipo','Tipo da chave PIX','select',['Telefone','CPF/CNPJ','E-mail','Chave aleatória']],['pix','Chave PIX'],['pixnome','Nome do favorecido do PIX'],['pagto','Meios de pagamento','area'],['garantia','Condições da garantia','area'],['resp','Responsável (assinatura)']],{...CFG0,...c},o=>{db.cfg={...c,...o};save();render()})}
@@ -1588,7 +1600,7 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  ${K('clock',AT.length,'Horários hoje',"go('agenda',0,0,{ag:'hoje'})",KB)}${K('agenda',A7,'Próximos 7 dias',"go('agenda')",'#17A2B8')}${DONO()?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+
  sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
  sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.'))+
- (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem. Se quiser uma cópia extra, copie o backup e guarde em lugar seguro.</p><div class="bar" style="margin:0"><button onclick="backup()">Copiar backup</button><button onclick="restore()">Restaurar backup</button></div></div>`+(DONO()?'':'-->')}
+ (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Baixe um backup toda semana e guarde no Google Drive. ${bkpData()?'Último backup neste aparelho: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito neste aparelho ainda.</b>'}</p><div class="bar" style="margin:0"><button onclick="backup()">Baixar backup</button><button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
 /* ---------- Ordens de serviço ---------- */
 const osFim=o=>['Concluída','Entregue'].includes(o.status),osDeve=o=>oTot(o)-paid(o)>0.005;
@@ -1784,7 +1796,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.6.0';
+const APP_VER='2.6.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
