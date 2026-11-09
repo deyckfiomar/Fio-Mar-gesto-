@@ -359,6 +359,11 @@ function interpreta(frase) {
   /* --- telas: "abre a agenda", "agenda de hoje" --- */
   const soAgenda = /^(?:\S+\s+)?(?:a\s+|minha\s+)?agenda(?:\s+(?:de|do|da|pra|para)\s+(hoje|amanha|semana|dia))?\s*$/.test(n) || /\b(o que tem|que tem|quem vem|tenho)\b.*\b(hoje|agenda|amanha)\b/.test(n);
   if (soAgenda || (navV.test(n) && !agV.test(n.replace(/\bagenda\b/, '')) && !pagV.test(n) && !despF.test(n) && !itemV.test(n) && !/\bplaca\b/.test(n))) {
+    const mOS = n.match(new RegExp('\\b' + OSW + '\\s*(?:numero|n|no|nº)?\\s*(\\d{1,6})\\b'));
+    if (mOS && !soAgenda) {
+      const o = ((db && db.orders) || []).find(x => +x.num == +mOS[1]);
+      return o ? { ...R, tipo: 'nav', tela: 'order', id: o.id } : { ...R, tipo: 'nav', tela: 'orders', aviso: 'O.S. ' + mOS[1] + ' não encontrada' };
+    }
     if (soAgenda || /\bagenda\b/.test(n)) return { ...R, tipo: 'nav', tela: 'agenda', f: { ag: /amanha|semana/.test(n) ? 'prox' : /hoje|dia\b/.test(n) ? 'hoje' : 'prox' } };
     const tl = TELAS.find(([, re]) => re.test(n));
     if (tl) return { ...R, tipo: 'nav', tela: tl[0] };
@@ -382,6 +387,7 @@ function interpreta(frase) {
   else if (plInfo) tipo = 'placa';
 
   if (tipo == 'placa' || (!tipo && plInfo)) return { ...R, tipo: 'placa', ...plInfo };
+  if (!tipo && /\d/.test(n) && (catDe(n) != 'Outros' || /\b(todo mes|todos os meses|mensal|mensalmente)\b/.test(n))) tipo = 'desp';
 
   if (tipo == 'agenda') {
     T.take(/\b(?:por favor\s+)?(?:(?:me\s+)?(?:faz|faca|fazer)\s+(?:um|o)\s+)?(?:agend\w*|marc(?:a|ar|ou|e|ando)|reserv\w*)\b(?:\s+(?:um|uma|o|a)\s+(?:horario|agendamento)\b)?(?:\s+(?:para|pra|de)\b)?/);
@@ -409,7 +415,8 @@ function interpreta(frase) {
   if (tipo == 'desp') {
     T.take(/\b(?:lanc\w*|registr\w*|anot\w*|adicion\w*|coloc\w*|cadastr\w*|nova|novo)?\s*(?:uma\s+|a\s+)?(?:despesas?|gastos?)\b(?:\s+(?:de|com|do|da|no|na))?/) || T.take(/\b(?:eu\s+)?(?:gastei|paguei|comprei|pagamos|compramos)\b(?:\s+(?:o|a|um|uma))?/);
     const rec = !!T.take(/\b(?:que\s+)?(?:repete\s+)?(?:todo mes|todos os meses|mensal|mensalmente|por mes|ao mes)\b/);
-    let data = pegaData(T, true); if (data == 'INV') { data = ''; R.avisos.push('Data inválida: ficou hoje') }
+    const vence = !!T.take(/\b(?:que\s+)?(?:vence\w*|vencimento)(?:\s+(?:em|no|na))?\b/);
+    let data = pegaData(T, !vence); if (data == 'INV') { data = ''; R.avisos.push('Data inválida: ficou hoje') }
     const vs = pegaValores(T); let valor = vs.length ? vs[0].v : numeroSolto(T, true);
     const W = palavras(T.o), desc = sobra(W, new Set()).replace(/^(?:com|de)\s+/i, '');
     if (!valor) R.avisos.push('Valor não entendido: digite');
@@ -426,10 +433,13 @@ function interpreta(frase) {
     const vs = pegaValores(T);
     let q = 1, v = '', custo = '';
     if (tipo == 'item') {
+      let m0;
+      if ((m0 = T.take(/\b(?:custo|custou|custa|custando)\s+(?:de\s+|por\s+|foi\s+|e\s+)?(\d[\d.,]*)\b/))) custo = toNum(m0[1].replace(/[.,]$/, ''));
+      if ((m0 = T.take(/\b(?:cobrar|cobra|cobro|cobrei|preco|valor|vende|venda)\s+(?:de\s+|por\s+|a\s+|e\s+)?(\d[\d.,]*)\b/))) v = toNum(m0[1].replace(/[.,]$/, ''));
       let m = T.take(/\b(\d{1,3})\s*x\s*(\d[\d.,]*)\b/);
       if (m) { q = +m[1]; v = toNum(m[2]) }
       else if ((m = T.take(/\b(\d{1,3})\s+(?:unidades?\s+(?:de\s+)?|pecas?\s+(?:de\s+)?|litros?\s+(?:de\s+)?|jogos?\s+(?:de\s+)?)?(?=[a-z])/)) && !/^(h|hs|horas?)\b/.test(T.n.slice(m.index + m[0].length))) q = +m[1] || 1;
-      vs.forEach(x => { if (x.tipo == 'custo') custo = x.v; else if (v === '') v = x.v });
+      vs.forEach(x => { if (x.tipo == 'custo' && custo === '') custo = x.v; else if (v === '') v = x.v });
       if (v === '' && custo === '') { const s = numeroSolto(T, true); if (s) v = s }
       if (v === '' && custo !== '' && !/\bcusto\b/.test(n)) { v = custo; custo = '' }
     } else { if (vs.length) v = vs[0].v; else { const s = numeroSolto(T, true); if (s) v = s } }
@@ -451,7 +461,7 @@ function interpreta(frase) {
     }
     if (!o && !osNum && !ent.veh && !ent.cli && S && S.v == 'order' && S.id) o = O.find(x => x.id == S.id) || null;
     if (!o && !aviso) aviso = 'Diga o número da O.S. ou a placa do carro';
-    const base = { ...R, tipo, os: o ? o.id : '', osAviso: aviso, avisos: [...R.avisos, ...ent.avisos] };
+    const base = { ...R, tipo, os: o ? o.id : '', veh: ent.veh || '', osAviso: aviso, avisos: [...R.avisos, ...ent.avisos] };
     if (tipo == 'pag') { if (!v) base.avisos.push('Valor não dito: ficou o restante da O.S.'); return { ...base, valor: v, data: data || hoje(), ...fp } }
     if (v === '') base.avisos.push('Valor não entendido: digite');
     return { ...base, t: tiTipo, d: desc || (tiTipo == 'Mão de obra' ? 'Mão de obra' : ''), q, v, custo }
@@ -673,7 +683,7 @@ function roda(frase) {
 
 function executa(r) {
   switch (r.tipo) {
-    case 'nav': go(r.tela, 0, 0, r.f || {}); return;
+    case 'nav': go(r.tela, r.id || 0, 0, r.f || {}); if (r.aviso) { toast(r.aviso); diz(r.aviso) } return;
     case 'cliente': go('clients', 0, 0, { q: (cl(r.cli).nome || '') }); return;
     case 'agenda':
       if (S.v != 'agenda') go('agenda');

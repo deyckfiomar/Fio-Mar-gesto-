@@ -1656,7 +1656,7 @@ function Vagenda(){const f=S.f.ag||'prox',t=today(),A=AG().filter(a=>a.status!='
  const days={};l.forEach(a=>(days[a.data]=days[a.data]||[]).push(a));
  const tl=[['hoje','Hoje','clock',plural(nh,'horário','horários'),nh?KB:KM],['prox','Próximos','agenda',String(np),np?KB:KM],['ant','Anteriores','osres',String(na)]];
  return head({ico:'agenda',kick:'Atendimento',title:'Agenda',c:PCOL.agenda,right:`<button class="pr hb" onclick="editAg()">+ Agendar</button>`,acts:`<button class="sm" onclick="go('agsvc')">Serviços da agenda (${SV().length})</button>`})+ftiles(tl,f,'ag')+
- (Object.entries(days).map(([d,x])=>sech(`<span style="text-transform:capitalize">${e(dayLbl(d))}</span>`,plural(x.length,'horário','horários'))+x.map(agRow).join('')).join('')||
+ (Object.entries(days).map(([d,x])=>sech(`<span>${e(((s)=>s.charAt(0).toUpperCase()+s.slice(1))(String(dayLbl(d))))}</span>`,plural(x.length,'horário','horários'))+x.map(agRow).join('')).join('')||
   empty('agenda','Nenhum horário neste filtro.',`<button class="pr" onclick="editAg()">+ Novo agendamento</button>`))}
 function Vagsvc(){return head({back:"go('agenda')",kick:'Agenda',title:'Serviços',c:PCOL.agenda,right:`<button class="pr hb" onclick="editSvc()">+ Novo</button>`})+
  (SV().map(s=>lcard({c:PCOL.agenda,n:e(s.dur)+' min',v:R(s.preco),t:e(s.nome),m:s.ctrib?'Cód. tributação '+e(s.ctrib):'',on:`editSvc('${s.id}')`})).join('')||empty('agenda','Cadastre os serviços que você agenda. Ex.: diagnóstico com scanner, troca de óleo, revisão de freios.'))}
@@ -1782,7 +1782,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.3.0';
+const APP_VER='2.3.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
