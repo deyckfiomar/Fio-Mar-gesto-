@@ -164,7 +164,7 @@ function pattern(c){
   if(m){const n=parseInt(c.slice(3),10)-50;const L='ABCDEFGHIJKL'[n-1];return {c,t:`Bobina de ignição ${L} — circuito`,s:2,m:`Falha no circuito da bobina ${L} (cilindro ${n} na maioria dos motores).`,ca:[`Bobina do cilindro ${n}`,'Chicote ou conector','Driver da ECU'],tests:['ign','res','drop','misf']};}
   return null;
 }
-const lookupBase=c=>DB[c]||pattern(c);
+const lookupBase=c=>DB[c]||pattern(c)||autoCode(c);
 
 const SUB={'0':'Combustível, ar e emissões','1':'Medição de ar e combustível','2':'Injetores','3':'Ignição e falhas de combustão','4':'Emissões auxiliares','5':'Velocidade e marcha lenta','6':'ECU e saídas','7':'Transmissão','8':'Transmissão','9':'Transmissão'};
 const SYS={P:'Motor e transmissão',B:'Carroceria',C:'Chassi',U:'Rede de comunicação'};
@@ -179,6 +179,84 @@ function parseCode(raw){
   if(/^[PBCU][0-3][0-9A-F]{3}$/.test(s))return {ok:true,code:s};
   return {ok:false,raw:s};
 }
+
+
+/* ================= BASE AMPLIADA (pesquisa automática, sem internet de IA) =================
+   codigos-extra.json: ~5.900 códigos genéricos SAE (P0, P2, P3 e U0), título em português e original em inglês.
+   Fonte dos títulos: OBDex (CC0, github.com/foerbsnavi/OBDex), traduzidos por regras.
+   As causas e os testes são montados pelo componente e pelo tipo de falha. */
+let XB=null,XBload=null;
+function carregaXB(){if(XB||XBload)return XBload;XBload=fetch('codigos-extra.json').then(r=>r.ok?r.json():null).then(j=>{XB=j||{};if(typeof render=='function'&&S&&['order','diag'].includes(S.v)&&!document.querySelector('#modal .ov'))render(1)}).catch(()=>{XBload=null});return XBload}
+setTimeout(carregaXB,1500);
+const CK_EL=['Chicote ou conector (fio rompido, em curto ou com mau contato)'],CK_ECU='Estágio de saída (driver) da ECU';
+/* componente: [nome, causas de falha elétrica, testes elétricos, causas de funcionamento, testes de funcionamento] */
+const XC={
+o2:['sonda lambda',['Sonda lambda com defeito','Chicote ou conector da sonda (encostando no escape)','Referência ou massa da sonda'],['o2','res','refgnd','drop'],['Sonda lambda envelhecida ou contaminada (óleo, silicone, aditivo)','Entrada de ar falsa ou furo no escape antes da sonda','Mistura fora do normal (injetor, pressão de combustível, MAF/MAP)','Falha de combustão'],['o2','ft','exhvis','smoke','fpress']],
+o2aq:['aquecimento da sonda lambda',['Resistência de aquecimento da sonda queimada','Fusível ou relé da alimentação da sonda','Chicote ou conector da sonda',CK_ECU],['res','drop','o2'],['Aquecimento da sonda fraco','Sonda lambda com defeito'],['res','o2']],
+cat:['catalisador',['Sensor de temperatura do catalisador','Chicote ou conector'],['res','refgnd'],['Catalisador gasto ou contaminado','Sonda pós-catalisador com defeito','Furo no escape perto das sondas','Falha de combustão ou motor queimando óleo, que estragam o catalisador'],['o2post','o2','exhvis','misf','vac2500']],
+misf:['combustão',[],[],['Vela de ignição gasta ou com folga errada','Bobina ou cabo de vela com defeito','Injetor entupido ou com defeito','Entrada de ar falsa','Compressão baixa (válvula, anel, junta)','Combustível de má qualidade'],['misf','plugs','ign','spark','injwave','smoke','relcomp','compdry','fuelq']],
+trim:['mistura ar/combustível',[],[],['Entrada de ar falsa (mangueiras, junta do coletor, servo-freio)','Pressão de combustível baixa (bomba, filtro, regulador)','Injetor entupido ou vazando','Sensor MAF/MAP lendo errado','Sonda lambda com defeito','Combustível adulterado ou % de etanol mal aprendido'],['ft','smoke','fpress','maf','map','o2','injwave','fuelq']],
+maf:['sensor de fluxo de ar (MAF)',['Sensor MAF com defeito','Chicote ou conector do MAF','Alimentação 12 V ou massa do MAF'],['maf','refgnd','drop'],['MAF sujo ou contaminado','Entrada de ar falsa depois do MAF','Filtro de ar entupido ou duto rasgado'],['maf','airfilter','smoke','ft']],
+map:['sensor de pressão do coletor (MAP)',['Sensor MAP com defeito','Chicote ou conector do MAP','Referência 5 V ou massa'],['map','refgnd'],['Mangueira do MAP solta, furada ou entupida','Entrada de ar falsa','Sensor MAP descalibrado','Vácuo baixo por problema mecânico (ponto, válvula)'],['map','vacidle','smoke','timingmk']],
+baro:['sensor de pressão barométrica',['Sensor com defeito','Chicote ou conector','Referência 5 V ou massa'],['refgnd','map'],['Sensor descalibrado','Sensor MAP (quando o barométrico é o próprio MAP)'],['map']],
+iat:['sensor de temperatura do ar de admissão',['Sensor de temperatura do ar com defeito','Chicote ou conector','Referência 5 V ou massa'],['res','refgnd'],['Sensor descalibrado','Sensor fora do lugar ou com sujeira'],['res']],
+ect:['sensor de temperatura do motor',['Sensor de temperatura com defeito','Chicote ou conector','Referência 5 V ou massa'],['ect','res','refgnd'],['Sensor descalibrado','Válvula termostática travada aberta','Nível baixo de líquido / ar no sistema'],['ect','irtemp','coolvis']],
+arref:['sistema de arrefecimento',['Sensor ou atuador do arrefecimento','Chicote ou conector',CK_ECU],['res','drop'],['Válvula termostática travada (aberta ou fechada)','Nível baixo, vazamento ou ar no sistema','Bomba d\'água com defeito','Radiador entupido','Junta do cabeçote (gases no arrefecimento)'],['coolvis','ect','irtemp','fan','coolpress','co2']],
+fan:['ventoinha do radiador',['Motor da ventoinha','Relé ou fusível da ventoinha','Chicote ou conector',CK_ECU],['fan','res','drop'],['Motor da ventoinha travando ou fraco','Relé com defeito'],['fan','drop']],
+flex:['sistema flex / combustível alternativo',['Sensor com defeito','Chicote ou conector'],['res','refgnd'],['Percentual de etanol mal aprendido (abastecimento recente)','Sistema de partida a frio','Combustível adulterado'],['coldstart','fuelq','ft']],
+pcomb:['pressão de combustível',['Sensor de pressão de combustível','Válvula/regulador de volume (injeção direta)','Chicote ou conector','Referência 5 V ou massa'],['refgnd','res','fpress'],['Bomba de combustível fraca','Filtro de combustível entupido','Regulador de pressão com defeito','Bomba de alta pressão (injeção direta) gasta','Vazamento na linha'],['fpress','fhold','faccel','fflow','freg','pumpcur']],
+bomba:['bomba de combustível',['Relé ou fusível da bomba','Chicote ou conector da bomba','Bomba com defeito'],['pumpact','drop','pumpcur'],['Bomba fraca ou com coletor gasto','Filtro entupido'],['fpress','fflow','pumpcur']],
+inj:['injetor',['Injetor com bobina aberta ou em curto','Chicote ou conector do injetor',CK_ECU],['res','injwave','noid'],['Injetor entupido ou gotejando','Pressão de combustível fora','Combustível sujo'],['injwave','misf','ft','fpress']],
+nivel:['nível de combustível',['Boia do tanque com defeito','Chicote ou conector'],['res'],['Boia travando'],['res']],
+tcomb:['sensor de temperatura do combustível',['Sensor com defeito','Chicote ou conector'],['res','refgnd'],['Sensor descalibrado'],['res']],
+tac:['corpo de borboleta eletrônico',['Motor do corpo de borboleta','Chicote ou conector','Relé/alimentação do corpo de borboleta',CK_ECU],['tps','res','drop','refgnd'],['Corpo de borboleta sujo (carbonizado)','Mola ou engrenagem do corpo de borboleta gasta','Aprendizado da borboleta não feito'],['tbvis','tps','relearn']],
+tps:['sensor de posição da borboleta / pedal',['Sensor de posição com pista gasta','Chicote ou conector','Referência 5 V ou massa'],['tps','refgnd'],['Sinais duplos do pedal/borboleta não batem','Corpo de borboleta sujo','Aprendizado não feito'],['tps','tbvis','relearn']],
+idle:['marcha lenta',['Atuador de marcha lenta','Chicote ou conector',CK_ECU],['res','idle'],['Corpo de borboleta sujo','Entrada de ar falsa','Atuador de marcha lenta travando','Aprendizado da borboleta não feito','Carga elétrica ou do ar-condicionado'],['idle','tbvis','smoke','relearn']],
+ckp:['sensor de rotação (CKP)',['Sensor de rotação com defeito','Chicote ou conector','Folga ou sujeira no sensor'],['rpmcrank','res','ckpcmp'],['Roda fônica danificada ou solta','Sensor com folga','Interferência elétrica'],['rpmcrank','ckpcmp','res']],
+cmp:['sensor de fase (CMP)',['Sensor de fase com defeito','Chicote ou conector','Referência ou massa'],['ckpcmp','res','refgnd'],['Ponto da distribuição fora','Roda de fase danificada'],['ckpcmp','timingmk']],
+sinc:['sincronismo rotação x fase',[],[],['Correia ou corrente esticada / pulou dente','Variador de fase travado','Roda fônica ou de fase deslocada','Sensor CKP ou CMP com defeito'],['ckpcmp','timingmk','vvt']],
+vvt:['comando variável (VVT)',['Solenoide do VVT aberta ou em curto','Chicote ou conector',CK_ECU],['res','vvt','drop'],['Óleo sujo, baixo ou de viscosidade errada','Solenoide VVT travada ou tela filtrante entupida','Variador de fase gasto','Distribuição esticada ou fora de ponto'],['oilvis','vvt','ckpcmp','timingmk']],
+knock:['sensor de detonação',['Sensor de detonação com defeito','Chicote ou conector'],['knock','res'],['Torque de fixação errado','Combustível ruim (detonação real)','Ruído mecânico do motor'],['knock','fuelq','stetho']],
+ign:['ignição',['Bobina de ignição com defeito','Chicote ou conector da bobina',CK_ECU],['ign','res','drop','spark'],['Vela gasta ou com folga errada','Bobina fraca','Cabo de vela'],['ign','plugs','spark','misf']],
+evap:['sistema de canister (EVAP)',['Válvula de purga ou de respiro com defeito','Chicote ou conector',CK_ECU],['res','drop'],['Tampa do tanque mal fechada ou com vedação ruim','Mangueira do canister furada ou solta','Válvula de purga travada aberta ou fechada','Canister saturado'],['smoke','res','leaksvis']],
+egr:['válvula EGR',['Válvula EGR com defeito','Chicote ou conector','Referência ou massa do sensor da EGR'],['res','refgnd'],['EGR carbonizada (travada aberta ou fechada)','Dutos da EGR entupidos','Mangueira de vácuo da EGR'],['vacidle','smoke','res']],
+sai:['ar secundário',['Bomba ou válvula do ar secundário','Relé ou fusível','Chicote ou conector'],['res','drop'],['Válvula de retenção com defeito','Mangueira solta ou furada'],['smoke','o2']],
+pcv:['ventilação do cárter (PCV)',['Aquecedor da PCV','Chicote ou conector'],['res'],['Válvula PCV travada','Mangueira do respiro rachada ou solta','Blow-by alto (desgaste do motor)'],['blowby','smoke']],
+turbo:['turbo',['Válvula de controle do turbo','Sensor de pressão do turbo','Chicote ou conector'],['boost','res','refgnd'],['Vazamento de pressão (mangueira, intercooler)','Wastegate travada','Turbo gasto','Válvula de alívio com defeito'],['boost','smoke','leaksvis']],
+coletor:['coletor de admissão variável',['Atuador ou solenoide do coletor','Chicote ou conector'],['res','drop'],['Borboletas internas do coletor travadas ou quebradas','Vácuo do atuador'],['smoke','vacidle']],
+poleo:['pressão do óleo',['Sensor/interruptor de pressão do óleo','Chicote ou conector'],['res','oilpress'],['Nível de óleo baixo','Bomba de óleo gasta ou pescador entupido','Desgaste de bronzinas','Óleo errado ou diluído'],['oilpress','oilvis']],
+toleo:['temperatura do óleo',['Sensor de temperatura do óleo','Chicote ou conector'],['res','refgnd'],['Sensor descalibrado','Superaquecimento do motor'],['res','irtemp']],
+nvoleo:['nível do óleo',['Sensor de nível do óleo','Chicote ou conector'],['res'],['Nível de óleo baixo','Consumo de óleo'],['oilvis','oilcons']],
+carga:['sistema de carga',['Alternador / regulador de tensão','Cabo de carga ou massa','Fusível'],['bat','ripple','drop'],['Bateria fraca','Correia patinando','Alternador fraco'],['bat','ripple','belt','drop']],
+partida:['partida',['Relé ou motor de partida','Chicote ou massa','Interruptor da embreagem / posição P-N'],['bat','drop'],['Bateria fraca','Motor de partida gasto'],['bat','drop']],
+ecu:['módulo de controle (ECU)',['Alimentação ou massa da ECU','Referência 5 V em curto por algum sensor','Relé principal'],['drop','refgnd','bat'],['ECU com defeito interno','Programação/calibração corrompida','Tensão da bateria instável'],['bat','drop','can']],
+rede:['rede de comunicação',['Fusível ou alimentação do módulo','Massa do módulo','Rede CAN (fio rompido, em curto, umidade)','Conector do módulo'],['can','drop','bat'],['Módulo com defeito','Bateria fraca na partida'],['can','bat']],
+vss:['sensor de velocidade',['Sensor de velocidade com defeito','Chicote ou conector'],['res','refgnd'],['Sensor sujo ou com folga','Anel de leitura danificado'],['res']],
+freio:['interruptor do freio',['Interruptor do pedal de freio','Chicote ou conector'],['res','drop'],['Interruptor desregulado'],['res']],
+embr:['interruptor da embreagem',['Interruptor do pedal da embreagem','Chicote ou conector'],['res'],['Interruptor desregulado'],['res']],
+ac:['ar-condicionado',['Sensor ou embreagem do compressor','Relé ou fusível','Chicote ou conector'],['res','drop'],['Carga de gás baixa ou alta','Compressor com defeito'],['res']],
+cambio:['câmbio',['Solenoide ou sensor do câmbio','Chicote ou conector do câmbio','Módulo do câmbio'],['res','drop','can'],['Nível ou fluido do câmbio','Desgaste interno','Aprendizado do câmbio'],['codes']],
+mec:['parte mecânica do motor',[],[],['Compressão baixa (válvula, anel, junta)','Injetor desequilibrado','Falha de ignição'],['relcomp','compdry','compwet','leak','misf']],
+imob:['imobilizador',['Antena do imobilizador','Chicote ou conector'],['imob','drop'],['Chave não codificada','Transponder da chave'],['imob']],
+emiss:['controle de emissões',CK_EL.concat(['Componente do sistema',CK_ECU]),['res','drop'],['Componente do sistema de emissões'],['codes','smoke']],
+geral:['componente indicado',CK_EL.concat(['Componente com defeito',CK_ECU]),['res','drop','refgnd'],['Componente com defeito','Problema mecânico ligado ao componente'],['codes']],
+};
+const XFAB={'0':'combustível, ar e emissões','1':'medição de ar e combustível','2':'injeção','3':'ignição e falhas de combustão','4':'emissões auxiliares','5':'velocidade e marcha lenta','6':'ECU e saídas','7':'câmbio','8':'câmbio','9':'câmbio'};
+const XFC={'0':'geral','1':'trim','2':'inj','3':'ign','4':'emiss','5':'idle','6':'ecu','7':'cambio','8':'cambio','9':'cambio'};
+function montaX(c,t,en,comp,f,s,fab){const k=XC[comp]||XC.geral,el=f=='el',com=f=='com';
+ let ca=com?XC.rede[1]:el?k[1]:k[3],tests=com?XC.rede[2]:el?k[2]:k[4];if(!ca.length){ca=k[3];tests=k[4]}
+ if(el&&!ca.some(x=>/chicote/i.test(x)))ca=ca.concat(CK_EL);
+ const m=com?'A ECU deixou de receber (ou recebe errado) as mensagens desse módulo pela rede. Comece pela alimentação, massa e conector do módulo.':
+  el?`Problema elétrico no circuito (${k[0]}): sinal fora dos limites, circuito aberto ou em curto. Meça o chicote antes de trocar a peça.`:
+  `Funcionamento fora do esperado (${k[0]}): a ECU comparou o que pediu com o que mediu e não bateu. Confira no scanner e faça os testes na ordem.`;
+ return{c,t,s,m:(fab?'Código específico do fabricante: a descrição varia por montadora. Confirme no manual ou num scanner da marca. ':'')+m,ca:[...new Set(ca)],tests:[...new Set(['codes',...tests])],auto:fab?'fab':'base',en:en||''}}
+function autoCode(c){if(!c||DB[c])return null;
+ const x=XB&&XB[c];if(x)return montaX(c,x[0],x[1],x[2],x[3],x[4]);
+ if(!/^[PBCU][0-3][0-9A-F]{3}$/.test(c))return null;
+ const d=c[2],fab=ctype(c)!='Genérico (SAE)';
+ if(c[0]=='P'){const comp=XFC[d]||'geral';return montaX(c,(fab?'Código do fabricante':'Código genérico')+' — '+(XFAB[d]||'motor'),'',comp,'func',2,fab)}
+ if(c[0]=='U')return montaX(c,(fab?'Código do fabricante':'Código genérico')+' — rede de comunicação entre módulos','','rede','com',2,fab);
+ return montaX(c,(fab?'Código do fabricante':'Código genérico')+' — '+SYS[c[0]].toLowerCase(),'','geral','func',2,fab)}
 
 /* ================= SINTOMAS ================= */
 const SG=[['Partida',['gira-nao-pega','partida-frio','partida-quente','nao-gira']],['Funcionamento',['marcha-lenta','morre','falha-aceleracao','perda-potencia','vibracao','detonacao','consumo']],['Temperatura e óleo',['superaquecimento','agua-oleo','consumo-oleo','pressao-oleo','vazamento-oleo']],['Ruído e fumaça',['ruido-motor','fumaca-preta','fumaca-branca']],['Elétrica',['bateria','luz-injecao']]];
@@ -304,8 +382,8 @@ function stepSin(o){const d=dgOf(o),v=vOf(o),L=lOf(o);
   ${SG.map(g=>`<small class="muted dg-gl">${g[0]}</small><div class="dg-chips">${g[1].map(id=>`<button type="button" class="dg-chip" aria-pressed="${d.sin.includes(id)}" onclick="DG.tsym('${id}')">${esc(SYM[id].t)}</button>`).join('')}</div>`).join('')}
  </div>
  <div class="dg-next"><span class="muted" id="dgab">${abMsg(o)}</span><button type="button" class="pr" onclick="DG.step('diag')">Ver diagnóstico →</button></div>`}
-function codeCard(o,c){const v=vOf(o),r=lookupV(c,v);const tag=r&&r.custom?`<span class="mb" style="--c:${KB}">${r.custom.modelo?'Oficina · '+esc(r.custom.modelo):'Descrição da oficina'}</span>`:'';
- return`<div class="dg-cc"><span class="dg-ro">${esc(c)}</span><span class="dg-cct"><b>${esc(r&&r.t?r.t:'Sem descrição cadastrada')}</b>${r?mb('Gravidade '+(SEV[r.s]||'Média'),r.s==3?KR:r.s==2?KA:KG):''} ${tag}</span>
+function codeCard(o,c){const v=vOf(o),r=lookupV(c,v);const tag=r&&r.custom?`<span class="mb" style="--c:${KB}">${r.custom.modelo?'Oficina · '+esc(r.custom.modelo):'Descrição da oficina'}</span>`:r&&r.auto?mb(r.auto=='fab'?'Sugestão automática':'Base ampliada',r.auto=='fab'?KA:KB):'';const en=r&&!r.custom&&r.en?`<small class="muted" style="display:block">SAE: ${esc(r.en)}</small>`:'';
+ return`<div class="dg-cc"><span class="dg-ro">${esc(c)}</span><span class="dg-cct"><b>${esc(r&&r.t?r.t:'Sem descrição cadastrada')}</b>${en}${r?mb('Gravidade '+(SEV[r.s]||'Média'),r.s==3?KR:r.s==2?KA:KG):''} ${tag}</span>
   <span class="dg-cca">${r?`<button type="button" class="sm" onclick="DG.editCode('${c}')">Editar</button>`:`<button type="button" class="sm pr" onclick="DG.editCode('${c}')">+ Descrição</button>`}<button type="button" class="sm" aria-label="Remover ${esc(c)}" onclick="DG.rmCode('${c}')">×</button></span></div>`}
 function abMsg(o){const d=dgOf(o),p=parseCode(UI.code),pc=p.ok&&!d.cod.includes(p.code),ps=UI.sym&&matchSym(UI.sym).some(x=>!d.sin.includes(x.id));
  const a=[];if(d.cod.length)a.push(plural(d.cod.length,'código','códigos'));if(d.sin.length)a.push(plural(d.sin.length,'sintoma','sintomas'));
@@ -374,13 +452,15 @@ const DG={
   UI.step[o.id]=k;render();const t=$('.dg-steps');if(t){const nv=$('#nav'),y=t.getBoundingClientRect().top+scrollY-(nv?nv.offsetHeight:0)-8;if(scrollY>y)scrollTo({top:y})}},
  cin(v){UI.code=v;const o=cur(),p=$('#dgprev');if(p)p.innerHTML=codePrev(o);const a=$('#dgab');if(a&&o)a.textContent=abMsg(o)},
  sin(v){UI.sym=v;const o=cur(),b=$('#dgsug');if(b&&o)b.innerHTML=symSug(o);const a=$('#dgab');if(a&&o)a.textContent=abMsg(o)},
- addCode(c){const o=cur();if(!o)return;const d=dgOf(o);const list=c?[c]:String(UI.code||'').split(/[\s,;]+/).filter(Boolean);
+ addCode(c){const o=cur();if(!o)return;carregaXB();const d=dgOf(o);const list=c?[c]:String(UI.code||'').split(/[\s,;]+/).filter(Boolean);
   const ok=[],bad=[];list.forEach(x=>{const p=parseCode(x);if(p.ok)ok.push(p.code);else if(!p.empty)bad.push(p.raw)});
   if(!ok.length&&!bad.length){const n=$('#dgcode');if(n)n.focus();return}
   if(bad.length&&!ok.length)return msg({title:'Código de falha inválido',intro:`“${bad.join(' ')}” não é um código válido.`,items:['O código tem uma letra e 4 números. Exemplo: P0171'],okLabel:'Corrigir',focus:'dgcode',warn:1});
   const added=ok.filter(x=>!d.cod.includes(x));added.forEach(x=>d.cod.push(x));if(!c)UI.code=bad.join(' ');if(added.length)commit(o);
   const unk=added.find(x=>!lookupV(x,vOf(o)));render();
   if(unk){DG.editCode(unk);toast(unk+' ainda não tem descrição: cadastre agora');return}
+  const fab=added.find(x=>{const r=lookupV(x,vOf(o));return r&&r.auto=='fab'});
+  if(fab){toast(fab+' é de fabricante: preenchi uma sugestão pelo tipo do código. Toque em Editar para ajustar');return}
   const n=$('#dgcode');if(n&&!c)n.focus();if(added.length)toast(added.length==1?'Código '+added[0]+' adicionado':added.length+' códigos adicionados');else if(ok.length)toast('Esse código já foi adicionado')},
  rmCode(c){const o=cur();if(!o)return;const d=dgOf(o);d.cod=d.cod.filter(x=>x!=c);commit(o);render()},
  addSym(id){const o=cur();if(!o)return;const d=dgOf(o);if(!d.sin.includes(id))d.sin.push(id);UI.sym='';commit(o);render();toast('Sintoma adicionado: '+SYM[id].t)},
@@ -432,7 +512,7 @@ const DG={
  novo(){DG.next='diag';newOS()},
  open(id){go('order',id,'diag')},
  delCaso(id){const C=casos(),j=C.findIndex(x=>x.id==id);if(j>=0)C.splice(j,1);db.orders.forEach(o=>{if(o.dg&&o.dg.caso==id){o.dg.caso=null;o.dg.fim=false}});save();render();toast('Caso excluído')},
- cq(v){UI.cq=v;const b=$('#dgcqo');if(b)b.innerHTML=consulta()},
+ cq(v){carregaXB();UI.cq=v;const b=$('#dgcqo');if(b)b.innerHTML=consulta()},
  casoQ(v){UI.casoQ=v;const b=$('#dgcasos');if(b)b.innerHTML=casosList()},
  vq(v){UI.vq=v;const b=$('#dgvals');if(b)b.innerHTML=valsHTML()},
  eq(k,on){const s=eqSet();on?s.add(k):s.delete(k);db.dgcfg=Object.assign({},db.dgcfg||{},{eq:[...s]});save()},
@@ -487,7 +567,7 @@ function casesBox(f){const cs=casos().filter(f);return cs.length?`<div class="ca
 function consulta(){const raw=String(UI.cq||'').trim();if(!raw)return'';const p=parseCode(raw);
  if(p.ok&&raw.replace(/\s/g,'').length<=6){const v=p.code,r=lookupV(v,undefined);
   if(!r)return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${v}</span><span class="dg-cct"><b>Código ainda sem descrição</b><small class="muted">${SYS[v[0]]} · ${ctype(v)}</small></span></div><p class="muted">Para cadastrar a descrição, adicione o código na aba Diagnóstico de uma O.S. e toque em “+ Descrição”.</p><a class="btn" style="text-decoration:none" href="https://www.google.com/search?q=${encodeURIComponent(v+' código de falha')}" target="_blank" rel="noopener">Pesquisar no Google ↗</a></div>`;
-  return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${r.c}</span><span class="dg-cct"><b>${esc(r.t)}</b>${mb('Gravidade '+SEV[r.s],r.s==3?KR:r.s==2?KA:KG)} ${r.custom?mb('Descrição da oficina',KB):''}</span></div>${r.m?`<p>${esc(r.m)}</p>`:''}<b>Causas prováveis</b><ol>${r.ca.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><b>Testes, nesta ordem</b>${testList(r.tests)}</div>`}
+  return casesBox(c=>(c.cod||[]).includes(v))+`<div class="card"><div class="dg-cc"><span class="dg-ro">${r.c}</span><span class="dg-cct"><b>${esc(r.t)}</b>${!r.custom&&r.en?`<small class="muted" style="display:block">SAE: ${esc(r.en)}</small>`:''}${mb('Gravidade '+SEV[r.s],r.s==3?KR:r.s==2?KA:KG)} ${r.custom?mb('Descrição da oficina',KB):r.auto?mb(r.auto=='fab'?'Sugestão automática':'Base ampliada',r.auto=='fab'?KA:KB):''}</span></div>${r.m?`<p>${esc(r.m)}</p>`:''}<b>Causas prováveis</b><ol>${r.ca.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><b>Testes, nesta ordem</b>${testList(r.tests)}</div>`}
  const ss=matchSym(raw);let h=ss.length?casesBox(c=>(c.sin||[]).includes(ss[0].id)):'';
  h+=ss.map((s,i)=>`<div class="card"><b style="font-size:18px">${esc(s.t)}</b>${s.ca.length?`<p style="margin:6px 0 2px"><b>Causas prováveis</b></p><ol>${s.ca.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}${i==0?`<b>Testes, nesta ordem</b>${testList(s.tests)}`:`<details><summary>Ver ${s.tests.length} testes</summary>${testList(s.tests)}</details>`}</div>`).join('');
  return h||`<p class="muted">Nada encontrado para “${esc(raw)}”. Tente o código completo (P0301) ou outras palavras.</p>`}
