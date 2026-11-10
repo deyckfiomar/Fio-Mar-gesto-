@@ -745,7 +745,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  <label>Avarias na entrada (riscos, amassados)<input value="${e(o.avarias||'')}" onchange="U('avarias',this.value)"></label>
  <label>Problema relatado<textarea onchange="U('problema',this.value)">${e(o.problema)}</textarea></label><label>Peças utilizadas<textarea onchange="U('pecas',this.value)">${e(o.pecas)}</textarea></label></div>
  <div class="card"><b>Serviços autorizados</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(od(S.id),${n},1)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
- <div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button><button onclick="genOS(od(S.id))">Gerar PDF da O.S.</button><span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>`;
+ <div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}<button onclick="genOS(od(S.id))">Gerar PDF da O.S.</button><span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>`;
  if(S.tab=='check')b=`<div class="bar"><button class="pr" onclick="genChecklist(od(S.id))">Gerar PDF do checklist</button></div><div class="card">${CK.map((n,i)=>{const c=o.ck[n]||{};return`<div class="ck"><b>${n}</b><select onchange="ckSet('${n}','s',this.value)">${['—','OK','Atenção','Defeito'].map(x=>`<option ${c.s==x?'selected':''}>${x}</option>`).join('')}</select><input type="text" placeholder="Observação" value="${e(c.obs)}" onchange="ckSet('${n}','obs',this.value)"><div class="fbs">${c.foto?`<img class="ckimg" ${fimg(c.foto)} height="34" alt="foto de ${e(n)}" onclick="verFoto(this.src)">`:''}${fotoBtns(`ckFoto('${n}',this.files[0])`,{ico:1,um:1})}</div></div>`}).join('')}</div>`;
  if(S.tab=='laudo')b=Vlaudo(o);
  if(S.tab=='diag')b=typeof DGrec=='function'?DGrec(o):'';
@@ -1709,16 +1709,16 @@ function Vstock(){const st=S.f.sk||'',q=nrm(S.f.q||'').trim(),P=PR(),semN=p=>dig
  const tl=[['','Todas','stock',plural(P.length,'peça','peças')],['low','Estoque baixo','alert',String(nl),nl?KR:KM],['ncm','Sem NCM','notas',String(nn),nn?KA:KM]];
  let L=P.filter(p=>!st||(st=='low'?isLow(p):semN(p)));if(q)L=L.filter(p=>nrm([p.nome,p.cod,p.cat,p.ean].join(' ')).includes(q));
  L=L.slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
- return head({ico:'stock',kick:'Peças',title:'Estoque',c:PCOL.stock,right:`<button class="pr hb" onclick="editProd()">+ Nova peça</button>`,sub:hsub(plural(P.length,'peça cadastrada','peças cadastradas'),plural(MV().length,'movimentação','movimentações'),...(DONO()?['Valor em estoque',R(val)]:[])),acts:DONO()?`<button class="sm" onclick="go('entradas')">Entrada por nota fiscal</button>`:''})+
+ return head({ico:'stock',kick:'Peças',title:'Estoque',c:PCOL.stock,right:`<button class="pr hb" onclick="editProd()">+ Nova peça</button>`,sub:hsub(plural(P.length,'peça cadastrada','peças cadastradas'),plural(MV().length,'movimentação','movimentações'),...(DONO()?['Valor em estoque',R(val)]:[])),acts:(typeof pdAbertos=='function'?`<button class="sm pr" onclick="go('peds')">${svgi('pedido')} Pedidos de peças${pdAbertos()?' ('+pdAbertos()+' em aberto)':''}</button>`:'')+(DONO()?`<button class="sm" onclick="go('entradas')">Entrada por nota fiscal</button>`:'')})+
  ftiles(tl,st,'sk')+srch('Buscar peça por nome ou código',S.f.q)+sech(`${st=='low'?'Estoque baixo':st=='ncm'?'Sem NCM (não sai na NF-e)':'Todas as peças'} <span class="muted">(${L.length})</span>`)+
- (lista(L,p=>{const lw=isLow(p);return lcard({c:lw?KR:KG,n:e(p.cod||'Sem código'),pill:semN(p)?mb('Sem NCM',KA):'',v:`<span style="color:${lw?KR:'inherit'}">${qty(p.id)} ${e(p.un)}</span>`,t:e(p.nome),
+ (lista(L,p=>{const lw=isLow(p);return lcard({c:lw?KR:KG,n:e(p.cod||'Sem código'),pill:semN(p)?mb('Sem NCM',KA):'',v:`<span style="color:${lw?KR:'inherit'}">${qty(p.id)} ${e(p.un)}</span>`,t:(typeof pfThumb=='function'?pfThumb(p):'')+e(p.nome),
   m:[p.cat&&e(p.cat),'venda '+R(p.preco),DONO()&&'custo '+R(p.custo)].filter(Boolean).join(' · '),f:`${lw?mb('Abaixo do mínimo ('+(+p.min||0)+')',KR):''}<span class="sp"></span><button class="sm" onclick="event.stopPropagation();mov('${p.id}','E')">+ Entrada</button><button class="sm" onclick="event.stopPropagation();mov('${p.id}','S')">− Saída</button>`,on:`go('prod','${p.id}')`})})||
   empty('stock',q?'Nenhuma peça encontrada.':'Nenhuma peça neste filtro.',st||q?'':`<button class="pr" onclick="editProd()">+ Nova peça</button>`))}
 function Vprod(){const p=prod(S.id);if(!p.id)return Vstock();const lw=isLow(p),mg=+p.custo>0?Math.round((p.preco-p.custo)/p.custo*100):0,OR={0:'0 - Nacional',1:'1 - Estrangeira direta',2:'2 - Estrangeira interna'};
  return head({back:"go('stock')",kick:'Peça · '+(p.cod||'sem código'),title:e(p.nome),c:lw?KR:KG,sub:hsub('Venda '+R(p.preco),DONO()?`Custo ${R(p.custo)}${+p.custo>0?' · margem '+mg+'%':''}`:'','Em estoque',`<span style="color:${lw?KR:'inherit'}">${qty(p.id)} ${e(p.un)}</span>`),
   acts:`<button class="sm pr" onclick="mov('${p.id}','E')">+ Entrada</button><button class="sm" onclick="mov('${p.id}','S')">− Saída</button><span class="sp"></span><button class="sm" onclick="editProd('${p.id}')">Editar</button>`})+
  igrid([['Categoria',e(p.cat)],['Estoque mínimo',e(p.min||0)],['Código de barras',e(p.ean)],['NCM',dig(p.ncm).length==8?e(p.ncm):'<span style="color:#C98200">Falta</span>'],['CEST',e(p.cest)],['Origem',e(OR[p.origem]||p.origem)],['CSOSN/CST',e(p.csosn)||'Padrão'],['CFOP',e(p.cfop)||'Padrão'],['Fornecedores',(p.forn||[]).length?String((p.forn||[]).length):'']])+
- sech('Movimentações',plural(MV().filter(m=>m.pid==p.id).length,'registro','registros'))+(MV().filter(m=>m.pid==p.id).slice().reverse().map(m=>lcard({c:m.tipo=='E'?KG:KR,n:D(m.data),pill:mb(m.tipo=='E'?'Entrada':'Saída',m.tipo=='E'?KG:KR),v:`${m.tipo=='E'?'+':'−'}${m.q}`,t:e(m.obs||'')})).join('')||empty('stock','Sem movimentações.'))}
+ (typeof pfFotosHTML=='function'?pfFotosHTML(p):'')+sech('Movimentações',plural(MV().filter(m=>m.pid==p.id).length,'registro','registros'))+(MV().filter(m=>m.pid==p.id).slice().reverse().map(m=>lcard({c:m.tipo=='E'?KG:KR,n:D(m.data),pill:mb(m.tipo=='E'?'Entrada':'Saída',m.tipo=='E'?KG:KR),v:`${m.tipo=='E'?'+':'−'}${m.q}`,t:e(m.obs||'')})).join('')||empty('stock','Sem movimentações.'))}
 
 /* ---------- Notas fiscais ---------- */
 function notaRow(n,full){const c=cl(n.cli),acts=[],cor=(NST[n.status]||[0,'#777'])[1];
@@ -1798,7 +1798,7 @@ inst:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
 ICO.diag='<path d="M3 12h4l2-6 4 12 2-6h6"/>';ICO.cam='<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';ICO.img='<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>';ICO.osdiag=ICO.diag;
 const svgi=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]||''}</svg>`;
 function navHtml(){const L=NAVX(),c=db.cfg||{},nm=c.nome||'Fio-Mar',
- on=k=>S.v==k||(k=='vehicles'&&S.v=='veiculo')||(k=='entradas'&&S.v=='entrada')||(k=='quotes'&&S.v=='quote')||(k=='orders'&&['order','recibo'].includes(S.v))||(k=='stock'&&S.v=='prod')||(k=='agenda'&&S.v=='agsvc'),
+ on=k=>S.v==k||(k=='vehicles'&&S.v=='veiculo')||(k=='entradas'&&S.v=='entrada')||(k=='quotes'&&S.v=='quote')||(k=='orders'&&['order','recibo'].includes(S.v))||(k=='stock'&&['prod','peds','ped'].includes(S.v))||(k=='agenda'&&S.v=='agsvc'),
  logo=c.logo?`<span class="lg"${c.logoRound?' style="border-radius:50%"':''}><img ${fimg(c.logo)} alt=""></span>`:`<span class="lg d">${svgi('cfg')}</span>`;
  return`<div class="nb"><div class="brand" onclick="go('dash')">${logo}<span class="bt"><b>${e(nm)}</b><small>Gestor de oficina</small></span></div>
  <div class="nbr">${L.some(x=>x[0]=='inst')?`<button type="button" class="nbtn" aria-label="Instalar app" onclick="instalarApp()">${svgi('inst')}<span>Instalar</span></button>`:''}<button type="button" class="nbtn" aria-label="Sair" onclick="doOut()">${svgi('out')}<span>Sair</span></button></div>
@@ -1826,7 +1826,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.9.2';
+const APP_VER='2.10.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1836,5 +1836,6 @@ boot();
 <script src="patio.js"></script>
 <script src="backup.js"></script>
 <script src="avisos.js"></script>
+<script src="pedidos.js"></script>
 </body>
 </html>
