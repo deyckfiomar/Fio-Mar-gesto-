@@ -393,7 +393,7 @@ const STEPS=[['sin','Sintomas e códigos'],['diag','Testes e causas'],['def','De
 const curStep=o=>{const d=dgOf(o);return UI.step[o.id]||(d.fim?'def':(d.cod.length||d.sin.length)?'diag':'sin')};
 function DGtab(o){const d=dgOf(o),st=UI.step[o.id]=curStep(o),done={sin:!!(d.cod.length||d.sin.length),diag:Object.values(d.t).some(x=>x&&x.r),def:!!d.fim};
  const nav=`<div class="dg-steps" role="tablist" aria-label="Etapas do diagnóstico">${STEPS.map(([k,l],i)=>`<button type="button" role="tab" aria-selected="${st==k}" class="dg-stp${st==k?' on':done[k]?' ok':''}" onclick="DG.step('${k}')"><b>${done[k]&&st!=k?'✓':i+1}</b><span>${l}</span></button>`).join('')}</div>`;
- return nav+(st=='diag'?stepDiag(o):st=='def'?stepDef(o):stepSin(o))}
+ return nav+(typeof G.iaBar=='function'?G.iaBar(o):'')+(st=='diag'?stepDiag(o):st=='def'?stepDef(o):stepSin(o))}
 function codePrev(o){const p=parseCode(UI.code);
  if(p.empty)return`<span class="muted">Formato: letra + 4 números. Pode digitar só os números (0171) ou com letra O (PO171).</span>`;
  if(!p.ok)return p.raw.length<5?`<span class="muted">Continue digitando… (${esc(p.raw)})</span>`:`<span class="dg-err">“${esc(p.raw)}” não é um código válido. Exemplo: P0171</span>`;
@@ -919,6 +919,22 @@ const css=`
 const st=document.createElement('style');st.id='dg-css';st.textContent=css;document.head.appendChild(st);
 
 /* ================= LIGAÇÃO COM O GESTOR ================= */
+/* resumo do caso para a consulta à IA (vai junto em cada pergunta) */
+DG.iaCtx=function(o){const d=dgOf(o),v=vh(o.veh)||{},V=vOf(o),L=[],R={ok:'OK',falha:'Falha',inc:'Inconclusivo'};
+ L.push('Carro: '+[v.modelo,v.ano,v.motor,v.comb].filter(Boolean).join(' ')+((o.km||v.km)?' · '+(o.km||v.km)+' km':''));
+ if(o.problema)L.push('Queixa do cliente: '+o.problema);
+ if(d.sin.length)L.push('Sintomas: '+d.sin.map(x=>SYM[x]?SYM[x].t:x).join('; '));
+ if(d.cod.length)L.push('Códigos de falha:\n'+d.cod.map(c=>{const r=lookupV(c,V);return'- '+c+(r?' — '+r.t:'')}).join('\n'));
+ if(d.ff&&ffTxt(d.ff))L.push('Freeze frame: '+ffTxt(d.ff));
+ const T=Object.entries(d.t||{}).filter(([k,x])=>x&&(x.r||x.v||x.o)&&TESTS[k]);
+ if(T.length)L.push('Testes já feitos:\n'+T.map(([k,x])=>'- '+TESTS[k].n+': '+(R[x.r]||'sem resultado')+(x.v?' — '+x.v:'')+(x.o?' ('+x.o+')':'')).join('\n'));
+ const pend=(d.ext||[]).filter(k=>TESTS[k]&&!(d.t[k]&&d.t[k].r));if(pend.length)L.push('Testes planejados: '+pend.map(k=>TESTS[k].n).join('; '));
+ if(d.def&&!d.fim)L.push('Hipótese do mecânico: '+d.def+(d.sis?' (sistema: '+d.sis+')':''));
+ if(d.obs)L.push('Observações: '+d.obs);
+ L.push('Equipamentos da oficina: '+[...eqSet()].map(k=>EQ[k]).filter(Boolean).join(', '));
+ const H=db.orders.filter(x=>x.veh&&x.veh==o.veh&&x.id!=o.id).sort((a,b)=>(b.aberta||'').localeCompare(a.aberta||'')).slice(0,3);
+ if(H.length)L.push('Serviços anteriores neste carro:\n'+H.map(x=>'- '+D(x.aberta)+(x.km?' · '+x.km+' km':'')+': '+((x.items||[]).slice(0,4).map(i=>i.d).join(', ')||'sem itens')+(x.dg&&x.dg.def?' · defeito: '+x.dg.def:'')).join('\n'));
+ return L.join('\n')};
 DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
 /* "+ Diagnosticar": depois de criar a O.S., abre direto na aba Diagnóstico */
 if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){DG.next=null;return _go('diag',id)}return _go(v,id,tab,f)}}
