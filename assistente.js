@@ -493,7 +493,7 @@ let PAUSA = +lsG('vz_pausa') || 3000; if (!PAUSAS.includes(PAUSA)) PAUSA = 3000;
 function css() {
   if (document.getElementById('vzcss')) return;
   const s = document.createElement('style'); s.id = 'vzcss';
-  s.textContent = `#vzfab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:18;width:58px;height:58px;border-radius:50%;border:0;padding:0;background:var(--hi);color:#15212B;box-shadow:0 6px 18px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;margin:0}
+  s.textContent = `#vzfab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:18;width:58px;height:58px;border-radius:50%;border:0;padding:0;background:var(--hi);color:#17181A;box-shadow:0 6px 18px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;margin:0}
 #vzfab svg,.vzm svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
 #vzfab{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform .15s,background .15s}
 #vzfab:active{transform:scale(.94)}
@@ -512,7 +512,7 @@ body:has(#nav[style*="none"]) #vzfab{display:none}
 #vz .ov{align-items:flex-end;padding:0}
 #vz .sh{background:var(--sf);color:var(--ink);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow:auto}
 .vzt{display:flex;align-items:center;gap:12px}.vzt h2{margin:0;font-size:22px;flex:1}
-.vzm{width:64px;height:64px;border-radius:50%;border:0;background:var(--hi);color:#15212B;display:flex;align-items:center;justify-content:center;flex:none;margin:0;padding:0;cursor:pointer}
+.vzm{width:64px;height:64px;border-radius:50%;border:0;background:var(--hi);color:#17181A;display:flex;align-items:center;justify-content:center;flex:none;margin:0;padding:0;cursor:pointer}
 .vzm.on{animation:vzp 1.3s ease-in-out infinite}
 @keyframes vzp{0%,100%{box-shadow:0 0 0 0 rgba(245,183,0,.55)}50%{box-shadow:0 0 0 14px rgba(245,183,0,0)}}
 .vzo{min-height:52px;margin:12px 0;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:17px;line-height:1.35}.vzo i{color:var(--mut)}
@@ -522,11 +522,11 @@ body:has(#nav[style*="none"]) #vzfab{display:none}
 .vzb{display:flex;gap:8px;align-items:flex-start;background:color-mix(in srgb,var(--hi) 14%,var(--sf));border:1px solid color-mix(in srgb,var(--hi) 45%,var(--ln));border-radius:9px;padding:8px 10px;margin:-4px 0 12px;font-size:13.5px}
 .vzb svg{width:17px;height:17px;flex:none;margin-top:1px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.vzb b{font-weight:600}.vzb ul{margin:4px 0 0;padding-left:18px;color:#B4472E}
 .vzv{border:1px solid var(--ln);border-left:4px solid var(--c,var(--hi));border-radius:10px;padding:10px 12px;margin:0 0 10px}
-.vzv .pl{font:600 13px ui-monospace,Menlo,monospace;padding:3px 8px;border-radius:6px;background:#15212B;color:#F5B700;display:inline-block}
+.vzv .pl{font:600 13px ui-monospace,Menlo,monospace;padding:3px 8px;border-radius:6px;background:#17181A;color:#F5B700;display:inline-block}
 .vzv h3{margin:6px 0 2px;font-size:20px}.vzv p{margin:3px 0;font-size:14px}.vzv .muted{font-size:13px}
 .vzv .bar{margin:10px 0 0}.vzv .bar button{margin:0}
 .vzok{margin:0;flex:none}
-.vzp{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--mut)}.vzp button{margin:0;padding:5px 10px;font-size:13px;border-radius:99px}.vzp button.on{background:var(--hi);color:#15212B;border-color:var(--hi)}
+.vzp{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--mut)}.vzp button{margin:0;padding:5px 10px;font-size:13px;border-radius:99px}.vzp button.on{background:var(--hi);color:#17181A;border-color:var(--hi)}
 .vzbar{height:4px;border-radius:2px;background:var(--ln);overflow:hidden;margin:-6px 0 12px}.vzbar i{display:block;height:100%;width:0;background:var(--hi)}`;
   document.head.appendChild(s)
 }

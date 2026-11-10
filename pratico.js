@@ -17,12 +17,12 @@ const css=`
 #bnav{display:none}
 @media (max-width:760px){
  nav .nt{display:none}
- #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:17;background:#15212B;border-top:1px solid #2A3743;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));justify-content:space-around;align-items:flex-end}
+ #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:17;background:#17181A;border-top:1px solid #33363C;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));justify-content:space-around;align-items:flex-end}
  #bnav a{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:#B2C0CB;font-size:11px;font-weight:500;cursor:pointer;border-radius:10px;min-width:0}
  #bnav a svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
  #bnav a.on{color:#fff}#bnav a.on svg{stroke:var(--hi)}
- #bnav a.pl{flex:1 1 0}#bnav a.pl span.c{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--hi);color:#15212B;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35)}
- #bnav a.pl span.c svg{stroke:#15212B;width:28px;height:28px;stroke-width:2.4}
+ #bnav a.pl{flex:1 1 0}#bnav a.pl span.c{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--hi);color:#17181A;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+ #bnav a.pl span.c svg{stroke:#17181A;width:28px;height:28px;stroke-width:2.4}
  main{padding-bottom:96px!important}footer.ver{padding-bottom:84px}
  #vzfab{bottom:calc(80px + env(safe-area-inset-bottom,0px))!important}
  #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
@@ -44,7 +44,7 @@ nav .nbtn.pbus span{display:inline}
 .pres button{display:flex;justify-content:space-between;gap:10px;text-align:left;width:100%;padding:10px 12px;align-items:center}
 .pres button small{display:block;color:var(--mut);font-weight:400}
 .pci .pfnd{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:0 0 10px}
-.pci .pcomb{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}.pci .pcomb button{flex:1 1 0;min-width:56px;padding:9px 4px}.pci .pcomb button.on{background:var(--hi);color:#15212B;border-color:var(--hi)}
+.pci .pcomb{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}.pci .pcomb button{flex:1 1 0;min-width:56px;padding:9px 4px}.pci .pcomb button.on{background:var(--hi);color:#17181A;border-color:var(--hi)}
 .pci .pthumbs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}.pci .pthumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px}
 .pci .psug{display:flex;flex-direction:column;gap:4px;margin:-6px 0 10px}.pci .psug button{text-align:left;padding:8px 10px}
 .pfaz{padding:4px 16px}.pfaz .pf{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--ln)}.pfaz .pf:first-of-type{border-top:0}
@@ -58,7 +58,7 @@ if(typeof ICO!='undefined'){Object.assign(ICO,{plus:'<path d="M12 5v14M5 12h14"/
 
 /* ---------- 1) menu embaixo ---------- */
 const BN=[['dash','Painel'],['agenda','Agenda'],['plus',''],['diag','Diagnóstico'],['busca','Buscar']];
-const grupo=v=>({order:'orders',recibo:'orders',agsvc:'agenda'}[v]||v);
+const grupo=v=>({veiculo:'vehicles',order:'orders',recibo:'orders',agsvc:'agenda'}[v]||v);
 function bnav(){let b=document.getElementById('bnav');const show=SES&&!PEND&&!BLOQ&&!SEMOF;
  if(!b){b=document.createElement('div');b.id='bnav';b.setAttribute('role','navigation');b.setAttribute('aria-label','Menu principal');document.body.appendChild(b)}
  if(!show){b.innerHTML='';b.style.visibility='hidden';return}b.style.visibility='';const g=grupo(S.v),base=['dash','agenda','diag'];
@@ -70,7 +70,7 @@ G.menuMais=function(){const L=NAVX().filter(([k])=>!['dash','agenda','diag','out
  sheet('Mais',`<div class="pgrid">${L.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}<button type="button" onclick="closeM();doOut()">${svgi('out')}<span>Sair</span></button></div>`)};
 
 /* ---------- 2) botão "+" ---------- */
-G.maisAcoes=function(){const IR=NAVX().filter(([k])=>!['dash','agenda','diag','out'].includes(k)).sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));const A=[['entrada','Entrada do carro','closeM();checkin()','big'],['quotes','Orçamento',"closeM();go('quotes');editQuote()"],['agenda','Agendar','closeM();editAg()'],['diag','Diagnosticar','closeM();go(\'diag\');DG.novo()'],['clients','Cliente','closeM();editClient()'],['vehicles','Veículo','closeM();editVeh()'],...(DONO()?[['fin','Despesa',"closeM();go('fin');editDesp()"]]:[])];
+G.maisAcoes=function(){const IR=NAVX().filter(([k])=>!['dash','agenda','diag','out'].includes(k)).sort((a,b)=>(b[0]=='orders')-(a[0]=='orders')).sort((a,b)=>(b[0]=='patio')-(a[0]=='patio'));const A=[['entrada','Entrada do carro','closeM();checkin()','big'],['quotes','Orçamento',"closeM();go('quotes');editQuote()"],['agenda','Agendar','closeM();editAg()'],['diag','Diagnosticar','closeM();go(\'diag\');DG.novo()'],['clients','Cliente','closeM();editClient()'],['vehicles','Veículo','closeM();editVeh()'],...(DONO()?[['fin','Despesa',"closeM();go('fin');editDesp()"]]:[])];
  sheet('O que você quer fazer?',`<small class="psec">Novo</small><div class="pgrid">${A.map(([i,l,f,c])=>`<button type="button" class="${c||''}${c?' pr':''}" onclick="${f}">${svgi(i)}<span>${l}</span></button>`).join('')}</div>
  <small class="psec">Ir para</small><div class="pgrid">${IR.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}</div>`)};
 
@@ -105,7 +105,7 @@ G.checkin=function(pre){pre=pre||{};CI={fotos:[],comb:'',veh:null,cli:null,...pr
   <div class="g2"><label>Cor<input name="cor" id="cicor"></label><label>Ano<input name="ano" id="ciano" inputmode="numeric"></label></div><input type="hidden" name="motor"><input type="hidden" name="chassi">
  </div>
  <div class="g2"><label>Km atual<input id="cikm" inputmode="numeric" placeholder="Ex.: 85000"></label><span></span></div>
- <small class="muted">Combustível</small><div class="pcomb">${COMB.map(c=>`<button type="button" onclick="ciComb('${c}',this)">${c}</button>`).join('')}</div>
+ <small class="muted">Combustível (toque no marcador)</small>${typeof fuelG=='function'?fuelG('','ci'):`<div class="pcomb">${COMB.map(c=>`<button type="button" onclick="ciComb('${c}',this)">${c}</button>`).join('')}</div>`}
  <label>Problema relatado pelo cliente<textarea id="ciprob" placeholder="Ex.: luz da injeção acesa, falhando na lenta"></textarea></label>
  <label>Avarias já existentes (riscos, amassados)<input id="ciav" placeholder="Ex.: risco na porta traseira esquerda"></label>
  <small class="muted">Fotos de entrada (protegem a oficina)</small><div class="pthumbs" id="cith"></div>
@@ -122,7 +122,7 @@ G.ciScan=function(f){if(!f||typeof scanPlaca!='function')return;Promise.resolve(
 G.ciSug=function(v){const b=$q('#cisug');CI.cli=null;const q=nrm(v).trim();if(!b)return;if(q.length<2){b.innerHTML='';return}
  const L=db.clients.filter(c=>nrm(c.nome).includes(q)).slice(0,4);b.innerHTML=L.map(c=>`<button type="button" onclick="ciCli('${c.id}')"><b>${e(c.nome)}</b> <small class="muted">${e(c.tel||'')} · já cadastrado</small></button>`).join('')};
 G.ciCli=function(id){const c=cl(id);CI.cli=id;$q('#cinome').value=c.nome||'';$q('#citel').value=c.tel||'';$q('#cisug').innerHTML=`<small class="muted">✓ Cliente já cadastrado</small>`};
-G.ciComb=function(c,b){CI.comb=CI.comb==c?'':c;document.querySelectorAll('.pcomb button').forEach(x=>x.classList.toggle('on',x.textContent==CI.comb))};
+G.ciSetComb=function(v){if(CI)CI.comb=v};G.ciComb=function(c,b){CI.comb=CI.comb==c?'':c;document.querySelectorAll('.pcomb button').forEach(x=>x.classList.toggle('on',x.textContent==CI.comb))};
 G.ciFoto=function(files){[...(files||[])].forEach(f=>{CI.fotos.push(f);const u=URL.createObjectURL(f),th=$q('#cith');if(th)th.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Foto de entrada">`)})};
 G.ciSalva=function(){const p=normPl(($q('#cipl')||{}).value||'');if(p.length<5&&!CI.veh){const x=$q('#cipl');x.focus();return toast('Digite a placa do carro')}
  let v=CI.veh?vh(CI.veh):null;
