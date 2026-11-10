@@ -1630,7 +1630,7 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  ${K('clock',AT.length,'Horários hoje',"go('agenda',0,0,{ag:'hoje'})",KB)}${K('agenda',A7,'Próximos 7 dias',"go('agenda')",'#17A2B8')}${DONO()?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof fazerHTML=='function'?fazerHTML():'')+
  sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
  sech('Carros no pátio',open.length?`<button class="sm" style="margin:0" onclick="go('patio')">Ver em quadro</button>`:'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.'))+
- (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Baixe um backup toda semana e guarde no Google Drive. ${bkpData()?'Último backup neste aparelho: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito neste aparelho ainda.</b>'}</p><div class="bar" style="margin:0"><button onclick="backup()">Baixar backup</button><button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
+ (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
 /* ---------- Ordens de serviço ---------- */
 const osFim=o=>['Concluída','Entregue'].includes(o.status),osDeve=o=>oTot(o)-paid(o)>0.005;
@@ -1826,7 +1826,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.9.0';
+const APP_VER='2.9.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1834,5 +1834,6 @@ boot();
 <script src="assistente.js"></script>
 <script src="pratico.js"></script>
 <script src="patio.js"></script>
+<script src="backup.js"></script>
 </body>
 </html>
