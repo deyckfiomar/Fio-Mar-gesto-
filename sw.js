@@ -2,9 +2,9 @@
    Sempre busca a versão mais nova no servidor (GitHub Pages).
    Só usa a cópia guardada no celular quando estiver sem internet.
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.9.1';
+const VERSAO = '2.9.2';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // a versão nova assume na hora, sem esperar fechar o app
@@ -15,6 +15,27 @@ self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
     for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); // apaga as cópias antigas
     await self.clients.claim();
+  })());
+});
+
+// avisos de agendamento (enviados pelo servidor 30 minutos antes)
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Fio-Mar Gestor', {
+    body: d.body || '', icon: './icon-192.png', tag: d.tag || 'fiomar', renotify: true,
+    vibrate: [250, 120, 250], requireInteraction: !!d.ag, data: { ag: d.ag || '' },
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const ag = (e.notification.data || {}).ag || '';
+  const url = new URL('./' + (ag ? '?ag=' + encodeURIComponent(ag) : ''), self.registration.scope).href;
+  e.waitUntil((async () => {
+    const L = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of L) if (c.url.startsWith(self.registration.scope)) { await c.focus(); if (ag) c.postMessage({ ag }); return; }
+    await self.clients.openWindow(url);
   })());
 });
 
