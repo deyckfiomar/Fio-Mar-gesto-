@@ -21,7 +21,7 @@ const css=`
  #bnav a{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:#B2C0CB;font-size:11px;font-weight:500;cursor:pointer;border-radius:10px;min-width:0}
  #bnav a svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
  #bnav a.on{color:#fff}#bnav a.on svg{stroke:var(--hi)}
- #bnav a.pl{flex:0 0 64px}#bnav a.pl span.c{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--hi);color:#15212B;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+ #bnav a.pl{flex:1 1 0}#bnav a.pl span.c{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--hi);color:#15212B;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35)}
  #bnav a.pl span.c svg{stroke:#15212B;width:28px;height:28px;stroke-width:2.4}
  main{padding-bottom:96px!important}footer.ver{padding-bottom:84px}
  #vzfab{bottom:calc(80px + env(safe-area-inset-bottom,0px))!important}
@@ -56,16 +56,16 @@ const st=document.createElement('style');st.id='pr-css';st.textContent=css;docum
 if(typeof ICO!='undefined'){Object.assign(ICO,{plus:'<path d="M12 5v14M5 12h14"/>',mais:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',busca:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',entrada:'<path d="M3 13l2-5h14l2 5v5H3z"/><circle cx="7.5" cy="15.5" r="1.3"/><circle cx="16.5" cy="15.5" r="1.3"/><path d="M12 2v5M9.5 4.5L12 7l2.5-2.5"/>',kit:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M3 12h18"/>',sino:'<path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 004 0"/>'})}
 
 /* ---------- 1) menu embaixo ---------- */
-const BN=[['dash','Painel'],['orders','O.S.'],['plus',''],['agenda','Agenda'],['diag','Diagnóstico'],['mais','Mais']];
+const BN=[['dash','Painel'],['agenda','Agenda'],['plus',''],['diag','Diagnóstico'],['mais','Mais']];
 const grupo=v=>({order:'orders',recibo:'orders',agsvc:'agenda'}[v]||v);
 function bnav(){let b=document.getElementById('bnav');const show=SES&&!PEND&&!BLOQ&&!SEMOF;
  if(!b){b=document.createElement('div');b.id='bnav';b.setAttribute('role','navigation');b.setAttribute('aria-label','Menu principal');document.body.appendChild(b)}
- if(!show){b.innerHTML='';b.style.visibility='hidden';return}b.style.visibility='';const g=grupo(S.v),base=['dash','orders','agenda','diag'];
+ if(!show){b.innerHTML='';b.style.visibility='hidden';return}b.style.visibility='';const g=grupo(S.v),base=['dash','agenda','diag'];
  b.innerHTML=BN.map(([k,l])=>k=='plus'?`<a class="pl" role="button" aria-label="Novo" onclick="maisAcoes()"><span class="c">${svgi('plus')}</span></a>`:
   `<a class="${(k=='mais'?!base.includes(g):g==k)?'on':''}" onclick="${k=='mais'?'menuMais()':`go('${k}')`}">${svgi(k)}<span>${l}</span></a>`).join('')}
 const _render=render;G.render=render=function(k){_render(k);try{bnav()}catch(x){}};
 const _nav=navHtml;G.navHtml=navHtml=function(){return _nav().replace('<div class="nbr">',`<div class="nbr"><button type="button" class="nbtn pbus" aria-label="Buscar" onclick="buscaG()">${svgi('busca')}<span>Buscar</span></button><button type="button" class="nbtn pmais" onclick="maisAcoes()">${svgi('plus')}<span>Novo</span></button>`)};
-G.menuMais=function(){const L=NAVX().filter(([k])=>!['dash','orders','agenda','diag','out'].includes(k));
+G.menuMais=function(){const L=NAVX().filter(([k])=>!['dash','agenda','diag','out'].includes(k)).sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));
  sheet('Mais',`<div class="pgrid">${L.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}<button type="button" onclick="closeM();doOut()">${svgi('out')}<span>Sair</span></button></div>`)};
 
 /* ---------- 2) botão "+" ---------- */
