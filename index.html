@@ -500,7 +500,7 @@ const nShow=v=>v==null||v===''?'':String(v).replace(/^(-?\d+)\.(\d+)$/,'$1,$2');
 let SUBT=0;
 function confirmDel(b,fn){if(b.dataset.s)return fn();b.dataset.s=1;const t=b.textContent;b.textContent='Toque de novo para confirmar';setTimeout(()=>{delete b.dataset.s;b.textContent=t},3500)}
 function modal(t,fields,vals,cb,extra,del){if(!DONO())fields=fields.filter(f=>f[0]!='custo');MD=del;
- const inp=([k,l,ty,o,r,x])=>ty=='h'?`<h3 style="margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--ln)">${l}</h3>`:ty=='busca'?BUSCA(k,l,o,r,vals,x):`<label>${l}`+(ty=='select'?`<select name="${k}">${o.map(x=>{const[v,n]=Array.isArray(x)?x:[x,x];return`<option value="${e(v)}" ${vals[k]==v?'selected':''}>${e(n)}</option>`}).join('')}</select>`:ty=='area'?`<textarea name="${k}">${e(vals[k])}</textarea>`:(ty=='number'?`<input name="${k}" type="text" inputmode="decimal" autocomplete="off" data-num value="${e(nShow(vals[k]))}" ${r?'required':''}>`:`<input name="${k}" type="${ty||'text'}" value="${e(vals[k])}" ${r?'required':''}>`))+`</label>`;
+ const inp=([k,l,ty,o,r,x])=>ty=='h'||(k=='h'&&!ty)?`<h3 style="margin:16px 0 8px;padding-top:10px;border-top:1px solid var(--ln)">${l}</h3>`:ty=='busca'?BUSCA(k,l,o,r,vals,x):`<label>${l}`+(ty=='select'?`<select name="${k}">${o.map(x=>{const[v,n]=Array.isArray(x)?x:[x,x];return`<option value="${e(v)}" ${vals[k]==v?'selected':''}>${e(n)}</option>`}).join('')}</select>`:ty=='area'?`<textarea name="${k}">${e(vals[k])}</textarea>`:(ty=='number'?`<input name="${k}" type="text" inputmode="decimal" autocomplete="off" data-num value="${e(nShow(vals[k]))}" ${r?'required':''}>`:`<input name="${k}" type="${ty||'text'}" value="${e(vals[k])}" ${r?'required':''}>`))+`</label>`;
  $('#modal').innerHTML=`<div class="ov"><form class="md"><h2 style="margin-top:0">${e(t)}</h2>${extra||''}${fields.map(inp).join('')}<div class="bar" style="margin:6px 0 0">${del?'<button type="button" class="dg" onclick="confirmDel(this,()=>{closeM();MD()})">Excluir</button>':''}<span class="sp"></span><button type="button" onclick="closeM()">Cancelar</button><button class="pr">Salvar</button></div></form></div>`;
  document.querySelectorAll('#modal .cb').forEach(cbValid);
  $('#modal form').onsubmit=ev=>{ev.preventDefault();if(ev.target.dataset.sent)return;
@@ -529,7 +529,7 @@ function editVeh(id,cb,pre){VCB=cb;if(!pre)PLG=null;const orig=id?vh(id):null,v=
  const pl=$('#modal [name=placa]');pl.setAttribute('autocapitalize','characters');pl.setAttribute('autocomplete','off');pl.maxLength=8;
  pl.closest('label').insertAdjacentHTML('afterend',`<div class="bar" style="margin:-4px 0 12px"><label class="btn sm pr" style="margin:0;color:var(--on)">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><label class="btn sm" style="margin:0">Da galeria<input type="file" accept="image/*" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><button type="button" class="sm" onclick="buscaPlaca()">Buscar dados</button><span class="muted" id="pst" style="font-size:13px"></span></div><div id="pal" class="bar" style="margin:-6px 0 10px"></div>`);
  pl.addEventListener('input',()=>{pl.value=pl.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');clearTimeout(PT);if(!EV)PT=setTimeout(()=>buscaPlaca(true),700)})}
-async function buscaPlaca(auto){const f=$('#modal form');if(!f)return;const p=normPl(f.elements.placa.value);
+async function buscaPlaca(auto){const f=$('#modal form');if(!f||!f.elements.placa)return;const p=normPl(f.elements.placa.value);
  if(!okPl(p))return auto?0:toast('Digite uma placa válida (ex.: ABC1D23)');
  if(auto&&p===PLK)return;PLK=p;
  const dup=db.vehicles.find(v=>normPl(v.placa)==p&&v.id!=EV);if(dup)return pst('Placa já cadastrada para '+(cl(dup.cli).nome||'outro cliente')+'.');
@@ -1826,7 +1826,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.10.1';
+const APP_VER='2.11.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1837,5 +1837,6 @@ boot();
 <script src="backup.js"></script>
 <script src="avisos.js"></script>
 <script src="pedidos.js"></script>
+<script src="forms.js"></script>
 </body>
 </html>
