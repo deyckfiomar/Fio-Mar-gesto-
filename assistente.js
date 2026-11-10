@@ -674,6 +674,7 @@ function faixa(r) {
 function roda(frase) {
   frase = String(frase || '').trim(); if (!frase) return;
   para();
+  if (typeof S != 'undefined' && S.v == 'diag' && S.id && G.DG && G.DG.voz) { const v = G.DG.voz(frase); if (v) { G.VZ.ultimo = { tipo: 'dg', texto: frase, ...v }; fecha(); toast(v.msg); diz(v.msg); return } }
   let r; try { r = interpreta(frase) } catch (x) { r = { tipo: '?', texto: frase } }
   G.VZ.ultimo = r;
   if (r.tipo == '?') { if (!document.getElementById('vzq')) abre(true); st('Não entendi'); out(`“${esc(frase)}”<br><i>Tente começar com: agenda, placa, despesa, adiciona, recebi ou abre.</i>`); const q = document.getElementById('vzq'); if (q) q.value = frase; return }
