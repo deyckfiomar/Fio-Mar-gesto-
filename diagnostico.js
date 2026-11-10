@@ -393,7 +393,7 @@ const STEPS=[['sin','Sintomas e códigos'],['diag','Testes e causas'],['def','De
 const curStep=o=>{const d=dgOf(o);return UI.step[o.id]||(d.fim?'def':(d.cod.length||d.sin.length)?'diag':'sin')};
 function DGtab(o){const d=dgOf(o),st=UI.step[o.id]=curStep(o),done={sin:!!(d.cod.length||d.sin.length),diag:Object.values(d.t).some(x=>x&&x.r),def:!!d.fim};
  const nav=`<div class="dg-steps" role="tablist" aria-label="Etapas do diagnóstico">${STEPS.map(([k,l],i)=>`<button type="button" role="tab" aria-selected="${st==k}" class="dg-stp${st==k?' on':done[k]?' ok':''}" onclick="DG.step('${k}')"><b>${done[k]&&st!=k?'✓':i+1}</b><span>${l}</span></button>`).join('')}</div>`;
- return nav+(typeof G.iaBar=='function'?G.iaBar(o):'')+(st=='diag'?stepDiag(o):st=='def'?stepDef(o):stepSin(o))}
+ return nav+(typeof G.iaBar=='function'?G.iaBar(o):'')+(st=='diag'?stepDiag(o):st=='def'?stepDef(o):stepSin(o))+(st!='sin'&&typeof G.iaAjuda=='function'?G.iaAjuda(o,st):'')}
 function codePrev(o){const p=parseCode(UI.code);
  if(p.empty)return`<span class="muted">Formato: letra + 4 números. Pode digitar só os números (0171) ou com letra O (PO171).</span>`;
  if(!p.ok)return p.raw.length<5?`<span class="muted">Continue digitando… (${esc(p.raw)})</span>`:`<span class="dg-err">“${esc(p.raw)}” não é um código válido. Exemplo: P0171</span>`;
@@ -935,7 +935,7 @@ DG.iaCtx=function(o){const d=dgOf(o),v=vh(o.veh)||{},V=vOf(o),L=[],R={ok:'OK',fa
  const H=db.orders.filter(x=>x.veh&&x.veh==o.veh&&x.id!=o.id).sort((a,b)=>(b.aberta||'').localeCompare(a.aberta||'')).slice(0,3);
  if(H.length)L.push('Serviços anteriores neste carro:\n'+H.map(x=>'- '+D(x.aberta)+(x.km?' · '+x.km+' km':'')+': '+((x.items||[]).slice(0,4).map(i=>i.d).join(', ')||'sem itens')+(x.dg&&x.dg.def?' · defeito: '+x.dg.def:'')).join('\n'));
  return L.join('\n')};
-DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
+DG.TESTS=TESTS;DG.SIS=SISTEMAS;DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
 /* "+ Diagnosticar": depois de criar a O.S., abre direto na aba Diagnóstico */
 if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){DG.next=null;return _go('diag',id)}return _go(v,id,tab,f)}}
 /* ao trocar de O.S., limpa o que estava digitado */
