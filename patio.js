@@ -19,6 +19,7 @@ Object.assign(ICO,{
  stpen:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  stx:'<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
  tema:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+ lista:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" stroke-width="3"/>',
  hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>'});
 
 /* ---------- estilos ---------- */
@@ -50,6 +51,18 @@ button.pr,.btn.pr{font-weight:700}
 .kcf{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}.kcf .sp{flex:1}
 .kca{display:flex;gap:6px;margin-top:9px}.kca button{flex:1 1 0;margin:0;padding:8px 6px;font-size:13.5px}
 @media (max-width:760px){.kb{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;padding:0 14px 6px;scroll-padding:0 14px;scrollbar-width:none}.kb::-webkit-scrollbar{display:none}.kbc{flex:0 0 84%;scroll-snap-align:start}}
+
+#patio{scroll-margin-top:96px}.pth{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pth h2{flex:1;margin:0}
+.pvt{display:inline-flex;border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--sf)}
+.pvt button{display:inline-flex;align-items:center;gap:6px;margin:0;border:0;border-radius:0;padding:7px 12px;font-size:14px;background:transparent;color:var(--mut)}
+.pvt button+button{border-left:1px solid var(--ln)}.pvt button.on{background:var(--ac);color:var(--on);font-weight:700}
+.pvt svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kbs button.z{opacity:.55}.kbs button.on{background:color-mix(in srgb,var(--c) 18%,var(--sf));border-color:var(--c);font-weight:700}
+.plh{display:flex;align-items:center;gap:8px;margin:14px 2px 8px;font:600 17px "Barlow Condensed",sans-serif;color:var(--c)}.plh:first-of-type{margin-top:4px}
+.plh svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.plh i{font-style:normal;font-size:13px;padding:0 8px;border-radius:99px;background:var(--c);color:#fff}
+@media (min-width:761px){.kbs{display:none}}
+@media (max-width:760px){.kbc.vz{flex:0 0 46%}.kbc.vz .kbv{padding:10px 4px}}
 /* folha de situação */
 .stg{display:flex;flex-direction:column;gap:6px}
 .stg button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0;padding:12px;border-radius:10px;border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--ln));border-left:6px solid var(--c);font-size:15.5px}
@@ -138,15 +151,24 @@ function kcard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),n=d
  <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}${o.mec?' · '+e(o.mec):''}</small>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
  <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):mb('Sem itens')}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
  <div class="kca">${av}${b}</div></div>`}
-function Vpatio(){const O=db.orders.filter(o=>COLS.includes(o.status)),by=s=>O.filter(o=>o.status==s).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
- return head({ico:'patio',kick:'Atendimento',title:'Pátio',c:PCOL.orders,right:`<button class="pr hb" onclick="checkin()">+ Entrada do carro</button>`,acts:`<button class="sm" onclick="go('orders')">${svgi('orders')} Ver em lista</button><button class="sm" onclick="go('orders',0,0,{st:'Entregue'})">Entregues</button>`})+
- (O.length?`<div class="kbs" role="group" aria-label="Situações">${COLS.map((s,i)=>`<button type="button" style="--c:${SC[s]}" onclick="kbVai(${i})">${stIco(s)}<span>${s}</span><b>${by(s).length}</b></button>`).join('')}</div>
- <div class="kb" onscroll="kbX(this.scrollLeft)">${COLS.map(s=>{const L=by(s);return`<section class="kbc" style="--c:${SC[s]}" aria-label="${s}"><div class="kbh">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(kcard).join('')||'<div class="kbv">Nenhum carro aqui</div>'}</section>`}).join('')}</div>
- <p class="muted" style="font-size:13px;margin:10px 2px 0">Toque no carro para mudar a situação ou abrir a O.S. Os botões do cartão levam direto para o próximo passo.</p>`
- :empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))}
-G.kbX=x=>{KBX=x};G.kbVai=i=>{const c=document.querySelectorAll('.kb .kbc')[i],k=$q('.kb');if(c&&k)k.scrollTo({left:c.offsetLeft-k.offsetLeft-14,behavior:'smooth'})};
-V.patio=Vpatio;
-const _render=render;G.render=render=function(k){if(!(S.v=='patio'&&ANT=='patio'))KBX=0;const x=KBX;_render(k);ANT=S.v;if(S.v=='patio'&&x){const b=$q('.kb');if(b){b.style.scrollSnapType='none';b.scrollLeft=x;KBX=x;requestAnimationFrame(()=>{b.style.scrollSnapType=''})}}};
+/* pátio no Painel: quadro (cartões) ou lista, escolha guardada no aparelho */
+const PK='fm_patio',modo=()=>{try{return localStorage.getItem(PK)=='lista'?'lista':'quadro'}catch(x){return'quadro'}};
+G.patioModo=function(m){try{localStorage.setItem(PK,m)}catch(x){}KBX=0;render(1)};
+const naPatio=()=>db.orders.filter(o=>COLS.includes(o.status));
+const porSt=(O,s)=>O.filter(o=>o.status==s).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
+function quadro(O){return`<div class="kbs" role="tablist" aria-label="Situações">${COLS.map((s,i)=>{const n=porSt(O,s).length;return`<button type="button" role="tab" class="${i?'':'on'}${n?'':' z'}" style="--c:${SC[s]}" onclick="kbVai(${i})">${stIco(s)}<span>${s}</span><b>${n}</b></button>`}).join('')}</div>
+ <div class="kb" onscroll="kbX(this)">${COLS.map(s=>{const L=porSt(O,s);return`<section class="kbc${L.length?'':' vz'}" style="--c:${SC[s]}" aria-label="${s}"><div class="kbh">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(kcard).join('')||'<div class="kbv">Nenhum carro aqui</div>'}</section>`}).join('')}</div>`}
+function listaP(O){return COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(osCard).join('')}`:''}).join('')}
+G.patioDash=function(){const O=naPatio(),m=modo(),bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
+ return`<div id="patio" class="sech pth"><h2>Carros no pátio${O.length?` <span class="muted">(${O.length})</span>`:''}</h2><div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div></div>`+
+ (O.length?(m=='lista'?listaP(O):quadro(O)):empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))};
+G.kbX=function(el){KBX=el.scrollLeft;const C=el.querySelectorAll('.kbc');if(!C.length)return;let i=0,best=1e9;C.forEach((c,k)=>{const d=Math.abs(c.offsetLeft-el.offsetLeft-14-el.scrollLeft);if(d<best){best=d;i=k}});
+ document.querySelectorAll('.kbs button').forEach((b,k)=>b.classList.toggle('on',k==i))};
+G.kbVai=i=>{const c=document.querySelectorAll('.kb .kbc')[i],k=$q('.kb');if(c&&k)k.scrollTo({left:c.offsetLeft-k.offsetLeft-14,behavior:'smooth'})};
+/* a tela "Pátio" antiga agora é a seção do Painel */
+V.patio=()=>V.dash();
+const _go=go;G.go=go=function(k,...r){if(k=='patio'){_go('dash');setTimeout(()=>{const x=$q('#patio');if(x)x.scrollIntoView({behavior:'smooth',block:'start'})},60);return}return _go(k,...r)};
+const _render=render;G.render=render=function(k){if(!(S.v=='dash'&&ANT=='dash'))KBX=0;const x=KBX;_render(k);ANT=S.v;if(S.v=='dash'&&x){const b=$q('.kb');if(b){b.style.scrollSnapType='none';b.scrollLeft=x;KBX=x;kbX(b);requestAnimationFrame(()=>{b.style.scrollSnapType=''})}}};
 
 /* ---------- 6) linha do tempo do veículo ---------- */
 function Vveic(){const v=vh(S.id);if(!v.id)return Vvehicles();const c=cl(v.cli),t0=today();

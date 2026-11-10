@@ -1629,7 +1629,7 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go('orders',0,0,{st:'receber'})",KA)}${DONO()?K('fin',R(fat),'Recebido no mês',"go('fin')",KG):''}
  ${K('clock',AT.length,'Horários hoje',"go('agenda',0,0,{ag:'hoje'})",KB)}${K('agenda',A7,'Próximos 7 dias',"go('agenda')",'#17A2B8')}${DONO()?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof fazerHTML=='function'?fazerHTML():'')+
  sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
- sech('Carros no pátio',open.length?`<button class="sm" style="margin:0" onclick="go('patio')">Ver em quadro</button>`:'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.'))+
+ (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))+
  (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
 /* ---------- Ordens de serviço ---------- */
@@ -1644,7 +1644,7 @@ function Vorders(){const f=S.f,st=f.st||'',q=nrm(f.q||'').trim(),O=db.orders.fil
   ['Concluída','Concluídas','oscheck',nc?nc+' p/ entregar':'0',nc?KG:KM],['Entregue','Entregues','orders',String(n('Entregue'))],['receber','A receber','ospag',R(rec),rec>0?KA:KM]];
  let L=O.filter(o=>osF(o,st));if(q)L=L.filter(o=>nrm([o.num,cl(o.cli).nome,vh(o.veh).placa,vh(o.veh).modelo].join(' ')).includes(q));
  const lbl={'':'Todas as O.S.',abertas:'No pátio',receber:'A receber',Concluída:'Concluídas',Entregue:'Entregues'}[st]||st,who=f.cli?cl(f.cli).nome:f.vei?vlabel(vh(f.vei)):'',pat=['abertas','Aberta','Em andamento'].includes(st);
- return head({ico:'orders',kick:'Atendimento',title:'Ordens de serviço',c:PCOL.orders,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Nova O.S.</button>`,acts:V.patio?`<button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio em quadro</button>`:''})+
+ return head({ico:'orders',kick:'Atendimento',title:'Ordens de serviço',c:PCOL.orders,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Nova O.S.</button>`,acts:V.patio?`<button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio no Painel</button>`:''})+
  (who?`<div class="fbar">${svgi('osres')}<span>Histórico de <b>${e(who)}</b></span><button class="sm" onclick="go('orders')">Ver todas</button></div>`:'')+
  ftiles(tl,pat?'abertas':st,'st')+(pat?seg([['abertas','Todos no pátio'],['Aberta','Abertas'],['Em andamento','Em andamento']],st,'st'):'')+
  srch('Buscar por número, cliente ou placa',f.q)+sech(`${e(lbl)} <span class="muted">(${L.length})</span>`,L.length?R(L.reduce((a,o)=>a+oTot(o),0)):'')+
@@ -1804,7 +1804,7 @@ function navHtml(){const L=NAVX(),c=db.cfg||{},nm=c.nome||'Fio-Mar',
  <div class="nbr">${L.some(x=>x[0]=='inst')?`<button type="button" class="nbtn" aria-label="Instalar app" onclick="instalarApp()">${svgi('inst')}<span>Instalar</span></button>`:''}<button type="button" class="nbtn" aria-label="Sair" onclick="doOut()">${svgi('out')}<span>Sair</span></button></div>
  <div class="nt">${L.filter(x=>!['out','inst'].includes(x[0])).map(([k,l])=>`<a class="${on(k)?'on':''}" onclick="go('${k}')">${svgi(k)}<span>${l}</span></a>`).join('')}</div></div>`}
 const V={diag:()=>typeof Vdiag=='function'?Vdiag():'<div class="card">Carregando o diagnóstico...</div>',entradas:Ventradas,entrada:Ventrada,notas:Vnotas,dash:Vdash,fin:Vfin,agenda:Vagenda,agsvc:Vagsvc,clients:Vclients,vehicles:Vvehicles,quotes:Vquotes,quote:Vquote,orders:Vorders,order:Vorder,recibo:Vrecibo,cfg:Vcfg,stock:Vstock,prod:Vprod,out:()=>{doOut();return ''}};
-const NAV=[['dash','Painel'],['diag','Diagnóstico'],['patio','Pátio'],['agenda','Agenda'],['clients','Clientes'],['vehicles','Veículos'],['quotes','Orçamentos'],['orders','O.S.'],['notas','Notas'],['entradas','Entradas'],['stock','Estoque'],['fin','Finanças'],['cfg','Oficina'],['out','Sair']];
+const NAV=[['dash','Painel'],['diag','Diagnóstico'],['agenda','Agenda'],['clients','Clientes'],['vehicles','Veículos'],['quotes','Orçamentos'],['orders','O.S.'],['notas','Notas'],['entradas','Entradas'],['stock','Estoque'],['fin','Finanças'],['cfg','Oficina'],['out','Sair']];
 function render(keep){RTICK++;setTimeout(fhyd,0);if(!SES)return authView();if(PEND)return pendView();if(BLOQ)return bloqView();if(SEMOF)return semOfView();if(!DONO()&&DONLY.includes(S.v))S.v='dash';const m=$('#main');$('#nav').style.display='';const a=document.activeElement,id=a&&a.placeholder,pos=a&&a.selectionStart;
  $('#nav').innerHTML=navHtml();{const ac=$('#nav a.on'),nt=$('#nav .nt');if(ac&&nt)nt.scrollLeft=ac.offsetLeft-(nt.clientWidth-ac.offsetWidth)/2}
  m.innerHTML=V[S.v]();document.querySelectorAll('nav a,.tabs a,.row,.tile,.lc:not(.nc)').forEach(x=>x.tabIndex=0);
@@ -1826,7 +1826,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.10.0';
+const APP_VER='2.10.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
