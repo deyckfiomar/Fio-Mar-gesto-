@@ -2,18 +2,23 @@
    Sempre busca a versão mais nova no servidor (GitHub Pages).
    Só usa a cópia guardada no celular quando estiver sem internet.
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.13.1';
+const VERSAO = '2.13.2';
 const CACHE = 'fiomar-' + VERSAO;
 const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './forms.js', './ia.js', './nav.js'];
 
+// bibliotecas de fora com versão fixa (Supabase e PDF): guardadas para o app abrir e gerar PDF sem internet
+const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
+const LIBC = 'fiomar-libs-1';
+
 self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(LIBC).then((c) => Promise.all(LIBS.map((u) => c.match(u).then((m) => m || c.add(new Request(u, { mode: 'cors' }))).catch(() => {})))));
   self.skipWaiting(); // a versão nova assume na hora, sem esperar fechar o app
   e.waitUntil(caches.open(CACHE).then((c) => Promise.all(BASE.map((u) => c.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); // apaga as cópias antigas
+    for (const k of await caches.keys()) if (k !== CACHE && k !== LIBC) await caches.delete(k); // apaga as cópias antigas
     await self.clients.claim();
   })());
 });
@@ -43,7 +48,11 @@ self.addEventListener('fetch', (e) => {
   const r = e.request;
   if (r.method !== 'GET') return;
   const u = new URL(r.url);
-  if (u.origin !== self.location.origin) return; // Supabase, bibliotecas e fontes vão direto para a internet
+  if (LIBS.includes(r.url)) { // biblioteca com versão fixa: usa a cópia guardada; se não tiver, baixa e guarda
+    e.respondWith(caches.open(LIBC).then(async (c) => (await c.match(r.url)) || fetch(r).then((res) => { if (res.ok) c.put(r.url, res.clone()).catch(() => {}); return res; })));
+    return;
+  }
+  if (u.origin !== self.location.origin) return; // Supabase, fontes e o resto vão direto para a internet
   e.respondWith((async () => {
     try {
       const res = await fetch(r, { cache: 'no-store' }); // rede primeiro, ignorando o cache do navegador

@@ -63,6 +63,7 @@ button.pr,.btn.pr{font-weight:700}
 .plh i{font-style:normal;font-size:13px;padding:0 8px;border-radius:99px;background:var(--c);color:#fff}
 @media (min-width:761px){.kbs{display:none}}
 @media (max-width:760px){.kbc.vz{flex:0 0 46%}.kbc.vz .kbv{padding:10px 4px}}
+@media (min-width:761px){nav .nt{flex-wrap:wrap;overflow:visible;row-gap:2px}}
 /* folha de situação */
 .stg{display:flex;flex-direction:column;gap:6px}
 .stg button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0;padding:12px;border-radius:10px;border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--ln));border-left:6px solid var(--c);font-size:15.5px}

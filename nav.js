@@ -5,7 +5,7 @@
 (function (G) {
 'use strict';
 const K='fm_tela',MAXH=24;
-const snap=()=>({v:S.v,id:S.id||null,tab:S.tab||'resumo',f:S.f||{}});
+const snap=()=>({v:S.v,id:S.id||null,tab:S.tab||'resumo',f:S.f||{},q:S.v=='quote'&&S.q?S.q.id:null});
 const igual=(a,b)=>a&&b&&a.v==b.v&&a.id==b.id&&a.tab==b.tab&&JSON.stringify(a.f||{})==JSON.stringify(b.f||{});
 let POP=false,IGN=0,ABERTO=false,SUJO=false,PRONTO=false;
 const st=()=>history.state&&history.state.fm?history.state:null;
@@ -32,14 +32,17 @@ addEventListener('popstate',ev=>{if(IGN>0){IGN--;return}
   if(SUJO&&!confirm('Sair sem salvar o que você digitou?')){try{history.pushState({fm:1,modal:1,s:snap(),y:scrollY},'')}catch(x){}return}
   POP=true;try{closeM()}finally{POP=false}ABERTO=!!md.querySelector('.ov');if(ABERTO){try{history.pushState({fm:1,modal:1,s:snap(),y:scrollY},'')}catch(x){}}return}
  const s=ev.state&&ev.state.fm&&ev.state.s;
- if(s){POP=true;try{_go(s.v,s.id,s.tab,s.f)}finally{POP=false}guarda();const y=ev.state.y||0;if(y)requestAnimationFrame(()=>scrollTo(0,y));return}
+ if(s){POP=true;try{if(s.v=='quote'){const q=db.quotes.find(x=>x.id==s.q);if(q)S.q=q;else if(!S.q||S.q.id!=s.q){_go('quotes');return}}_go(s.v,s.id,s.tab,s.f);seguro()}finally{POP=false}guarda();const y=ev.state.y||0;if(y)requestAnimationFrame(()=>scrollTo(0,y));return}
  /* saiu do começo do histórico: se não estiver no Painel, vai para o Painel em vez de fechar o app */
  if(S.v!='dash'){POP=true;try{_go('dash')}finally{POP=false}try{history.pushState({fm:1,s:snap(),y:0},'')}catch(x){}guarda()}});
 
 /* chamado quando o app abre já logado: volta para a última tela e monta o histórico Painel → tela */
 G.navRestaura=function(){let t=null;try{t=JSON.parse(localStorage.getItem(K)||'null')}catch(x){}
- if(t&&t.v&&V[t.v]&&Date.now()-(t.em||0)<MAXH*36e5&&!['dash'].includes(t.v)){if(t.id&&t.v=='order'&&!od(t.id))t=null;if(t){S.v=t.v;S.id=t.id||null;S.tab=t.tab||'resumo';S.f=t.f||{}}}
+ if(t&&t.v&&V[t.v]&&Date.now()-(t.em||0)<MAXH*36e5&&!['dash'].includes(t.v)){if(t.id&&t.v=='order'&&!od(t.id))t=null;if(t){S.v=t.v;S.id=t.id||null;S.tab=t.tab||'resumo';S.f=t.f||{};if(t.v=='quote'){const q=db.quotes.find(x=>x.id==t.q);if(q)S.q=q;else S.v='quotes'}}}
+ seguro();
  try{history.replaceState({fm:1,s:{v:'dash',id:null,tab:'resumo',f:{}},y:0},'');if(S.v!='dash')history.pushState({fm:1,s:snap(),y:0},'')}catch(x){}PRONTO=true};
+/* se a tela guardada não abre (registro apagado), cai no Painel em vez de ficar em branco */
+function seguro(){try{const h=V[S.v]&&V[S.v]();if(typeof h!='string')throw 0}catch(x){S.v='dash';S.id=null}}
 G.navLogin=function(){try{history.replaceState({fm:1,s:snap(),y:0},'')}catch(x){}PRONTO=true;guarda()};
 if(typeof SES!='undefined'&&SES&&!PRONTO){navRestaura();render()}
 })(window);
