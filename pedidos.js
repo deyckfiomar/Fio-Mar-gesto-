@@ -35,12 +35,12 @@ function Vpeds(){const f=S.f.pd||'abertos',L=PD().slice().reverse(),n=k=>L.filte
 
 /* ---------- pedido ---------- */
 function itemCard(p,i,k){const fl=falta(i),os=i.os&&od(i.os),pr=i.pid&&prod(i.pid);
- return`<div class="card pdit${fl||p.status=='Montando'?'':' ok'}"><div class="pdit1">${(i.fotos||[]).length?`<div class="pdfs">${i.fotos.slice(0,3).map(s=>thumb(s)).join('')}</div>`:`<button type="button" class="pdsf" onclick="pdItem('${p.id}','${i.id}')">${svgi('osfotos')}<span>Sem foto</span></button>`}
+ return`<div class="card pdit${fl||p.status=='Montando'?'':' ok'}"><div class="pdit1">${(i.fotos||[]).length?`<div class="pdfs">${thumb(i.fotos[0])}${i.fotos.length>1?`<span class="pdfc">+${i.fotos.length-1}</span>`:''}</div>`:`<button type="button" class="pdsf" onclick="pdItem('${p.id}','${i.id}')">${svgi('osfotos')}<span>Sem foto</span></button>`}
  <div class="pdtx"><b>${k+1}. ${e(i.nome)}</b><small><b>${e(i.q)} ${e(i.un||'un')}</b>${i.cod?' · Ref. '+e(i.cod):''}</small>${i.carro?`<small>Carro: ${e(i.carro)}</small>`:''}${i.obs?`<small>${e(i.obs)}</small>`:''}
- <div class="pdtg">${os?mb('O.S. '+e(os.num),KB):''}${+i.rec?mb(fl?'Chegou '+i.rec+' de '+i.q:'Chegou',fl?KA:KG):''}${pr&&pr.id?mb('No estoque: '+e(pr.nome),KG):''}</div></div></div>
+ <div class="pdtg">${os?`<button type="button" class="pdchip" style="--c:${KB}" onclick="go('order','${os.id}')">O.S. ${e(os.num)}${i.naOS?' · lançada':''}</button>`:''}${+i.rec?mb(fl?'Chegou '+i.rec+' de '+i.q:'Chegou',fl?KA:KG):''}${pr&&pr.id?`<button type="button" class="pdchip" style="--c:${KG}" onclick="go('prod','${pr.id}')">${svgi('caixa')} Ver no estoque</button>`:''}</div></div></div>
  ${p.status=='Montando'||p.status=='Enviado'?`<div class="bar" style="margin:8px 0 0"><span class="sp"></span><button type="button" class="sm" onclick="pdItem('${p.id}','${i.id}')">Editar</button><button type="button" class="sm" aria-label="Remover ${e(i.nome)}" onclick="confirmDel(this,()=>pdItemDel('${p.id}','${i.id}'))">Remover</button></div>`:''}</div>`}
 function Vped(){const p=ped(S.id);if(!p)return Vpeds();const pode=['Montando','Enviado','Parcial'].includes(p.status),nf=p.itens.filter(falta).length,rec=p.itens.some(i=>+i.rec);
- const acts=[p.itens.length?`<button class="sm pr" onclick="pdPDF('${p.id}')">${svgi('notas')} PDF com fotos</button>`:'',p.itens.length?`<button class="sm wa" onclick="pdWa('${p.id}')">Mandar ao fornecedor</button>`:'',
+ const acts=[p.itens.length?`<button class="sm pr" onclick="pdPDF('${p.id}')">${svgi('notas')} PDF com fotos</button>`:'',p.itens.length&&['Montando','Enviado','Parcial'].includes(p.status)?`<button class="sm wa" onclick="pdWa('${p.id}')">${p.status=='Parcial'?'Cobrar o que falta':'Mandar ao fornecedor'}</button>`:'',
   ['Enviado','Parcial'].includes(p.status)||(p.status=='Montando'&&p.itens.length)?`<button class="sm${p.status=='Montando'?'':' pr'}" onclick="pdReceber('${p.id}')">${svgi('caixa')} Chegaram as peças</button>`:'',
   `<span class="sp"></span>`,p.status=='Montando'&&p.itens.length?`<button class="sm" onclick="pdStatus('${p.id}','Enviado')">Marcar como enviado</button>`:'',
   pode&&!rec?`<button class="sm" onclick="pdStatus('${p.id}','Cancelado')">Cancelar pedido</button>`:'',p.status=='Cancelado'?`<button class="sm" onclick="pdStatus('${p.id}','Montando')">Reabrir</button>`:'',
@@ -115,21 +115,26 @@ const acha=i=>i.pid&&prod(i.pid).id?i.pid:(PR().find(x=>nrm(x.nome)==nrm(i.nome)
 G.pdReceber=function(id){const p=ped(id);if(!p)return;const L=p.itens.filter(falta);if(!L.length)return toast('Todas as peças deste pedido já chegaram');
  const P=PR().slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome),'pt-BR'));
  sheet('Chegaram as peças',`<form class="pdrc" onsubmit="event.preventDefault();pdRecOk('${p.id}')"><p class="muted" style="margin:-4px 0 10px">Confira o que chegou. O que for para o estoque entra com a foto do pedido.</p>
- ${L.map(i=>{const a=acha(i),os=i.os&&od(i.os);return`<div class="pdrr" data-i="${i.id}"><div class="pdrh">${(i.fotos||[])[0]?thumb(i.fotos[0],'pdtm'):''}<div><b>${e(i.nome)}</b><small>Pedido: ${e(falta(i))} ${e(i.un||'un')}${os?' · O.S. '+e(os.num):''}</small></div></div>
+ ${L.map(i=>{const a=acha(i),os=i.os&&od(i.os),osOk=os&&!osFim(os);return`<div class="pdrr" data-i="${i.id}"><div class="pdrh">${(i.fotos||[])[0]?thumb(i.fotos[0],'pdtm'):''}<div><b>${e(i.nome)}</b><small>Pedido: ${e(falta(i))} ${e(i.un||'un')}${os?' · O.S. '+e(os.num):''}</small></div></div>
   <div class="g2 pdg"><label>Chegou<input name="q" inputmode="decimal" value="${e(falta(i))}"></label>${DONO()?`<label>Custo unitário (R$)<input name="custo" inputmode="decimal" placeholder="opcional"></label>`:'<span></span>'}</div>
-  <label>Estoque<select name="dest" onchange="this.closest('.pdrr').querySelector('.pdnv').hidden=this.value!='novo'"><option value="novo" ${a?'':'selected'}>Cadastrar como peça nova no estoque</option>${P.map(x=>`<option value="${x.id}" ${x.id==a?'selected':''}>Somar em: ${e(x.nome)}${x.cod?' ('+e(x.cod)+')':''}</option>`).join('')}<option value="">Não lançar (vai direto para o carro)</option></select></label>
-  <div class="pdnv" ${a?'hidden':''}><label>Preço de venda (R$)<input name="preco" inputmode="decimal" placeholder="opcional"></label></div></div>`}).join('')}
+  <label>Estoque<select name="dest" onchange="pdDest(this)"><option value="novo" ${a?'':'selected'}>Cadastrar como peça nova no estoque</option>${P.map(x=>`<option value="${x.id}" ${x.id==a?'selected':''}>Somar em: ${e(x.nome)}${x.cod?' ('+e(x.cod)+')':''}</option>`).join('')}<option value="">Não lançar (vai direto para o carro)</option></select></label>
+  <div class="pdnv" ${a?'hidden':''}><label>Preço de venda (R$)<input name="preco" inputmode="decimal" placeholder="opcional"></label></div>${osOk?`<label class="pdnaos"><input type="checkbox" name="naos" checked><span>Lançar no carro: <b>O.S. ${e(os.num)}</b> · ${e(vlabel(vh(os.veh)))}</span></label>`:''}</div>`}).join('')}
  <div class="bar" style="margin:10px 0 0"><button type="button" onclick="closeM()">Cancelar</button><span class="sp"></span><button class="pr">Confirmar o que chegou</button></div></form>`)};
-G.pdRecOk=function(id){const p=ped(id),f=$q('#modal form.pdrc');if(!p||!f)return;let ne=0,nn=0;const osAg=new Set(),obs='Pedido '+p.n+(p.forn?' · '+p.forn:'');
+G.pdRecOk=function(id){const p=ped(id),f=$q('#modal form.pdrc');if(!p||!f)return;let ne=0,nn=0,nos=0;const osN=new Set(),osAg=new Set(),obs='Pedido '+p.n+(p.forn?' · '+p.forn:'');
  for(const r of f.querySelectorAll('.pdrr')){const i=p.itens.find(x=>x.id==r.dataset.i);if(!i)continue;const val=n=>{const x=r.querySelector(`[name=${n}]`);return x&&x.value.trim()?nBR(x.value):0};
   const q=Math.min(val('q'),falta(i));if(!(q>0))continue;i.rec=(+i.rec||0)+q;const dest=r.querySelector('[name=dest]').value,custo=DONO()?val('custo'):0;
   if(dest){let pr;if(dest=='novo'){pr={id:uid(),nome:i.nome,cod:i.cod||'',cat:'',un:i.un||'un',preco:val('preco')||0,min:0,fotos:(i.fotos||[]).slice(),...(DONO()?{custo:custo||0}:{})};PR().push(pr);nn++}
    else{pr=prod(dest);if(!pr.id)continue;if(!(pr.fotos||[]).length&&(i.fotos||[]).length)pr.fotos=i.fotos.slice(0,4);if(custo>0)pr.custo=custo}
    i.pid=pr.id;MV().push({id:uid(),pid:pr.id,tipo:'E',q,data:today(),obs});ne++}
-  const o=i.os&&od(i.os);if(o&&o.status=='Aguardando peças')osAg.add(o.id)}
+  const o=i.os&&od(i.os),nao=r.querySelector('[name=naos]');
+  if(o&&!osFim(o)&&nao&&nao.checked){const pr=i.pid&&dest?prod(i.pid):null,pv=pr&&pr.id?(+pr.preco||0):val('preco'),cu=pr&&pr.id?(+pr.custo||custo||0):custo;
+   o.items=o.items||[];o.items.push({t:'Peça',d:i.nome,det:i.cod?'Cód. '+i.cod:'',q,v:pv||0,...(pr&&pr.id?{pid:pr.id,baixa:true}:{}),...(DONO()?{custo:cu||0}:{})});
+   if(pr&&pr.id)MV().push({id:uid(),pid:pr.id,tipo:'S',q,data:today(),obs:'O.S. '+o.num});i.naOS=true;nos++;osN.add(o.num)}
+  if(o&&o.status=='Aguardando peças')osAg.add(o.id)}
  const tudo=!p.itens.some(falta);p.status=tudo?'Recebido':'Parcial';if(tudo)p.rec=today();save();closeM();render();
- toast(`${tudo?'Pedido recebido':'Recebimento parcial'}${ne?' · '+plural(ne,'peça lançada','peças lançadas')+' no estoque':''}${nn?' ('+plural(nn,'nova','novas')+')':''}`);
+ toast(`${tudo?'Pedido recebido':'Recebimento parcial'}${ne?' · '+plural(ne,'peça lançada','peças lançadas')+' no estoque':''}${nn?' ('+plural(nn,'nova','novas')+')':''}${nos?' · '+plural(nos,'peça lançada','peças lançadas')+' na O.S. '+[...osN].join(', '):''}`);
  if(osAg.size)setTimeout(()=>sheet('Peças chegaram',`<p style="margin:0 0 10px">Estas O.S. estavam <b>aguardando peças</b>:</p>${[...osAg].map(oid=>{const o=od(oid);return`<div class="pf pdos"><div><b>O.S. ${e(o.num)}</b><small>${e(vlabel(vh(o.veh)))} · ${e(cl(o.cli).nome||'')}</small></div><button type="button" class="sm pr" onclick="pdOsAnda('${o.id}',this)">Voltar ao serviço</button></div>`}).join('')}<div class="bar" style="margin:12px 0 0"><span class="sp"></span><button type="button" onclick="closeM()">Fechar</button></div>`),600)};
+G.pdDest=function(sel){const nv=sel.closest('.pdrr').querySelector('.pdnv');if(nv)nv.hidden=!(sel.value=='novo'||sel.value=='')};
 G.pdOsAnda=function(oid,b){const keep=S.v,kid=S.id,o=od(oid);if(!o)return;S.id=oid;try{setSt('Em andamento')}finally{S.id=kid;S.v=keep}render(1);if(b){b.disabled=true;b.textContent='Em andamento'}};
 
 /* ---------- fotos das peças do estoque ---------- */
@@ -145,10 +150,10 @@ const st=document.createElement('style');st.textContent=`
 .pdtm{width:38px;height:38px;object-fit:cover;border-radius:6px;cursor:zoom-in}.pdths{display:inline-flex;gap:4px;margin-right:4px}
 .pdtl{width:42px;height:42px;object-fit:cover;border-radius:7px;vertical-align:middle;margin-right:8px;cursor:zoom-in}
 .pdit{padding:12px}.pdit.ok{opacity:.75}.pdit1{display:flex;gap:12px;align-items:flex-start}
-.pdfs{display:grid;grid-template-columns:repeat(2,64px);gap:4px;flex:none}.pdfs img:first-child:last-child{width:96px;height:96px}
+.pdfs{position:relative;flex:none;width:84px;height:84px}.pdfs .pdth{width:84px;height:84px}.pdfc{position:absolute;right:4px;bottom:4px;padding:1px 7px;border-radius:99px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-weight:700;pointer-events:none}
 .pdsf{flex:none;width:72px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px dashed var(--ln);border-radius:8px;color:var(--mut);background:transparent;font-size:11px;padding:0}.pdsf svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9}
 .pdtx{min-width:0;flex:1}.pdtx b{display:block;font-size:16px;overflow-wrap:anywhere}.pdtx small{display:block;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}.pdtx small b{display:inline;font-size:inherit;color:var(--ink)}
-.pdtg{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.pdtg{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;min-width:0}.pdtg .mb{white-space:normal}.pdchip{display:inline-flex;align-items:center;gap:4px;margin:0;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;border:0;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c)}.pdchip svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}.pdnaos{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-weight:500}.pdnaos span{flex:1;min-width:0}.pdnaos input{flex:none;width:20px;height:20px;margin:0}
 .pdadd{width:100%;padding:13px;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 8px}.pdadd svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
 .pdfa{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px;min-height:20px}.pdfv{font-size:13px}
 .pdfx{position:relative;display:inline-block}.pdfx img{width:84px;height:84px;object-fit:cover;border-radius:8px;display:block}
