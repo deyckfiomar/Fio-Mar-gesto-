@@ -935,6 +935,38 @@ DG.iaCtx=function(o){const d=dgOf(o),v=vh(o.veh)||{},V=vOf(o),L=[],R={ok:'OK',fa
  const H=db.orders.filter(x=>x.veh&&x.veh==o.veh&&x.id!=o.id).sort((a,b)=>(b.aberta||'').localeCompare(a.aberta||'')).slice(0,3);
  if(H.length)L.push('Serviços anteriores neste carro:\n'+H.map(x=>'- '+D(x.aberta)+(x.km?' · '+x.km+' km':'')+': '+((x.items||[]).slice(0,4).map(i=>i.d).join(', ')||'sem itens')+(x.dg&&x.dg.def?' · defeito: '+x.dg.def:'')).join('\n'));
  return L.join('\n')};
+/* PDF do diagnóstico (quando o defeito ainda não foi achado): carro, códigos, sintomas, freeze frame, testes com fotos */
+async function genDgPDF(o){if(noLib())return;await fpre(o);const d=dgOf(o),v=vh(o.veh)||{},V=vOf(o),R={ok:['OK',[46,139,87]],falha:['FALHA',[194,65,42]],inc:['INCONCLUSIVO',[201,130,0]]};
+ const Z=mkDoc('DIAGNÓSTICO','O.S. '+o.num,['Data: '+D(today()),d.fim?'Defeito: '+(d.def||'—'):'Defeito ainda não encontrado',d.tm?'Tempo: '+tmTxt(tmMs(d)):'']),M=Z.M,CW=Z.CW,doc=Z.d,tx=Z.tx;
+ Z.cards({t:'VEÍCULO',rows:[['Modelo',v.modelo,1],['Placa',v.placa,1],['Ano',v.ano],['Motor',v.motor],['Combustível',v.comb||o.combTipo],['Km',(o.km||v.km)&&(o.km||v.km)+' km']]},
+  {t:'CASO',rows:[['Queixa',o.problema||'—',1],['Entrada',D(o.aberta)],['Mecânico',o.mec],['Hipótese',!d.fim&&d.def?d.def+(d.sis?' ('+d.sis+')':''):'']]});
+ if(d.cod.length){Z.sec('Códigos de falha');Z.table([{h:'Código',w:.16},{h:'Descrição',w:.6},{h:'Tipo',w:.24}],d.cod.map(c=>{const r=lookupV(c,V);return[c,r?r.t:'Sem descrição',ctype(c)]}))}
+ if(d.sin.length)Z.note('Sintomas',d.sin.map(x=>SYM[x]?SYM[x].t:x).join(' · '));
+ if(d.ff&&ffTxt(d.ff))Z.note('Freeze frame (momento da falha)',ffTxt(d.ff));
+ const T=Object.entries(d.t||{}).filter(([k,x])=>x&&(x.r||x.v||x.o)&&TESTS[k]).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
+ Z.sec('Testes realizados ('+T.length+')');
+ if(!T.length)Z.note('Testes','Nenhum teste registrado ainda.');
+ T.forEach(([k,x],n)=>{const t=TESTS[k],F=(o.fotos||[]).filter(f=>f.tid==k&&fdata(f.src)),rr=R[x.r],tw=CW-10,
+   L=[[`${n+1}. ${t.n}`,11,1],x.v&&['Valor medido: '+x.v,10,1],x.o&&['Observação: '+x.o,9.5],t.esp&&['Esperado: '+t.esp,9],t.como&&['Como foi feito: '+t.como,8.5]].filter(Boolean).map(([s,z,b])=>[Z.lines(s,tw-(rr?34:0),z,b),z,b]),
+   th=L.reduce((a,[l,z])=>a+l.length*z*.42+1.4,0),rows=Math.ceil(F.length/3),fh=F.length?rows*44+2:0,h=th+fh+8;
+  Z.need(Math.min(h,200)+4);const y0=Z.y;doc.setDrawColor(...PC.ln);doc.setFillColor(255,255,255);doc.rect(M,y0,CW,h,'FD');doc.setFillColor(...(rr?rr[1]:PC.ln));doc.rect(M,y0,1.6,h,'F');
+  if(rr){doc.setFillColor(...rr[1]);doc.roundedRect(M+CW-33,y0+3,30,6,1.5,1.5,'F');tx(rr[0],M+CW-18,y0+7.2,{b:1,s:8,c:PC.wh,a:'center'})}
+  let y=y0+6.5;L.forEach(([l,z,b])=>{l.forEach(s=>{tx(s,M+5,y,{s:z,b,g:z<9.6&&!b});y+=z*.42});y+=1.4});
+  if(F.length){let i=0;for(const f of F){const cx=M+5+(i%3)*((CW-10)/3),cy=y+Math.floor(i/3)*44;doc.setFillColor(...PC.bg);doc.rect(cx,cy,(CW-10)/3-3,41,'F');Z.img(f.src,cx+1,cy+1,(CW-10)/3-5,39);i++}}
+  Z.y=y0+h+4});
+ const pend=(d.ext||[]).filter(k=>TESTS[k]&&!(d.t[k]&&d.t[k].r));if(pend.length)Z.note('Testes planejados e ainda não feitos',pend.map(k=>TESTS[k].n).join(' · '));
+ const outras=(o.fotos||[]).filter(f=>!f.tid&&/diag|scanner/i.test(f.t||'')&&fdata(f.src));
+ if(outras.length){Z.sec('Outras fotos do diagnóstico');let i=0;for(const f of outras){if(i%3==0){Z.need(46)}const cx=M+(i%3)*(CW/3),cy=Z.y;doc.setFillColor(...PC.bg);doc.rect(cx,cy,CW/3-3,41,'F');Z.img(f.src,cx+1,cy+1,CW/3-5,39);i++;if(i%3==0)Z.y+=45}if(i%3)Z.y+=45}
+ if(d.obs)Z.note('Observações',d.obs);
+ const H=db.orders.filter(x=>x.veh&&x.veh==o.veh&&x.id!=o.id).sort((a,b)=>(b.aberta||'').localeCompare(a.aberta||'')).slice(0,5);
+ if(H.length){Z.sec('Serviços anteriores neste carro');Z.table([{h:'Data',w:.16},{h:'Km',w:.14},{h:'Serviços',w:.7}],H.map(x=>[D(x.aberta),x.km?x.km+' km':'—',[((x.items||[]).slice(0,5).map(i=>i.d).join(', ')||'Sem itens'),x.dg&&x.dg.def?'Defeito: '+x.dg.def:'']]))}
+ Z.note('Equipamentos disponíveis',[...eqSet()].map(k=>EQ[k]).filter(Boolean).join(' · '));
+ if(!d.fim)Z.note('Situação','Defeito ainda não encontrado. Relatório para análise e apoio técnico.');
+ await Z.end(`Diagnostico-OS-${o.num}${v.modelo?'-'+v.modelo.replace(/[^\wÀ-ú]+/g,'_'):''}`)}
+DG.pdf=async function(oid){const o=od(oid)||cur();if(!o)return;toast('Gerando o PDF do diagnóstico...');try{await genDgPDF(o)}catch(x){toast('Não consegui gerar o PDF')}};
+DG.pdfEnvia=async function(oid){const o=od(oid)||cur();if(!o)return;toast('Gerando o PDF do diagnóstico...');CAP={};try{await genDgPDF(o)}catch(x){CAP=null;return toast('Não consegui gerar o PDF')}
+ const r=CAP;CAP=null;if(!r||!r.blob)return;const f=new File([r.blob],r.name,{type:'application/pdf'});
+ if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:r.name,text:'Diagnóstico da O.S. '+o.num})}catch(x){}}else{dlBlob(r.blob,r.name);toast('PDF salvo. Anexe no WhatsApp para enviar.')}};
 DG.TESTS=TESTS;DG.SIS=SISTEMAS;DG.ui=UI;G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
 /* "+ Diagnosticar": depois de criar a O.S., abre direto na aba Diagnóstico */
 if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){DG.next=null;return _go('diag',id)}return _go(v,id,tab,f)}}
