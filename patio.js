@@ -64,6 +64,16 @@ button.pr,.btn.pr{font-weight:700}
 @media (min-width:761px){.kbs{display:none}}
 @media (max-width:760px){.kbc.vz{flex:0 0 46%}.kbc.vz .kbv{padding:10px 4px}}
 @media (min-width:761px){nav .nt{flex-wrap:wrap;overflow:visible;row-gap:2px}}
+
+.pfts{grid-template-columns:repeat(4,minmax(0,1fr))}.pft{text-align:left;cursor:pointer;margin:0;font:inherit;color:inherit}.pft.on{outline:3px solid var(--c);outline-offset:-1px;background:color-mix(in srgb,var(--c) 10%,var(--sf))}
+@media (max-width:760px){.pfts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pfb{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.pfq{position:relative;display:block;margin:0}.pfq svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;fill:none;stroke:var(--mut);stroke-width:2}.pfq input{padding-left:40px;margin:0;font-size:16px}
+.pfm{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.pfm::-webkit-scrollbar{display:none}.pfm button{flex:none;margin:0;border-radius:99px;padding:6px 12px;font-size:13.5px}.pfm button.on{background:var(--ac);color:var(--on);border-color:var(--ac);font-weight:700}
+.pfr{margin:0 2px 8px;font-size:13.5px}.pfn{text-align:center;margin:14px 0}
+.pfe{margin-top:14px;border:1px solid var(--ln);border-radius:12px;padding:10px 12px;background:var(--sf)}.pfe summary{cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:600}.pfe summary svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.pfe summary b{margin-left:auto}
+.kmec{display:inline-flex;align-items:center;gap:4px;margin:4px 0 0;padding:2px 8px;border-radius:99px;font-size:12.5px;font-weight:600;border:1px solid var(--ln);background:var(--bg);color:var(--ink)}.kmec.z{color:var(--mut);border-style:dashed}.kmec svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
+.pfmn{display:flex;gap:8px;margin-top:10px}.pfmn input{margin:0;flex:1}.pfmn button{margin:0}
 /* folha de situação */
 .stg{display:flex;flex-direction:column;gap:6px}
 .stg button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0;padding:12px;border-radius:10px;border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--ln));border-left:6px solid var(--c);font-size:15.5px}
@@ -147,9 +157,9 @@ let KBX=0,ANT='';
 function kcard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),n=dias(o.aberta),par=o.status=='Aguardando peças'&&o.stAt?dias(o.stAt):0;
  const b=(PASSO[o.status]||[]).map(([s,l,p])=>`<button type="button" class="${p?'pr':''}" onclick="event.stopPropagation();stMuda('${o.id}','${s}')">${l}</button>`).join('');
  const av=o.status=='Concluída'&&c.tel&&!o.avisado?`<button type="button" class="wa" onclick="event.stopPropagation();waCarro('${o.id}')">Avisar</button>`:'';
- return`<div class="kc" role="button" tabindex="0" aria-label="O.S. ${e(o.num)}, ${e(vlabel(v))}. Toque para mudar a situação" onclick="stSheet('${o.id}')" onkeydown="if(event.key=='Enter')stSheet('${o.id}')">
+ return`<div class="kc" data-o="${o.id}" role="button" tabindex="0" aria-label="O.S. ${e(o.num)}, ${e(vlabel(v))}. Toque para mudar a situação" onclick="stSheet('${o.id}')" onkeydown="if(event.key=='Enter')stSheet('${o.id}')">
  <div class="kc1">${plc(v)}<small>O.S. ${e(o.num)}</small><span class="sp"></span>${mb(par?'peça há '+par+(par==1?' dia':' dias'):tempo(o),(par>=3||n>=7)&&o.status!='Concluída'?KR:'')}</div>
- <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}${o.mec?' · '+e(o.mec):''}</small>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
+ <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}</small><button type="button" class="kmec${o.mec?'':' z'}" onclick="event.stopPropagation();patioMec('${o.id}')">${svgi('stwr')} ${o.mec?e(o.mec):'Escolher mecânico'}</button>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
  <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):mb('Sem itens')}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
  <div class="kca">${av}${b}</div></div>`}
 /* pátio no Painel: quadro (cartões) ou lista, escolha guardada no aparelho */
@@ -159,17 +169,46 @@ const naPatio=()=>db.orders.filter(o=>COLS.includes(o.status));
 const porSt=(O,s)=>O.filter(o=>o.status==s).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
 function quadro(O){return`<div class="kbs" role="tablist" aria-label="Situações">${COLS.map((s,i)=>{const n=porSt(O,s).length;return`<button type="button" role="tab" class="${i?'':'on'}${n?'':' z'}" style="--c:${SC[s]}" onclick="kbVai(${i})">${stIco(s)}<span>${s}</span><b>${n}</b></button>`}).join('')}</div>
  <div class="kb" onscroll="kbX(this)">${COLS.map(s=>{const L=porSt(O,s);return`<section class="kbc${L.length?'':' vz'}" style="--c:${SC[s]}" aria-label="${s}"><div class="kbh">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(kcard).join('')||'<div class="kbv">Nenhum carro aqui</div>'}</section>`}).join('')}</div>`}
-function listaP(O){return COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(osCard).join('')}`:''}).join('')}
+function listaP(O){return COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(o=>osCard(o).replace('<div class="lc','<div data-o="'+o.id+'" class="lc')).join('')}`:''}).join('')}
 G.patioDash=function(){const O=naPatio(),m=modo(),bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
- return`<div id="patio" class="sech pth"><h2>Carros no pátio${O.length?` <span class="muted">(${O.length})</span>`:''}</h2><div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div></div>`+
+ return`<div id="patio" class="sech pth"><h2>Carros no pátio${O.length?` <span class="muted">(${O.length})</span>`:''}</h2><div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><button type="button" class="sm" style="margin:0" onclick="go('patio')">Abrir o pátio</button></div>`+
  (O.length?(m=='lista'?listaP(O):quadro(O)):empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))};
 G.kbX=function(el){KBX=el.scrollLeft;const C=el.querySelectorAll('.kbc');if(!C.length)return;let i=0,best=1e9;C.forEach((c,k)=>{const d=Math.abs(c.offsetLeft-el.offsetLeft-14-el.scrollLeft);if(d<best){best=d;i=k}});
  document.querySelectorAll('.kbs button').forEach((b,k)=>b.classList.toggle('on',k==i))};
 G.kbVai=i=>{const c=document.querySelectorAll('.kb .kbc')[i],k=$q('.kb');if(c&&k)k.scrollTo({left:c.offsetLeft-k.offsetLeft-14,behavior:'smooth'})};
-/* a tela "Pátio" antiga agora é a seção do Painel */
-V.patio=()=>V.dash();
-const _go=go;G.go=go=function(k,...r){if(k=='patio'){_go('dash');setTimeout(()=>{const x=$q('#patio');if(x)x.scrollIntoView({behavior:'smooth',block:'start'})},60);return}return _go(k,...r)};
-const _render=render;G.render=render=function(k){if(!(S.v=='dash'&&ANT=='dash'))KBX=0;const x=KBX;_render(k);ANT=S.v;if(S.v=='dash'&&x){const b=$q('.kb');if(b){b.style.scrollSnapType='none';b.scrollLeft=x;KBX=x;kbX(b);requestAnimationFrame(()=>{b.style.scrollSnapType=''})}}};
+/* ---------- tela completa do Pátio (menu de baixo) ---------- */
+const atras=o=>o.status!='Concluída'&&(dias(o.aberta)>=7||(o.status=='Aguardando peças'&&o.stAt&&dias(o.stAt)>=3));
+const FIL={'':o=>1,atras,pronto:o=>o.status=='Concluída',semmec:o=>!o.mec};
+const busca=o=>{const v=vh(o.veh),c=cl(o.cli);return nrm([o.num,v.placa,(v.placa||'').replace(/\W/g,''),v.modelo,c.nome,o.mec,o.problema].join(' '))};
+function Vpatio(){const T=naPatio(),f=S.f.pf||'',mc=S.f.pm||'',m=modo(),mecs=[...new Set(T.map(o=>o.mec).filter(Boolean))].sort();
+ let O=T.filter(FIL[f]||FIL['']);if(mc)O=O.filter(o=>mc=='-'?!o.mec:o.mec==mc);
+ const hoje=db.orders.filter(o=>o.status=='Entregue'&&o.stAt==today()),rec=T.reduce((a,o)=>a+Math.max(0,oTot(o)-paid(o)),0);
+ const K=(k,ic,num,l,col)=>`<button type="button" class="kt pft${f==k?' on':''}" style="--c:${col}" aria-pressed="${f==k}" onclick="patioF('${k}')">${svgi(ic)}<span class="num">${num}</span><span>${l}</span></button>`;
+ const bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
+ return head({ico:'patio',kick:'Gerenciamento',title:'Pátio',c:PCOL.orders,right:`<button class="pr hb" onclick="checkin()">+ Entrada do carro</button>`,
+  acts:`<div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><span class="sp"></span><button class="sm" onclick="go('orders')">${svgi('orders')} Todas as O.S.</button>`})+
+ `<div class="kts pfts">${K('','vehicles',T.length,'No pátio',KB)}${K('atras','clock',T.filter(atras).length,'Atrasados',KR)}${K('pronto','stok',T.filter(FIL.pronto).length,'Prontos p/ entregar',KG)}${K('semmec','stwr',T.filter(FIL.semmec).length,'Sem mecânico',KA)}</div>`+
+ `<div class="pfb"><label class="pfq">${svgi('busca')}<input type="search" placeholder="Placa, modelo, cliente ou O.S." aria-label="Buscar no pátio" value="${e(S.f.pq||'')}" oninput="patioQ(this.value)"></label>
+  ${mecs.length||T.some(o=>!o.mec)?`<div class="pfm" role="group" aria-label="Mecânico"><button type="button" class="${mc?'':'on'}" onclick="patioM('')">Todos</button>${mecs.map(x=>`<button type="button" class="${mc==x?'on':''}" data-m="${e(x)}" onclick="patioM(this.dataset.m)">${e(x)}</button>`).join('')}${T.some(o=>!o.mec)?`<button type="button" class="${mc=='-'?'on':''}" onclick="patioM('-')">Sem mecânico</button>`:''}</div>`:''}</div>`+
+ (rec>0.005?`<p class="muted pfr">A receber dos carros no pátio: <b>${R(rec)}</b></p>`:'')+
+ (O.length?(m=='lista'?listaP(O):quadro(O)):T.length?`<div class="card muted" style="text-align:center">Nenhum carro com esse filtro. <button class="sm" onclick="patioLimpa()">Limpar filtros</button></div>`:empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))+
+ `<p class="muted pfn" id="pfn" hidden>Nenhum carro com essa busca.</p>`+
+ (hoje.length?`<details class="pfe"><summary>${svgi('stkey')} Entregues hoje <b>${hoje.length}</b></summary>${hoje.map(osCard).join('')}</details>`:'')}
+V.patio=Vpatio;
+G.patioF=k=>{S.f.pf=S.f.pf==k?'':k;KBX=0;render(1)};G.patioM=k=>{S.f.pm=k;KBX=0;render(1)};G.patioLimpa=()=>{S.f.pf='';S.f.pm='';S.f.pq='';render(1)};
+/* busca no pátio: esconde os cartões que não batem, sem redesenhar a tela (o teclado não fecha) */
+G.patioQ=function(q){S.f.pq=q;aplicaQ()};
+function aplicaQ(){if(S.v!='patio')return;const q=nrm(S.f.pq||'').trim(),W=q.split(/\s+/).filter(Boolean);let vis=0;
+ document.querySelectorAll('.kb .kc[data-o], .plh ~ .lc[data-o]').forEach(el=>{const o=od(el.dataset.o),ok=!W.length||(o&&W.every(w=>busca(o).includes(w)));el.hidden=!ok;if(ok)vis++});
+ document.querySelectorAll('.kbc').forEach(c=>{const n=c.querySelectorAll('.kc[data-o]:not([hidden])').length;const i=c.querySelector('.kbh i');if(i)i.textContent=n});
+ const pn=document.getElementById('pfn');if(pn)pn.hidden=!(W.length&&!vis)}
+/* mecânico do carro: tocar no nome no cartão */
+G.patioMec=function(oid){const o=od(oid);if(!o)return;const nomes=[...new Set(db.orders.map(x=>x.mec).filter(Boolean))].slice(-12);
+ sheet('Mecânico',`Mecânico da O.S. ${e(o.num)}`,`<div class="stg">${nomes.map(n=>`<button type="button" class="${o.mec==n?'on':''}" style="--c:${KB}" data-m="${e(n)}" onclick="patioMecOk('${oid}',this.dataset.m)">${svgi('stwr')}<span>${e(n)}</span>${o.mec==n?'<i>atual</i>':''}</button>`).join('')}</div>
+ <form class="pfmn" onsubmit="event.preventDefault();patioMecOk('${oid}',this.n.value)"><input name="n" placeholder="Outro nome" autocomplete="off"><button class="pr">Salvar</button></form>${o.mec?`<button type="button" class="sm" style="margin-top:8px" onclick="patioMecOk('${oid}','')">Tirar o mecânico</button>`:''}`)};
+G.patioMecOk=function(oid,n){const o=od(oid);if(!o)return;o.mec=String(n||'').trim();save();closeM();render(1);toast(o.mec?'O.S. '+o.num+': '+o.mec:'Mecânico retirado')};
+const _go=go;G.go=go=function(k,...r){const x=_go(k,...r);if(k=='patio')setTimeout(aplicaQ,0);return x};
+const _render=render;G.render=render=function(k){if(!(S.v==ANT&&['dash','patio'].includes(S.v)))KBX=0;const x=KBX;_render(k);ANT=S.v;if(S.v=='patio')aplicaQ();if(['dash','patio'].includes(S.v)&&x){const b=$q('.kb');if(b){b.style.scrollSnapType='none';b.scrollLeft=x;KBX=x;kbX(b);requestAnimationFrame(()=>{b.style.scrollSnapType=''})}}};
 
 /* ---------- 6) linha do tempo do veículo ---------- */
 function Vveic(){const v=vh(S.id);if(!v.id)return Vvehicles();const c=cl(v.cli),t0=today();
