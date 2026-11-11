@@ -2,9 +2,9 @@
    Sempre busca a versão mais nova no servidor (GitHub Pages).
    Só usa a cópia guardada no celular quando estiver sem internet.
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.12.1';
+const VERSAO = '2.12.2';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './forms.js', './ia.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './forms.js', './ia.js', './nav.js'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // a versão nova assume na hora, sem esperar fechar o app

@@ -373,7 +373,7 @@ addEventListener('pagehide',()=>{if(DIRTY){clearTimeout(TS);push()}});
 /* entrar: descobre a oficina e o papel, carrega os dados e começa os trabalhos de fundo */
 async function entra(){await gate();if(!PEND&&!BLOQ){await pull();await recPend();setTimeout(()=>{fqRun();fmigra();cfgSlim()},2500)}}
 async function boot(){const c=cfg0();
- try{if(c.url&&c.key&&window.supabase){bootMsg('Conferindo o login...');SB=window.supabase.createClient(c.url,c.key);const{data}=await SB.auth.getSession();if(data.session){SES=data.session;bootMsg('Carregando clientes e O.S....');await entra()}}}
+ try{if(c.url&&c.key&&window.supabase){bootMsg('Conferindo o login...');SB=window.supabase.createClient(c.url,c.key);const{data}=await SB.auth.getSession();if(data.session){SES=data.session;bootMsg('Carregando clientes e O.S....');await entra();if(typeof navRestaura=='function')navRestaura()}}}
  finally{render();bootFim()}setTimeout(entAutoSync,3000)}
 function setMode(m){AM=m;authView()}
 function authView(){const c=cfg0();$('#nav').style.display='none';
@@ -445,14 +445,14 @@ async function signup(){const em=$('#le').value.trim(),pw=$('#lp').value,p2=$('#
  if(pw!==p2)return m.textContent='As senhas não são iguais.';
  const{data,error}=await SB.auth.signUp({email:em,password:pw,options:{data:{nome:($('#ln')||{}).value||''},emailRedirectTo:location.href.split('#')[0]}});
  if(error){const t=error.message;m.textContent=/already/i.test(t)?'Este e-mail já tem conta. Use a aba Entrar.':/not allowed|disabled/i.test(t)?'O cadastro de novas contas está desativado no Supabase.':/password/i.test(t)?'Senha fraca. Use ao menos 8 caracteres, com letras e números.':'Erro: '+t;return}
- if(data.session){SES=data.session;await entra();S.v='dash';render()}
+ if(data.session){SES=data.session;await entra();S.v='dash';if(typeof navLogin=='function')navLogin();render()}
  else{m.style.color='var(--ac)';m.textContent='Conta criada. Enviamos um link de confirmação para '+em+'. Confirme o e-mail e entre.'}}
 function saveCfg(){const url=$('#su').value.trim().replace(/\/$/,''),key=$('#sk').value.trim();if(!/^https:\/\/.+/.test(url)||key.length<20)return toast('Informe a URL e a chave anon do projeto');localStorage.setItem(SBK,JSON.stringify({url,key}));boot()}
 function resetCfg(){localStorage.removeItem(SBK);SB=null;boot()}
 async function login(){const em=$('#le').value.trim(),pw=$('#lp').value;$('#lerr').textContent='';if(!em||!pw){$('#lerr').textContent='Informe e-mail e senha.';return}
  const{data,error}=await SB.auth.signInWithPassword({email:em,password:pw});
  if(error){if(/not confirmed/i.test(error.message)){$('#lerr').innerHTML='Confirme o e-mail pelo link enviado antes de entrar. <a href="#" onclick="resend();return false">Reenviar e-mail</a>';return}$('#lerr').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos.':'Erro: '+error.message;return}
- SES=data.session;await entra();S.v='dash';render()}
+ SES=data.session;await entra();S.v='dash';if(typeof navLogin=='function')navLogin();render()}
 async function doOut(){clearTimeout(TS);if(DIRTY)await push();if(!DIRTY){clearTimeout(TSN);await IDB.del(sk()).catch(()=>{})}SEMDADOS=false;await SB.auth.signOut();SES=null;ADM=false;OF=null;PAPEL='';OFS=null;BLOQ=false;PEND=false;REQ=null;RS.s={v:null,b:null};RS.p={v:null,b:null};CONF=false;DIRTY=false;document.body.classList.remove('colab');db=load();S.v='dash';render()}
 function dlBlob(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();toast('PDF baixado')}
 function toast(t){const o=$('#toast');o.textContent=t;o.style.display='block';setTimeout(()=>o.style.display='none',2400)}
@@ -1826,7 +1826,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.12.1';
+const APP_VER='2.12.2';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1839,5 +1839,6 @@ boot();
 <script src="pedidos.js"></script>
 <script src="forms.js"></script>
 <script src="ia.js"></script>
+<script src="nav.js"></script>
 </body>
 </html>
