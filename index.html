@@ -1034,27 +1034,28 @@ function waAg(id){const a=ag(id),c=cl(a.cli),v=vh(a.veh);
  wa(c.tel,`Olá ${c.nome}! Lembrete do seu horário${a.svc?' ('+a.svc+')':''} ${a.data==today()?'hoje':'em '+dayLbl(a.data)} às ${a.hora} com seu ${v.modelo||'veículo'}.`);
  a.aviso=today();save();render()}
 function setAg(id,st){ag(id).status=st;save();render()}
-function agOS(id){const a=ag(id);if(a.os&&od(a.os))return go('order',a.os);
+function agOS(id,assim){const a=ag(id);if(a.os&&od(a.os))return go('order',a.os);
+ if(!a.veh&&!assim){$('#modal').innerHTML=`<div class="ov" onclick="if(event.target===this)closeM()"><div class="md" role="dialog" aria-modal="true"><h2 style="margin-top:0">Agendamento sem veículo</h2><p>Coloque o veículo antes de gerar a O.S., para ela já sair com o carro certo.</p><div class="bar" style="margin:12px 0 0"><button type="button" onclick="closeM();agOS('${id}',1)">Gerar sem veículo</button><span class="sp"></span><button type="button" class="pr" onclick="closeM();editAg('${id}')">Colocar o veículo</button></div></div></div>`;return}
  const sv=SV().find(s=>s.nome==a.svc);
  const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:a.cli,veh:a.veh,problema:[a.svc,a.obs].filter(Boolean).join(' - '),mec:'',status:'Aberta',items:sv?[{t:'Serviço',d:sv.nome,det:'',q:1,v:+sv.preco||0,...(sv.ctrib?{ctrib:sv.ctrib}:{})}]:[],desc:0,ck:{},laudo:{data:today()},fotos:[],pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);a.os=o.id;save();go('order',o.id)}
 function editAg(id,pre){
  const orig=id?ag(id):null,a={...(orig||{cli:'',veh:'',data:today(),hora:'08:00',dur:'',status:'Agendado'}),...(pre||{})},cat=SV().map(s=>s.nome);
  const sf=cat.length?['svc','Serviço','select',[['','Outro (descrever nas observações)'],...cat,...(a.svc&&!cat.includes(a.svc)?[a.svc]:[])]]:['svc','Serviço (ex.: diagnóstico com scanner)'];
- const vopts=c=>{const vs=db.vehicles.filter(v=>v.cli==c);return vs.length?vs.map(v=>[v.id,vlabel(v)]):[['',c?'Nenhum veículo - toque em + Novo veículo':'Escolha o cliente primeiro']]};
+ const vopts=c=>{const vs=db.vehicles.filter(v=>v.cli==c);return c?[...vs.map(v=>[v.id,vlabel(v)]),['','Sem veículo (colocar depois)']]:[['','Escolha o cliente primeiro']]};
  modal(id?'Editar agendamento':'Novo agendamento',[
   ['cli','Cliente','busca',cliArr(),1,{btn:'Novo cliente',novoTxt:'Cadastrar novo cliente',pick:c=>agVeh(c),novo:(t,cur)=>viaModal(x=>editAg(id,x),cur,set=>editClient(null,n=>set({cli:n.id,veh:''}),{nome:t}))}],
-  ['veh','Veículo','select',vopts(a.cli)],sf,['data','Data','date',0,1],['hora','Hora','time',0,1],['dur','Duração em minutos (vazio = padrão do serviço)','number'],['status','Situação','select',['Agendado','Confirmado','Concluído','Cancelado']],['obs','Observações','area']],a,o=>{
+  ['veh','Veículo (pode colocar depois)','select',vopts(a.cli)],sf,['data','Data','date',0,1],['hora','Hora','time',0,1],['dur','Duração em minutos (vazio = padrão do serviço)','number'],['status','Situação','select',['Agendado','Confirmado','Concluído','Cancelado']],['obs','Observações','area']],a,o=>{
   o.cli=vh(o.veh).cli||o.cli;o.dur=+o.dur||(SV().find(s=>s.nome==o.svc)||{}).dur||60;
   const clash=o.status!='Cancelado'&&AG().some(x=>x.id!=id&&x.data==o.data&&x.status!='Cancelado'&&mins(x.hora)<mins(o.hora)+o.dur&&mins(o.hora)<mins(x.hora)+(x.dur||60));
   if(id)Object.assign(orig,o);else AG().push({id:uid(),...o});
   save();render();toast(clash?'Salvo, mas o horário se sobrepõe a outro agendamento':'Agendamento salvo')},0,id&&(()=>{db.appts=AG().filter(x=>x.id!=id);save();render();toast('Agendamento excluído')}));
- const vs=$('#modal [name=veh]');vs.required=true;vs.disabled=!a.cli;
+ const vs=$('#modal [name=veh]');vs.required=false;vs.disabled=!a.cli;
  vs.closest('label').insertAdjacentHTML('afterend','<div class="bar" style="margin:-4px 0 12px"><button type="button" class="sm" id="agnv">+ Novo veículo</button></div>');
  const nb=$('#agnv');nb.disabled=!a.cli;
  nb.onclick=()=>{const cur=modalVals();viaModal(x=>editAg(id,x),cur,set=>editVeh(null,v=>set({veh:v.id,cli:v.cli}),{cli:cur.cli}))}}
 function agVeh(c){const vs=$('#modal [name=veh]'),L=db.vehicles.filter(v=>v.cli==c);
- vs.innerHTML=L.length?L.map(v=>`<option value="${e(v.id)}">${e(vlabel(v))}</option>`).join(''):`<option value="">${c?'Nenhum veículo - toque em + Novo veículo':'Escolha o cliente primeiro'}</option>`;
+ vs.innerHTML=c?L.map(v=>`<option value="${e(v.id)}">${e(vlabel(v))}</option>`).join('')+'<option value="">Sem veículo (colocar depois)</option>':'<option value="">Escolha o cliente primeiro</option>';
  vs.disabled=!c;$('#agnv').disabled=!c}
 function editSvc(id){const s=id?SV().find(x=>x.id==id):{dur:60,preco:0};
  modal(id?'Editar serviço':'Novo serviço',[['nome','Nome do serviço','text',0,1],['dur','Duração (min)','number'],['preco','Preço (R$)','number'],['ctrib','Cód. tributação nacional (vazio = padrão)']],s,o=>{o.dur=+o.dur||60;o.preco=+o.preco||0;if(id)Object.assign(s,o);else SV().push({id:uid(),...o});save();render()},0,id&&(()=>{db.svcs=SV().filter(x=>x.id!=id);save();render();toast('Serviço excluído')}))}
@@ -1692,8 +1693,8 @@ function Vvehicles(){const st=S.f.vs||'',q=nrm(S.f.q||'').trim(),V=db.vehicles,O
 
 /* ---------- Agenda ---------- */
 function agRow(a){const c=cl(a.cli),v=vh(a.veh),os=a.os&&od(a.os);
- return lcard({c:SC[a.status],dim:a.status=='Cancelado',n:`<span class="lch">${e(a.hora)}</span>${a.dur?' · '+e(a.dur)+' min':''}`,pill:pill(a.status),t:e(vlabel(v)),m:`${e(a.svc||'Serviço não informado')} · ${e(c.nome||'')}${a.aviso?' · aviso enviado '+D(a.aviso):''}`,
-  f:`<button class="sm wa" onclick="event.stopPropagation();waAg('${a.id}')">Avisar</button>${a.status=='Agendado'?`<button class="sm" onclick="event.stopPropagation();setAg('${a.id}','Confirmado')">Confirmar</button>`:''}${a.status!='Cancelado'?`<button class="sm ${os?'':'pr'}" onclick="event.stopPropagation();agOS('${a.id}')">${os?'Abrir O.S. '+e(os.num):'Gerar O.S.'}</button>`:''}`,on:`editAg('${a.id}')`})}
+ return lcard({c:SC[a.status],dim:a.status=='Cancelado',n:`<span class="lch">${e(a.hora)}</span>${a.dur?' · '+e(a.dur)+' min':''}`,pill:pill(a.status),t:a.veh?e(vlabel(v)):`${e(c.nome||'Sem cliente')} <span class="mb" style="--c:${KA}">Sem veículo</span>`,m:`${e(a.svc||'Serviço não informado')}${a.veh?' · '+e(c.nome||''):''}${a.aviso?' · aviso enviado '+D(a.aviso):''}`,
+  f:`${!a.veh&&a.status!='Cancelado'?`<button class="sm" onclick="event.stopPropagation();editAg('${a.id}')">+ Veículo</button>`:''}<button class="sm wa" onclick="event.stopPropagation();waAg('${a.id}')">Avisar</button>${a.status=='Agendado'?`<button class="sm" onclick="event.stopPropagation();setAg('${a.id}','Confirmado')">Confirmar</button>`:''}${a.status!='Cancelado'?`<button class="sm ${os?'':'pr'}" onclick="event.stopPropagation();agOS('${a.id}')">${os?'Abrir O.S. '+e(os.num):'Gerar O.S.'}</button>`:''}`,on:`editAg('${a.id}')`})}
 function Vagenda(){const f=S.f.ag||'prox',t=today(),A=AG().filter(a=>a.status!='Cancelado'),nh=A.filter(a=>a.data==t).length,np=A.filter(a=>a.data>=t).length,na=AG().filter(a=>a.data<t).length;
  let l=aOrd(AG()).filter(a=>f=='hoje'?a.data==t:f=='ant'?a.data<t:a.data>=t);if(f=='ant')l.reverse();
  const days={};l.forEach(a=>(days[a.data]=days[a.data]||[]).push(a));
@@ -1826,7 +1827,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.13.0';
+const APP_VER='2.13.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
