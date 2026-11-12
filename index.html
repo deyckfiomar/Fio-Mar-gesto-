@@ -1127,7 +1127,7 @@ function Vfin(){const P=periodo(),a=aggF(P.ms),b=aggF(P.prev),cm=(P.n<6?monthsBa
  kpi=(l,v,sub,c)=>`<div class="kpi" style="--c:${c}"><span>${l}</span><div class="num">${v}</div>${sub||''}</div>`,
  chip=([k,n])=>`<button class="sm ${P.f==k?'pr':''}" onclick="S.f.fp='${k}';render()">${n}</button>`,
  ls=a.os.slice().sort((x,y)=>(y.conc||'').localeCompare(x.conc||'')).slice(0,10);
- return head({ico:'fin',kick:'Gestão',title:'Finanças',c:PCOL.fin,right:`<button class="pr hb" onclick="editDesp()">+ Despesa</button>`,sub:hsub('Lucro líquido '+R(a.liq),`Faturou ${R(a.fat)} · despesas ${R(a.dsp)}`,'A receber',R(arec))})+seg(FPS,P.f,'fp')+`
+ return head({ico:'fin',kick:'Gestão',title:'Finanças',c:PCOL.fin,right:`<button class="pr hb" onclick="editDesp()">+ Despesa</button>`,sub:hsub('Lucro líquido '+R(a.liq),`Faturou ${R(a.fat)} · despesas ${R(a.dsp)}`,'A receber',R(arec))})+(typeof finDia=='function'?finDia():'')+sech('Resultado do período','')+seg(FPS,P.f,'fp')+`
  <div class="kpis">${kpi('Faturamento',R(a.fat),`<small class="muted">${a.n} O.S. concluída(s) · ticket ${R(a.n?a.fat/a.n:0)}</small><br>`+dl(a.fat,b.fat,1),'#2F6FB0')}
  ${kpi('Lucro bruto',R(a.bruto),`<small class="muted">Margem bruta ${mg(a.bruto,a.fat)}%</small><br>`+dl(a.bruto,b.bruto,1),'#F5B700')}
  ${kpi('Despesas',R(a.dsp),'<small class="muted">Custos fixos e variáveis</small><br>'+dl(a.dsp,b.dsp,0),'#B4472E')}
@@ -1627,7 +1627,7 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  const sts=s=>O.filter(o=>o.status==s).length;
  return head({ico:'dash',kick:new Date(t0+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}),title:'Painel da oficina',c:PCOL.dash,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Entrada do carro</button>`})+
  `<div class="kts">${K('orders',sts('Em andamento'),'Em andamento',"go('orders',0,0,{st:'Em andamento'})",KA)}${K('vehicles',open.length,'Carros no pátio',"go('patio')",KB)}${K('stock',sts('Aguardando peças'),'Aguardando peças',"go('orders',0,0,{st:'Aguardando peças'})",KR)}
- ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go('orders',0,0,{st:'receber'})",KA)}${DONO()?K('fin',R(fat),'Recebido no mês',"go('fin')",KG):''}
+ ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go('orders',0,0,{st:'receber'})",KA)}${DONO()?K('fin',R(fat),'Recebido no mês',"go('fin')",KG):''}${DONO()&&typeof finHoje=='function'?(l=>K('fin',R(l),l<0?'Prejuízo de hoje':'Lucro de hoje',"go('fin',0,0,{fd:'"+t0+"'})",l<0?KR:KG))(finHoje()):''}
  ${K('clock',AT.length,'Horários hoje',"go('agenda',0,0,{ag:'hoje'})",KB)}${K('agenda',A7,'Próximos 7 dias',"go('agenda')",'#17A2B8')}${DONO()?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof fazerHTML=='function'?fazerHTML():'')+
  sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
  (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))+
@@ -1827,7 +1827,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.14.2';
+const APP_VER='2.15.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1838,6 +1838,7 @@ boot();
 <script src="backup.js"></script>
 <script src="avisos.js"></script>
 <script src="pedidos.js"></script>
+<script src="financas.js"></script>
 <script src="forms.js"></script>
 <script src="ia.js"></script>
 <script src="nav.js"></script>
