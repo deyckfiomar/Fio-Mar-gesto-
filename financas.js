@@ -82,6 +82,8 @@ const st=document.createElement('style');st.textContent=`
 .fdk{grid-template-columns:1fr 1fr!important}
 @media (min-width:761px){.fdk{grid-template-columns:repeat(4,1fr)!important}}
 .fdk .kpi .num{font-size:20px}
+.kpis>.kpi{min-width:0}.kpis .kpi .num{overflow-wrap:anywhere}
+@media (max-width:400px){.kpis .kpi{padding:8px 10px}.kpis .kpi .num{font-size:21px}.fdk .kpi .num{font-size:18px}}
 .fds{margin:0 0 8px}
 .fdr{margin:8px 0 4px;font-size:13.5px;line-height:1.5;color:var(--mut)}.fdr b{color:var(--ink)}
 .fdd{border-top:1px solid var(--ln);margin-top:8px;padding-top:8px}

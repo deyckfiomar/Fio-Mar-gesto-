@@ -367,7 +367,7 @@ async function recPend(){if(!SES||PEND||BLOQ||!OF)return;const p=await IDB.get(p
  if(p.base===verAt()){db=cleanDb(p.data);save();render();toast('Alterações feitas sem internet foram recuperadas e salvas');return}
  $('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Alterações não salvas neste aparelho</h2><p>Este aparelho tem alterações feitas sem internet em ${new Date(p.ts).toLocaleString('pt-BR')}, mas a oficina também foi alterada em outro lugar depois disso.</p><p class="muted">Escolha qual versão manter. A outra será descartada.</p>${(p.data.orders||[]).length+(p.data.clients||[]).length<0.8*(db.orders.length+db.clients.length)?`<p style="color:${KR}"><b>Atenção:</b> a versão deste aparelho tem ${(p.data.clients||[]).length} clientes e ${(p.data.orders||[]).length} O.S.; a da nuvem tem ${db.clients.length} clientes e ${db.orders.length} O.S. Usar a deste aparelho apagaria dados.</p>`:''}<div class="bar"><button type="button" onclick="IDB.del(pk());closeM()">Manter a da nuvem</button><span class="sp"></span><button type="button" class="pr" onclick="usaPend()">Usar a deste aparelho</button></div></div></div>`}
 async function usaPend(){const p=await IDB.get(pk());closeM();if(!p)return;db=cleanDb(p.data);RKS().forEach(k=>RS[k].b=null);DIRTY=true;await push();render();toast('Alterações deste aparelho salvas')}
-function save(){if(SEMDADOS){toast('Sem internet: conecte uma vez para carregar os dados antes de editar. Nada foi salvo.');return}DIRTY=true;clearTimeout(TS);TS=setTimeout(push,700);guardaLocal()}
+function save(){if(SEMDADOS){toast('Sem internet: conecte uma vez para carregar os dados antes de editar. Nada foi salvo.');return}SAVEN++;DIRTY=true;clearTimeout(TS);TS=setTimeout(push,700);guardaLocal()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden'&&DIRTY){clearTimeout(TS);push()}});
 addEventListener('pagehide',()=>{if(DIRTY){clearTimeout(TS);push()}});
 /* entrar: descobre a oficina e o papel, carrega os dados e começa os trabalhos de fundo */
@@ -455,7 +455,7 @@ async function login(){const em=$('#le').value.trim(),pw=$('#lp').value;$('#lerr
  SES=data.session;await entra();S.v='dash';if(typeof navLogin=='function')navLogin();render()}
 async function doOut(){clearTimeout(TS);if(DIRTY)await push();if(!DIRTY){clearTimeout(TSN);await IDB.del(sk()).catch(()=>{})}SEMDADOS=false;await SB.auth.signOut();SES=null;ADM=false;OF=null;PAPEL='';OFS=null;BLOQ=false;PEND=false;REQ=null;RS.s={v:null,b:null};RS.p={v:null,b:null};CONF=false;DIRTY=false;document.body.classList.remove('colab');db=load();S.v='dash';render()}
 function dlBlob(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();toast('PDF baixado')}
-function toast(t){const o=$('#toast');o.textContent=t;o.style.display='block';setTimeout(()=>o.style.display='none',2400)}
+let SAVEN=0,TOASTN=0,TOT=0;function toast(t){TOASTN++;const o=$('#toast');o.textContent=t;o.style.display='block';clearTimeout(TOT);TOT=setTimeout(()=>o.style.display='none',Math.min(6000,2400+String(t).length*25))}
 const cl=id=>db.clients.find(x=>x.id==id)||{};
 const vh=id=>db.vehicles.find(x=>x.id==id)||{};
 const od=id=>db.orders.find(x=>x.id==id);
@@ -506,7 +506,10 @@ function modal(t,fields,vals,cb,extra,del){if(!DONO())fields=fields.filter(f=>f[
  $('#modal form').onsubmit=ev=>{ev.preventDefault();if(ev.target.dataset.sent)return;
   const bad=[...ev.target.querySelectorAll('[data-num]')].filter(f=>f.value.trim()&&!isFinite(nBR(f.value)));
   if(bad.length){bad[0].focus();bad[0].style.borderColor='#B4472E';return toast('Número inválido. Use só números e vírgula. Ex.: 35,50')}
-  ev.target.dataset.sent=1;const o=Object.fromEntries(new FormData(ev.target));ev.target.querySelectorAll('[data-num]').forEach(f=>{if(o[f.name]!=null&&String(o[f.name]).trim()!=='')o[f.name]=String(nBR(o[f.name]))});closeM(1);cb(o);voltaPai()};
+  ev.target.dataset.sent=1;const o=Object.fromEntries(new FormData(ev.target));ev.target.querySelectorAll('[data-num]').forEach(f=>{if(o[f.name]!=null&&String(o[f.name]).trim()!=='')o[f.name]=String(nBR(o[f.name]))});
+  const ov=$('#modal').firstElementChild,sv=SAVEN,tn=TOASTN,tela=S.v+'|'+S.id,md0=MD;closeM(1);const r=cb(o);
+  if(r===undefined&&tn!=TOASTN&&sv==SAVEN&&!$('#modal').firstElementChild&&tela==S.v+'|'+S.id){delete ev.target.dataset.sent;MD=md0;$('#modal').appendChild(ov);return}
+  voltaPai()};
 }
 const RETS=[],voltaPai=()=>{const r=RETS.pop();if(r)r()},closeM=skip=>{$('#modal').innerHTML='';if(skip!==1)voltaPai()};
 const modalVals=()=>Object.fromEntries(new FormData($('#modal form')));
@@ -682,10 +685,10 @@ function qSyncOk(){const q=S.q,o=q&&q.os&&od(q.os);if(!o||!o.id)return closeM();
  D.novos.forEach(n=>{const c=JSON.parse(JSON.stringify(n));delete c.baixa;o.items.push(c)});
  if(D.dd)o.desc=q.desc;const rb=baixaOS(o);save();closeM();render();toast('O.S. '+o.num+' atualizada com o orçamento');if(rb&&rb.n)setTimeout(()=>avisoBaixa(rb),1800)}
 function approve(){saveQuote(1);modal('Aceite do cliente',[['nome','Nome de quem aprova (assinatura)','text',0,1]],{},o=>{Object.assign(S.q,{status:'Aprovado',aprov:{nome:o.nome,data:today()}});saveQuote();render()},`<p class="muted">${TERMOS}</p>`)}
-function makeOS(){saveQuote(1);const q=S.q;const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:q.cli,veh:q.veh,qid:q.id,problema:q.obs||'',mec:'',status:'Aberta',items:JSON.parse(JSON.stringify(q.items)),desc:q.desc,ck:{},laudo:{data:today()},fotos:(q.fotos||[]).map(f=>({id:uid(),t:'Foto do veículo',src:f.src,obs:f.obs})),pags:[],horas:'',pecas:'',aberta:today()};
+function makeOS(){const q=S.q;if(!q.cli)return toast('Escolha ou cadastre o cliente');saveQuote(1);if(q.os&&od(q.os))return go('order',q.os);const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:q.cli,veh:q.veh,qid:q.id,problema:q.obs||'',mec:'',status:'Aberta',items:JSON.parse(JSON.stringify(q.items)),desc:q.desc,ck:{},laudo:{data:today()},fotos:(q.fotos||[]).map(f=>({id:uid(),t:'Foto do veículo',src:f.src,obs:f.obs})),pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);q.os=o.id;const rb=baixaOS(o);saveQuote(1);go('order',o.id);avisoBaixa(rb)}
 const waNum=t=>{let p=String(t||'').replace(/\D/g,'');if(p&&p.length<=11)p='55'+p;return p};
-function wa(phone,txt){const p=waNum(phone);if(!p)return toast('Cliente sem telefone cadastrado');const u=`https://wa.me/${p}?text=${encodeURIComponent(txt)}`;let w=null;try{w=window.open(u,'_blank')}catch(x){}if(!w)waFallback(u,txt)}
+function wa(phone,txt){const p=waNum(phone);if(!p)toast('Cliente sem telefone no cadastro: escolha o contato no WhatsApp');const u=`https://wa.me/${p||''}?text=${encodeURIComponent(txt)}`;let w=null;try{w=window.open(u,'_blank')}catch(x){}if(!w)waFallback(u,txt)}
 let WT='';
 function waFallback(u,txt){WT=txt;$('#modal').innerHTML=`<div class="ov"><div class="md"><h2 style="margin-top:0">Enviar por WhatsApp</h2><p class="muted">O navegador bloqueou a abertura automática. Toque em “Abrir WhatsApp” ou copie a mensagem e cole na conversa.</p><textarea readonly onfocus="this.select()">${e(txt)}</textarea><div class="bar" style="margin:10px 0 0"><a class="btn" href="${u}" target="_blank" rel="noopener" style="background:#1E9E55;color:#fff;border-color:#1E9E55;text-decoration:none">Abrir WhatsApp</a><button onclick="navigator.clipboard&&navigator.clipboard.writeText(WT).then(()=>toast('Mensagem copiada'),()=>toast('Selecione o texto e copie'))">Copiar mensagem</button><span class="sp"></span><button onclick="closeM()">Fechar</button></div></div></div>`}
 /* ---- envio de documento em PDF pelo WhatsApp ---- */
@@ -694,11 +697,10 @@ const empNome=()=>(db.cfg&&db.cfg.nome)||'Fio-Mar';
 const copiaTxt=t=>{try{return navigator.clipboard.writeText(t).then(()=>1,()=>0)}catch(x){return Promise.resolve(0)}};
 async function waDoc(gen,arg,phone,txt){
  if(noLib())return false;
- if(!waNum(phone)){toast('Cliente sem telefone cadastrado');return false}
- toast('Gerando o PDF...');CAP={};
+ toast(waNum(phone)?'Gerando o PDF...':'Cliente sem telefone no cadastro: você escolhe o contato na hora de enviar');CAP={};
  try{await gen(arg)}catch(er){CAP=null;toast('Não foi possível gerar o PDF');return false}
  const r=CAP;CAP=null;if(!r.blob)return false;
- WD={blob:r.blob,name:r.name,phone:waNum(phone),txt};
+ WD={blob:r.blob,name:r.name,phone:waNum(phone)||'',txt};
  waDocModal();return true}
 function waDocModal(msg){const w=WD;if(!w)return;const u=`https://wa.me/${w.phone}?text=${encodeURIComponent(w.txt)}`;
  const can=(()=>{try{return navigator.canShare&&navigator.canShare({files:[new File([w.blob],w.name,{type:'application/pdf'})]})}catch(x){return 0}})();
@@ -1039,14 +1041,16 @@ function agOS(id,assim){const a=ag(id);if(a.os&&od(a.os))return go('order',a.os)
  const sv=SV().find(s=>s.nome==a.svc);
  const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:a.cli,veh:a.veh,problema:[a.svc,a.obs].filter(Boolean).join(' - '),mec:'',status:'Aberta',items:sv?[{t:'Serviço',d:sv.nome,det:'',q:1,v:+sv.preco||0,...(sv.ctrib?{ctrib:sv.ctrib}:{})}]:[],desc:0,ck:{},laudo:{data:today()},fotos:[],pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);a.os=o.id;save();go('order',o.id)}
+const proxHora=()=>{const h=new Date().getHours()+1;return h>=7&&h<=18?String(h).padStart(2,'0')+':00':'08:00'};
 function editAg(id,pre){
- const orig=id?ag(id):null,a={...(orig||{cli:'',veh:'',data:today(),hora:'08:00',dur:'',status:'Agendado'}),...(pre||{})},cat=SV().map(s=>s.nome);
+ const orig=id?ag(id):null,a={...(orig||{cli:'',veh:'',data:today(),hora:proxHora(),dur:'',status:'Agendado'}),...(pre||{})},cat=SV().map(s=>s.nome);
  const sf=cat.length?['svc','Serviço','select',[['','Outro (descrever nas observações)'],...cat,...(a.svc&&!cat.includes(a.svc)?[a.svc]:[])]]:['svc','Serviço (ex.: diagnóstico com scanner)'];
  const vopts=c=>{const vs=db.vehicles.filter(v=>v.cli==c);return c?[...vs.map(v=>[v.id,vlabel(v)]),['','Sem veículo (colocar depois)']]:[['','Escolha o cliente primeiro']]};
  modal(id?'Editar agendamento':'Novo agendamento',[
   ['cli','Cliente','busca',cliArr(),1,{btn:'Novo cliente',novoTxt:'Cadastrar novo cliente',pick:c=>agVeh(c),novo:(t,cur)=>viaModal(x=>editAg(id,x),cur,set=>editClient(null,n=>set({cli:n.id,veh:''}),{nome:t}))}],
   ['veh','Veículo (pode colocar depois)','select',vopts(a.cli)],sf,['data','Data','date',0,1],['hora','Hora','time',0,1],['dur','Duração em minutos (vazio = padrão do serviço)','number'],['status','Situação','select',['Agendado','Confirmado','Concluído','Cancelado']],['obs','Observações','area']],a,o=>{
   o.cli=vh(o.veh).cli||o.cli;o.dur=+o.dur||(SV().find(s=>s.nome==o.svc)||{}).dur||60;
+  if(!id&&['Agendado','Confirmado'].includes(o.status)&&(o.data<today()||(o.data==today()&&mins(o.hora)<mins(new Date().toTimeString().slice(0,5))-30)))return toast('Esse dia e hora já passaram. Confira a data e a hora.');
   const clash=o.status!='Cancelado'&&AG().some(x=>x.id!=id&&x.data==o.data&&x.status!='Cancelado'&&mins(x.hora)<mins(o.hora)+o.dur&&mins(o.hora)<mins(x.hora)+(x.dur||60));
   if(id)Object.assign(orig,o);else AG().push({id:uid(),...o});
   save();render();toast(clash?'Salvo, mas o horário se sobrepõe a outro agendamento':'Agendamento salvo')},0,id&&(()=>{db.appts=AG().filter(x=>x.id!=id);save();render();toast('Agendamento excluído')}));
@@ -1827,7 +1831,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.15.2';
+const APP_VER='2.16.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

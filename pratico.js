@@ -226,4 +226,30 @@ G.osOrc=function(id){const o=od(id);if(!o||!o.id)return;if(!o.cli)return toast('
 const _waQuote=G.waQuote;if(typeof _waQuote=='function')G.waQuote=waQuote=async function(){const q=S.q;const r=await _waQuote();if(q&&q.status=='Aguardando'&&!q.env){q.env=today();saveQuote(1)}return r};
 
 if(typeof render=='function'&&typeof SES!='undefined'&&SES)setTimeout(()=>{try{render()}catch(x){}},0);
+/* ---------- orçamento não se perde: ao sair da tela ele é guardado como rascunho ---------- */
+function qGuarda(){const q=S.q;if(S.v!='quote'||!q)return true;const tem=(q.items||[]).length||(q.obs||'').trim()||(q.fotos||[]).length;
+ if(q.novo){if(!tem)return true;if(!q.cli)return confirm('Este orçamento ainda não tem cliente e vai ser perdido.\n\nSair mesmo assim?');
+  _saveQuote(1);toast('Orçamento Nº '+q.n+' guardado como rascunho');return true}
+ if(q.cli&&db.quotes.includes(q))save();return true}
+const _goQ=go;G.go=go=function(k,...r){if(S.v=='quote'&&!(k=='quote')&&!qGuarda())return;return _goQ(k,...r)};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden'&&SES&&S.v=='quote'&&S.q&&S.q.cli){const q=S.q;if(q.novo){if((q.items||[]).length)_saveQuote(1)}else if(db.quotes.includes(q))save()}});
+
+/* ---------- adicionar item mais rápido: sugestões com preço, só os campos do tipo, "salvar e outro" ---------- */
+const _addItem=addItem;
+function itensUsados(){const M=new Map();const put=(i,peso)=>{const d=String(i.d||'').trim();if(!d||i.dgfee)return;const k=nrm(d),x=M.get(k);if(!x||peso>=x.peso)M.set(k,{d,t:i.t||'Serviço',v:+i.v||0,custo:i.custo,det:'',peso,n:(x?x.n:0)+1});else x.n++};
+ db.quotes.forEach(q=>(q.items||[]).forEach(i=>put(i,1)));db.orders.forEach(o=>(o.items||[]).forEach(i=>put(i,2)));
+ return[...M.values()].sort((a,b)=>b.n-a.n).slice(0,250)}
+G.addItem=addItem=function(w,pre){_addItem(w,pre);const f=$q('#modal form');if(!f||!f.d)return;const U=itensUsados(),tp=f.t;
+ f.d.setAttribute('list','itsug');f.d.setAttribute('autocomplete','off');f.d.placeholder='Ex.: Troca de óleo';
+ f.insertAdjacentHTML('beforeend',`<datalist id="itsug">${U.map(x=>`<option value="${e(x.d)}">${e(x.t)} · ${R(x.v)}</option>`).join('')}</datalist>`);
+ const lab=n=>f[n]&&f[n].closest('label'),vis=()=>{const pc=tp.value=='Peça';if(lab('ncm'))lab('ncm').hidden=!pc;if(lab('ctrib'))lab('ctrib').hidden=pc;if(lab('custo'))lab('custo').firstChild.textContent=pc?'Custo unitário da peça (opcional, usado no lucro)':'Custo com terceiros (opcional, usado no lucro)'};
+ tp.addEventListener('change',vis);vis();
+ const pega=()=>{const x=U.find(u=>nrm(u.d)==nrm(f.d.value));if(!x)return;if(!f.v.value.trim()&&x.v){f.v.value=nShow(x.v);f.v.dispatchEvent(new Event('input',{bubbles:true}))}
+  if(tp.value!=x.t){tp.value=x.t;vis()}if(f.custo&&!f.custo.value.trim()&&x.custo!=null&&x.custo!==''){f.custo.value=nShow(x.custo);f.custo.dispatchEvent(new Event('input',{bubbles:true}))}};
+ f.d.addEventListener('change',pega);f.d.addEventListener('input',()=>{if(U.some(u=>u.d==f.d.value))pega()});
+ const bar=f.querySelector('.bar:last-of-type')||f.lastElementChild,sv=bar&&bar.querySelector('button.pr');
+ if(sv){const b=document.createElement('button');b.type='button';b.textContent='Salvar e outro';b.title='Salva este item e já abre o próximo';
+  b.onclick=()=>{const t=tp.value;f.requestSubmit();setTimeout(()=>{if(!$q('#modal .ov'))addItem(w,{t})},30)};sv.before(b)}
+ setTimeout(()=>{try{f.d.focus()}catch(x){}},60)};
+
 })(window);
