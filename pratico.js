@@ -189,11 +189,28 @@ G.kitDel=function(id){db.kits=KT().filter(x=>x.id!=id);save();kitsGer();toast('K
 
 /* ---------- 9) orçamento e O.S. juntos ---------- */
 G.approve=approve=function(){saveQuote(1);modal('Aceite do cliente',[['nome','Nome de quem aprova (assinatura)','text',0,1]],{},f=>{Object.assign(S.q,{status:'Aprovado',aprov:{nome:f.nome,data:today()}});
-  if(!S.q.os){saveQuote(1);makeOS();const o=od(S.q.os);toast('Orçamento aprovado · O.S. '+(o&&o.num||'')+' aberta com os itens');return}saveQuote();render()},`<p class="muted">${TERMOS}</p>`)};
+  if(!S.q.os){saveQuote(1);makeOS();const o=od(S.q.os);toast('Orçamento aprovado · O.S. '+(o&&o.num||'')+' aberta com os itens');return}saveQuote();if(S.q.daos)osTira(S.q);render()},`<p class="muted">${TERMOS}</p>`)};
 const _saveQuote=saveQuote;G.saveQuote=saveQuote=function(quiet){const q=S.q;if(quiet||!q||!q.os||q.status!='Aprovado')return _saveQuote(quiet);
  const o=od(q.os);if(!o||!o.id)return _saveQuote(quiet);_saveQuote(1);const Df=qDif(q,o);if(!Df.tem)return toast('Orçamento salvo');
  const arrisca=qNF(o)||['Concluída','Entregue'].includes(o.status)||Df.alt.some(([x,n])=>x.baixa&&(String(x.pid||'')!==String(n.pid||'')||(+x.q||0)!==(+n.q||0)));
  if(arrisca)return qSync();const antes=oTot(o);qSyncOk();toast('Orçamento salvo · O.S. '+o.num+' atualizada junto ('+R(antes)+' → '+R(oTot(o))+')')};
+/* orçamento a partir da O.S. (carro que entrou pela recepção) */
+const osQ=o=>db.quotes.filter(q=>q.os==o.id&&q.status!='Recusado').sort((a,b)=>(+b.n||0)-(+a.n||0))[0];
+G.osOrcBtn=function(o,sm){const q=osQ(o),c=sm?'sm ':'';
+ if(q&&q.status=='Aprovado'&&sm)return'';
+ return q?`<button class="${c}${q.status=='Aprovado'?'':'pr'}" onclick="osOrc('${o.id}')">Orçamento Nº ${e(q.n)} · ${e(q.status=='Rascunho'?'abrir':q.status)}</button>`:`<button class="${c}pr" onclick="osOrc('${o.id}')">Fazer orçamento</button>`};
+/* aprovado: o que o cliente tirou do orçamento sai da O.S. (a peça volta ao estoque) */
+function osTira(q){const o=od(q.os);if(!o||!o.id||qNF(o))return;const qk=new Set((q.items||[]).map(qKey)),fora=(o.items||[]).filter(i=>!qk.has(qKey(i)));if(!fora.length)return;
+ fora.forEach(i=>{if(i.baixa&&i.pid&&(+i.q||0)>0)MV().push({id:uid(),pid:i.pid,tipo:'E',q:+i.q,data:today(),obs:'Cliente não aprovou · O.S. '+o.num})});
+ o.items=o.items.filter(i=>!fora.includes(i));save();setTimeout(()=>toast('Saiu da O.S. '+o.num+' (cliente não aprovou): '+fora.map(i=>i.d).join(', ')),1600)}
+G.osOrc=function(id){const o=od(id);if(!o||!o.id)return;if(!o.cli)return toast('Escolha o cliente da O.S. antes de fazer o orçamento');
+ o.items=o.items||[];o.items.forEach(i=>{if(!i.iid)i.iid=uid()});
+ const cp=i=>{const c=JSON.parse(JSON.stringify(i));delete c.baixa;return c};let q=osQ(o);
+ if(q){/* traz para o orçamento o que foi lançado na O.S. depois */
+  if(q.status!='Aprovado'){const tem=new Set([...(q.items||[]).map(qKey),...(q.osk||[])]),nv=o.items.filter(i=>!tem.has(qKey(i)));q.osk=[...new Set([...(q.osk||[]),...o.items.map(qKey)])];if(nv.length){q.items=[...(q.items||[]),...nv.map(cp)];save();toast(plural(nv.length,'item novo da O.S. entrou','itens novos da O.S. entraram')+' no orçamento')}}
+  save();return editQuote(q.id)}
+ q={id:uid(),n:db.qseq++,cli:o.cli,veh:o.veh||'',items:o.items.map(cp),desc:+o.desc||0,prazo:'',obs:o.problema||'',status:'Rascunho',os:o.id,daos:o.id,osk:o.items.map(qKey),data:today(),fotos:[]};
+ db.quotes.push(q);save();editQuote(q.id);toast('Orçamento Nº '+q.n+' criado com '+plural(q.items.length,'item','itens')+' da O.S. '+o.num)};
 const _waQuote=G.waQuote;if(typeof _waQuote=='function')G.waQuote=waQuote=async function(){const q=S.q;const r=await _waQuote();if(q&&q.status=='Aguardando'&&!q.env){q.env=today();saveQuote(1)}return r};
 
 if(typeof render=='function'&&typeof SES!='undefined'&&SES)setTimeout(()=>{try{render()}catch(x){}},0);
