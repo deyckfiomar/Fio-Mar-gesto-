@@ -195,14 +195,26 @@ const _saveQuote=saveQuote;G.saveQuote=saveQuote=function(quiet){const q=S.q;if(
  const arrisca=qNF(o)||['Concluída','Entregue'].includes(o.status)||Df.alt.some(([x,n])=>x.baixa&&(String(x.pid||'')!==String(n.pid||'')||(+x.q||0)!==(+n.q||0)));
  if(arrisca)return qSync();const antes=oTot(o);qSyncOk();toast('Orçamento salvo · O.S. '+o.num+' atualizada junto ('+R(antes)+' → '+R(oTot(o))+')')};
 /* orçamento a partir da O.S. (carro que entrou pela recepção) */
-const osQ=o=>db.quotes.filter(q=>q.os==o.id&&q.status!='Recusado').sort((a,b)=>(+b.n||0)-(+a.n||0))[0];
+const osQ=o=>db.quotes.filter(q=>(q.os==o.id||q.id==o.qid)&&q.status!='Recusado').sort((a,b)=>(+b.n||0)-(+a.n||0))[0];
 G.osOrcBtn=function(o,sm){const q=osQ(o),c=sm?'sm ':'';
- if(q&&q.status=='Aprovado'&&sm)return'';
+ if(!q&&['Concluída','Entregue'].includes(o.status))return'';
+ if(q&&q.status=='Aprovado')return`<button class="${c}" onclick="editQuote('${q.id}')">Orçamento Nº ${e(q.n)}</button>`;
  return q?`<button class="${c}${q.status=='Aprovado'?'':'pr'}" onclick="osOrc('${o.id}')">Orçamento Nº ${e(q.n)} · ${e(q.status=='Rascunho'?'abrir':q.status)}</button>`:`<button class="${c}pr" onclick="osOrc('${o.id}')">Fazer orçamento</button>`};
 /* aprovado: o que o cliente tirou do orçamento sai da O.S. (a peça volta ao estoque) */
 function osTira(q){const o=od(q.os);if(!o||!o.id||qNF(o))return;const qk=new Set((q.items||[]).map(qKey)),fora=(o.items||[]).filter(i=>!qk.has(qKey(i)));if(!fora.length)return;
  fora.forEach(i=>{if(i.baixa&&i.pid&&(+i.q||0)>0)MV().push({id:uid(),pid:i.pid,tipo:'E',q:+i.q,data:today(),obs:'Cliente não aprovou · O.S. '+o.num})});
  o.items=o.items.filter(i=>!fora.includes(i));save();setTimeout(()=>toast('Saiu da O.S. '+o.num+' (cliente não aprovou): '+fora.map(i=>i.d).join(', ')),1600)}
+/* começar orçamento já com cliente e carro */
+G.novoOrc=function(cli,veh){editQuote();S.q.cli=cli||'';S.q.veh=veh||'';render()};
+/* orçamento aprovado em que o carro vem outro dia: marcar na agenda */
+G.qAgenda=function(){const q=S.q;if(!q||!q.cli)return toast('Escolha o cliente');saveQuote(1);
+ editAg(null,{cli:q.cli,veh:q.veh||'',obs:'Orçamento Nº '+q.n+' aprovado: '+(q.items||[]).map(i=>i.d).join(', ')})};
+/* cliente: começar um serviço sem procurar em outra tela */
+G.cliAcoes=function(id){const c=cl(id);if(!c.id)return;const vs=db.vehicles.filter(v=>v.cli==id);
+ sheet(e(c.nome||'Cliente'),`<p class="muted" style="margin:-4px 0 10px">O que vai fazer para este cliente?</p>
+ ${vs.map(v=>{const ab=db.orders.find(o=>o.veh==v.id&&!osFim(o));return`<div class="pf" style="padding:10px 0;border-top:1px solid var(--ln)"><b>${e(vlabel(v))}</b>${ab?` <small class="muted">· O.S. ${e(ab.num)} aberta</small>`:''}
+  <div class="bar" style="margin:8px 0 0">${ab?`<button type="button" class="sm pr" onclick="closeM();go('order','${ab.id}')">Abrir O.S. ${e(ab.num)}</button>`:`<button type="button" class="sm pr" onclick="closeM();checkin({placa:'${e(v.placa||'')}'})">Entrada do carro</button>`}<button type="button" class="sm" onclick="closeM();novoOrc('${id}','${v.id}')">Orçamento</button><button type="button" class="sm" onclick="closeM();editAg(null,{cli:'${id}',veh:'${v.id}'})">Agendar</button><button type="button" class="sm" onclick="closeM();go('veiculo','${v.id}')">Histórico</button></div></div>`}).join('')}
+ <div class="bar" style="margin:12px 0 0;border-top:1px solid var(--ln);padding-top:12px"><button type="button" class="sm" onclick="closeM();editVeh(null,()=>cliAcoes('${id}'),{cli:'${id}'})">+ Cadastrar veículo</button>${vs.length?'':`<button type="button" class="sm" onclick="closeM();novoOrc('${id}','')">Orçamento sem veículo</button><button type="button" class="sm" onclick="closeM();editAg(null,{cli:'${id}'})">Agendar</button>`}<button type="button" class="sm" onclick="closeM();editClient('${id}')">Editar cadastro</button></div>`)};
 G.osOrc=function(id){const o=od(id);if(!o||!o.id)return;if(!o.cli)return toast('Escolha o cliente da O.S. antes de fazer o orçamento');
  o.items=o.items||[];o.items.forEach(i=>{if(!i.iid)i.iid=uid()});
  const cp=i=>{const c=JSON.parse(JSON.stringify(i));delete c.baixa;return c};let q=osQ(o);

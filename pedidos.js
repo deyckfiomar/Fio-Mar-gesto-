@@ -87,6 +87,9 @@ G.pdItemOk=function(){const f=$q('#modal form.pdf'),p=PI&&ped(PI.pid);if(!f||!p)
 G.pdItemDel=function(pid,iid){const p=ped(pid);if(!p)return;p.itens=p.itens.filter(i=>i.id!=iid);save();render()};
 G.pdBaixo=function(pid){const p=ped(pid);if(!p)return;let n=0;PR().filter(isLow).forEach(x=>{if(p.itens.some(i=>i.pid==x.id))return;const q=Math.max(1,(+x.min||0)-qty(x.id)+1);p.itens.push({id:uid(),nome:x.nome,q,un:x.un||'un',cod:x.cod||'',os:'',carro:'',obs:'Reposição de estoque',fotos:(x.fotos||[]).slice(0,2),rec:0,pid:x.id});n++});
  save();render();toast(n?plural(n,'peça adicionada','peças adicionadas'):'As peças com estoque baixo já estão no pedido')};
+/* pedir uma peça do estoque ao fornecedor */
+G.pdProd=function(id){const x=prod(id);if(!x.id)return;const p=montando()||pdNovo(0);if(p.itens.some(i=>i.pid==x.id))return toast(x.nome+' já está no pedido Nº '+p.n);
+ const q=Math.max(1,(+x.min||0)-qty(x.id)+1);pdItem(p.id,null,{nome:x.nome,cod:x.cod||'',un:x.un||'un',q,obs:'Reposição de estoque',fotos:(x.fotos||[]).slice(0,2)});if(PI)PI.volta=1};
 /* pedir peça direto da O.S. */
 G.pdDaOS=function(oid){const p=montando()||pdNovo(0);const o=od(oid);pdItem(p.id,null,{os:oid,carro:o?carroOS(o):''});if(PI)PI.volta=1};
 
