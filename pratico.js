@@ -266,4 +266,39 @@ G.osVeh=function(id){const o=od(id);if(!o||!o.id)return;const v=o.veh?vh(o.veh):
  G.osVehTroca=(oid,vid)=>{const oo=od(oid);osPoeVeh(oo,vh(vid));toast('Veículo da O.S. '+oo.num+': '+vlabel(vh(vid)))}};
 const _cssVh=document.createElement('style');_cssVh.textContent=`.osvh{cursor:pointer;border-radius:8px;margin:-4px -6px;padding:4px 6px;min-width:0}.osvh:active{background:color-mix(in srgb,var(--hi) 14%,transparent)}.osvhe{display:inline-block;vertical-align:middle;margin-left:6px;padding:1px 8px;border-radius:99px;font:600 12px/1.6 'Barlow',sans-serif;letter-spacing:0;text-transform:none;background:color-mix(in srgb,var(--hi) 20%,transparent);color:var(--hi);border:1px dashed color-mix(in srgb,var(--hi) 60%,transparent)}`;document.head.appendChild(_cssVh);
 
+try{Object.assign(ICO,{pix:ICO.pix||'<path d="M12 2.8 21.2 12 12 21.2 2.8 12z"/><path d="M8.2 12h7.6M12 8.2v7.6"/>',copia:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',banco:'<path d="M3 10 12 4l9 6M5 10v8M9.7 10v8M14.3 10v8M19 10v8M3 21h18"/>',ok:'<path d="M5 12.5 10 17 19 7"/>'})}catch(x){}
+/* ---------- Cobrar com Pix: cada dado numa linha, com botão de copiar ---------- */
+const pixCfg=()=>{const c=db.cfg||{};return{ch:String(c.pix||'').trim(),tp:c.pixtipo||'Telefone',nome:String(c.pixnome||c.razao||c.nome||'').trim(),banco:String(c.pixbanco||'').trim()}};
+G.pixCopia=function(b,t){const ok=()=>{const o=b.innerHTML;b.classList.add('ok');b.innerHTML=svgi('ok')+' Copiado';setTimeout(()=>{b.classList.remove('ok');b.innerHTML=o},1600)};
+ try{navigator.clipboard.writeText(t).then(ok,()=>{pixSel(t);toast('Segure o texto para copiar')})}catch(x){pixSel(t)}};
+function pixSel(t){try{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}catch(x){}}
+G.pixCobra=function(id){const o=od(id);if(!o||!o.id)return;const P=pixCfg();
+ if(!P.ch)return sheet('Cobrar com Pix',`<p>A chave Pix da oficina ainda não foi cadastrada.</p><div class="bar" style="margin:12px 0 0"><button type="button" class="pr" onclick="closeM();PXV='${o.id}';editCfg()">Cadastrar a chave Pix</button></div>`);
+ const rest=Math.max(0,oTot(o)-paid(o)),c=cl(o.cli);
+ const lin=(k,rot,val,ico)=>`<div class="pxl"><div class="pxi">${svgi(ico)}</div><div class="pxt"><small>${rot}</small><b data-k="${k}">${e(val)}</b></div><button type="button" class="sm pxc" onclick="pixCopia(this,this.closest('.pxl').querySelector('b').innerText)">${svgi('copia')} Copiar</button></div>`;
+ sheet('Cobrar com Pix',`<p class="muted" style="margin:-4px 0 10px">O.S. ${e(o.num)} · ${e(c.nome||'')}</p>
+ <label class="pxv">Valor a cobrar<input id="pxval" inputmode="decimal" data-num="1" value="${nShow(rest)}" oninput="pixVal()"></label>
+ <div class="pxbox">${lin('ch','Chave Pix ('+e(P.tp)+')',P.ch,'pix')}${lin('v','Valor',R(rest),'ospag')}${P.nome?lin('n','Nome do favorecido',P.nome,'clients'):''}${P.banco?lin('b','Banco',P.banco,'banco'):''}</div>
+ ${P.banco?'':`<p class="muted" style="font-size:13px;margin:6px 0 0">Para mostrar o banco, preencha "Banco do PIX" em <a href="#" onclick="closeM();PXV='${o.id}';editCfg();return false">Dados da oficina</a>.</p>`}
+ <h3 class="pxh">Mandar para o cliente no WhatsApp</h3>
+ <div class="bar" style="margin:0"><button type="button" class="wa" onclick="pixWa('${o.id}',0)">1. Mandar os dados</button><button type="button" class="wa" onclick="pixWa('${o.id}',1)">2. Mandar só a chave</button></div>
+ <p class="muted" style="font-size:13px;margin:8px 0 0">A segunda mensagem tem só a chave: o cliente segura em cima, copia e cola no banco, sem apagar nada.</p>`,'pxsh')};
+/* depois de salvar os dados da oficina, volta para o Pix */
+G.PXV=null;const _rPx=render;G.render=render=function(...a){const r=_rPx(...a);if(PXV&&!$q('#modal .ov')){const id=PXV;PXV=null;if(pixCfg().ch&&S.v=='order')setTimeout(()=>pixCobra(id),50)}return r};
+const _gPx=go;G.go=go=function(...a){PXV=null;return _gPx(...a)};
+G.pixVal=function(){const i=$q('#pxval'),b=$q('.pxbox [data-k=v]');if(i&&b)b.innerText=R(nBR(i.value)||0)};
+G.pixWa=function(id,soCh){const o=od(id),c=cl(o.cli),P=pixCfg(),i=$q('#pxval'),v=i?nBR(i.value)||0:Math.max(0,oTot(o)-paid(o));
+ if(soCh)return wa(c.tel,P.ch);
+ wa(c.tel,[`Olá, ${(c.nome||'').split(' ')[0]}! Segue o Pix para pagamento da O.S. Nº ${o.num}${o.veh?' ('+vlabel(vh(o.veh))+')':''}:`,'',`*Valor:* ${R(v)}`,`*Chave Pix (${P.tp}):*`,P.ch,P.nome?`*Nome:* ${P.nome}`:'',P.banco?`*Banco:* ${P.banco}`:'','','Vou mandar a chave sozinha na próxima mensagem, para facilitar copiar.','',empNome()].filter((x,k,a)=>x!==''||a[k-1]!=='').join('\n'))};
+const _cssPx=document.createElement('style');_cssPx.textContent=`
+button.pix{background:color-mix(in srgb,#32BCAD 18%,transparent);color:#32BCAD;border-color:color-mix(in srgb,#32BCAD 55%,transparent)}button.pix svg{width:17px;height:17px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2}
+.pxv{margin:0 0 10px}
+.pxbox{border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.pxl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--ln)}.pxl:first-child{border-top:0;background:color-mix(in srgb,#32BCAD 10%,transparent)}
+.pxi{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--hi) 14%,transparent);color:var(--hi)}.pxl:first-child .pxi{background:color-mix(in srgb,#32BCAD 20%,transparent);color:#32BCAD}
+.pxi svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+.pxt{flex:1;min-width:0}.pxt small{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}.pxt b{display:block;font-size:16px;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
+.pxc{flex:none;margin:0}.pxc svg{width:15px;height:15px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:2}.pxc.ok{background:#2E8B57;color:#fff;border-color:#2E8B57}
+.pxh{font-size:13px;margin:16px 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}`;document.head.appendChild(_cssPx);
+
 })(window);
