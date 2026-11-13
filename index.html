@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Fio-Mar Gestor</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://viacep.com.br https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
@@ -63,6 +63,8 @@ button.dg{color:#C8553A;border-color:#C8553A}
 .cb{position:relative}
 .cbl{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--sf);border:1px solid var(--ln);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.35);max-height:min(46vh,320px);overflow:auto;z-index:15}
 .cbl[hidden]{display:none}
+.cbl button:has(.cbim){display:flex;align-items:center;gap:10px}.cbim{flex:none;width:44px;height:44px;object-fit:cover;border-radius:7px;border:1px solid var(--ln)}.cbl button span{min-width:0}
+#modal .cbl{position:static;margin-top:6px;max-height:none;box-shadow:none}#modal .md{max-height:calc(100dvh - 28px)}
 .cbl button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--ln);border-radius:0;background:transparent;color:var(--ink);padding:11px 12px;margin:0;font:15px Barlow,sans-serif;cursor:pointer}
 .cbl button small{display:block;color:var(--mut);font-size:12px;margin-top:1px}
 .cbl button:last-child{border-bottom:0}.cbl button:hover,.cbl button.on{background:var(--bg)}
@@ -471,10 +473,11 @@ function combo(key,o){CBR[key]=o;const cur=o.items.find(i=>i.id==o.value);
 const cbValid=w=>{const i=w.querySelector('.cbi');if(i&&i.required)i.setCustomValidity(w.dataset.v?'':'Escolha um item da lista')};
 function cbList(w,q){const o=CBR[w.dataset.k],ts=nrm(q).trim().split(/\s+/).filter(Boolean),L=o.items.filter(i=>ts.every(t=>i.s.includes(t))),sh=L.slice(0,40);let h='';
  if(o.novo)h+=`<button type="button" class="cbn" onclick="cbNovo(this)">+ ${q.trim()&&!L.length?'Cadastrar “'+e(q.trim())+'”':e(o.novoTxt||'Cadastrar novo')}</button>`;
- h+=sh.map((i,x)=>`<button type="button" class="${x==0&&ts.length?'on':''}" data-id="${e(i.id)}" onclick="cbPick(this)">${e(i.t)}${i.sub?`<small>${e(i.sub)}</small>`:''}</button>`).join('');
+ h+=sh.map((i,x)=>`<button type="button" class="${x==0&&ts.length?'on':''}" data-id="${e(i.id)}" onclick="cbPick(this)">${i.img?`<img class="cbim" ${fimg(i.img)} alt=""><span>`:''}${e(i.t)}${i.sub?`<small>${e(i.sub)}</small>`:''}${i.img?'</span>':''}</button>`).join('');
  if(!sh.length)h+='<div class="cbm">Nenhum resultado.</div>';if(L.length>40)h+=`<div class="cbm">Mostrando 40 de ${L.length}. Continue digitando para filtrar.</div>`;
  w.querySelector('.cbl').innerHTML=h}
-function cbOpen(i){const w=i.closest('.cb'),l=w.querySelector('.cbl');delete w.dataset.typed;cbList(w,'');l.hidden=false;try{i.select()}catch(x){}setTimeout(()=>l.scrollIntoView({block:'nearest'}),80)}
+function cbOpen(i){const w=i.closest('.cb'),l=w.querySelector('.cbl');delete w.dataset.typed;cbList(w,'');l.hidden=false;try{i.select()}catch(x){}[80,350,700].forEach(t=>setTimeout(()=>cbTopo(i),t))}
+function cbTopo(i){const md=i.closest('.md,.sh,.psh');if(!md){const l=i.closest('.cb').querySelector('.cbl');if(l&&!l.hidden)l.scrollIntoView({block:'nearest'});return}if(document.activeElement!==i)return;const lb=i.closest('.lb,label')||i,d=lb.getBoundingClientRect().top-md.getBoundingClientRect().top-8;if(Math.abs(d)>4)md.scrollTop+=d}
 function cbType(i){const w=i.closest('.cb');w.dataset.typed=1;cbList(w,i.value);w.querySelector('.cbl').hidden=false}
 function cbBlur(i){setTimeout(()=>{const w=i.closest('.cb');if(!w)return;w.querySelector('.cbl').hidden=true;const it=CBR[w.dataset.k].items.find(x=>x.id==w.dataset.v);i.value=it?it.t:'';cbValid(w)},220)}
 function cbPick(b){const w=b.closest('.cb'),o=CBR[w.dataset.k],id=b.dataset.id,it=o.items.find(i=>i.id==id),h=w.querySelector('input[type=hidden]'),i=w.querySelector('.cbi');
@@ -484,7 +487,7 @@ function cbKey(ev,i){const w=i.closest('.cb'),l=w.querySelector('.cbl');
  if(ev.key=='Escape'){l.hidden=true;return}
  if(ev.key=='ArrowDown'||ev.key=='ArrowUp'){ev.preventDefault();if(l.hidden){cbList(w,w.dataset.typed?i.value:'');l.hidden=false}const b=[...l.querySelectorAll('button[data-id]')];let n=b.findIndex(x=>x.classList.contains('on'));b.forEach(x=>x.classList.remove('on'));n=ev.key=='ArrowDown'?Math.min(b.length-1,n+1):Math.max(0,n-1);if(b[n]){b[n].classList.add('on');b[n].scrollIntoView({block:'nearest'})}return}
  if(ev.key=='Enter'&&!l.hidden){ev.preventDefault();const b=l.querySelector('button[data-id].on')||l.querySelector('button[data-id]');if(b)cbPick(b)}}
-const toItems=o=>o.map(x=>({id:String(x[0]),t:x[1],s:nrm(x[1]+' '+(x[2]||'')+' '+(x[3]||'')),sub:x[3]||''}));
+const toItems=o=>o.map(x=>({id:String(x[0]),t:x[1],s:nrm(x[1]+' '+(x[2]||'')+' '+(x[3]||'')),sub:x[3]||'',img:x[4]||''}));
 const BUSCA=(k,l,o,r,vals,x)=>{x=x||{};const nv=x.novo?(t=>x.novo(t,modalVals())):null;
  return`<div class="lb">${nv?`<div class="cbhd"><span>${l}</span><button type="button" class="sm" onclick="CBR['m-${k}'].novo('')">+ ${e(x.btn||'Novo')}</button></div>`:l}${combo('m-'+k,{items:toItems(o),value:vals[k]!=null?String(vals[k]):'',name:k,req:r,ph:'Digite para buscar...',novo:nv,novoTxt:x.novoTxt,pick:x.pick})}</div>`};
 /* modal genérico: campos [chave,rótulo,tipo,opções,obrigatório] */
@@ -721,7 +724,7 @@ function Vquote(){const q=S.q,vs=db.vehicles.filter(v=>v.cli==q.cli),ro=q.status
  <label>Prazo<input value="${e(q.prazo)}" placeholder="Ex.: 3 dias úteis" onchange="qs('prazo',this.value)"></label>
  <label>Desconto (R$)<input type="text" inputmode="decimal" autocomplete="off" class="qdesc" value="${e(nShow(q.desc||''))}" onchange="qs('desc',this.value)"></label></div>
  <label>Observações / problema relatado<textarea onchange="qs('obs',this.value)">${e(q.obs)}</textarea></label></div>
- <div class="card"><table><tr><th>Item</th><th class="n">Qtd</th><th class="n">Total</th><th></th></tr>${q.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(S.q,${n},0)"><td>${e(i.d)}<br><small class="muted">${e(i.t)} — ${R(i.v)}</small></td><td class="n">${i.q}</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(S.q,${n},0)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();S.q.items.splice(${n},1);render()">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">Adicione serviços, peças e mão de obra.</td></tr>'}</table>
+ <div class="card"><table><tr><th>Item</th><th class="n">Qtd</th><th class="n">Total</th><th></th></tr>${q.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(S.q,${n},0)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)} — ${R(i.v)}</small></td><td class="n">${i.q}</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(S.q,${n},0)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();S.q.items.splice(${n},1);render()">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">Adicione serviços, peças e mão de obra.</td></tr>'}</table>
  <div class="bar" style="margin-top:10px"><button onclick="addItem(S.q)">Adicionar item</button><button onclick="kits('q')">Kit / serviço pronto</button><button onclick="addStock(S.q,0)">Peça do estoque</button><span class="sp"></span><span class="muted">Total</span><span class="tot" id="qt">${R(sum(q.items,q.desc))}</span></div></div>
  <div class="card"><div class="bar" style="margin:0 0 8px"><b>Fotos do orçamento</b><span class="sp"></span><div class="fbs">${fotoBtns('qFotos([...this.files])')}</div></div><div class="ph">${(q.fotos||[]).map((f,i)=>`<figure><img ${fimg(f.src)} alt="Foto ${i+1}" onclick="verFoto(this.src)"><figcaption><input value="${e(f.obs)}" placeholder="Legenda" onchange="S.q.fotos[${i}].obs=this.value"><button class="sm" style="margin-top:4px" onclick="S.q.fotos.splice(${i},1);render()">Remover</button></figcaption></figure>`).join('')}</div></div>
  <div class="card"><b>Termos de aprovação</b><p class="muted">${TERMOS}</p>${q.aprov?`<p>Aprovado por <b>${e(q.aprov.nome)}</b> em ${D(q.aprov.data)}.</p>`:''}</div>
@@ -746,7 +749,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  <div class="g2"><label>Km na entrada<input inputmode="numeric" value="${e(o.km||'')}" onchange="U('km',this.value)"></label>${typeof fuelG=='function'?`<div class="lb">Combustível${fuelG(o.comb||'','os')}</div>`:`<label>Combustível<select onchange="U('comb',this.value)">${['','Reserva','1/4','1/2','3/4','Cheio'].map(x=>`<option value="${x}" ${(o.comb||'')==x?'selected':''}>${x||'—'}</option>`).join('')}</select></label>`}</div>
  <label>Avarias na entrada (riscos, amassados)<input value="${e(o.avarias||'')}" onchange="U('avarias',this.value)"></label>
  <label>Problema relatado<textarea onchange="U('problema',this.value)">${e(o.problema)}</textarea></label><label>Peças utilizadas<textarea onchange="U('pecas',this.value)">${e(o.pecas)}</textarea></label></div>
- <div class="card"><b>Serviços autorizados</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(od(S.id),${n},1)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
+ <div class="card"><b>Serviços autorizados</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(od(S.id),${n},1)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
  <div class="bar" style="margin-top:10px">${typeof osOrcBtn=='function'?osOrcBtn(o):''}<button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}<button onclick="genOS(od(S.id))">Gerar PDF da O.S.</button><span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>`;
  if(S.tab=='check')b=`<div class="bar"><button class="pr" onclick="genChecklist(od(S.id))">Gerar PDF do checklist</button></div><div class="card">${CK.map((n,i)=>{const c=o.ck[n]||{};return`<div class="ck"><b>${n}</b><select onchange="ckSet('${n}','s',this.value)">${['—','OK','Atenção','Defeito'].map(x=>`<option ${c.s==x?'selected':''}>${x}</option>`).join('')}</select><input type="text" placeholder="Observação" value="${e(c.obs)}" onchange="ckSet('${n}','obs',this.value)"><div class="fbs">${c.foto?`<img class="ckimg" ${fimg(c.foto)} height="34" alt="foto de ${e(n)}" onclick="verFoto(this.src)">`:''}${fotoBtns(`ckFoto('${n}',this.files[0])`,{ico:1,um:1})}</div></div>`}).join('')}</div>`;
  if(S.tab=='laudo')b=Vlaudo(o);
@@ -869,7 +872,7 @@ function editProd(id){const p=id?prod(id):{};
 function mov(id,tipo){const p=prod(id),en=tipo=='E';
  modal((en?'Entrada':'Saída')+' de estoque: '+p.nome,[['q','Quantidade','number',0,1],['data','Data','date',0,1],...(en?[['custo','Custo unitário (R$, opcional)','number']]:[]),['obs',en?'Fornecedor / nota fiscal':'Motivo / O.S.']],{data:today()},o=>{const n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(!en&&n>qty(id))return toast('Estoque insuficiente: restam '+qty(id));MV().push({id:uid(),pid:id,tipo,q:n,data:o.data,obs:o.obs||''});if(en&&DONO()&&+o.custo>0)p.custo=+o.custo;save();render();toast(en?'Entrada registrada':'Saída registrada')})}
 function addStock(w,os){if(!PR().length)return toast('Cadastre peças na aba Estoque primeiro');
- modal(os?'Peça do estoque (dá baixa)':'Peça do estoque',[['pid','Peça','busca',PR().map(p=>[p.id,p.nome,p.cod||'',`${qty(p.id)} ${p.un} em estoque`]),1],['q','Quantidade','number',0,1]],{q:1},o=>{const p=prod(o.pid),n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(os&&n>qty(p.id))return toast('Estoque insuficiente: restam '+qty(p.id));w.items.push({t:'Peça',d:p.nome,det:p.cod?'Cód. '+p.cod:'',q:n,v:p.preco||0,pid:p.id,...(DONO()?{custo:+p.custo||0}:{}),baixa:!!os});if(os)MV().push({id:uid(),pid:p.id,tipo:'S',q:n,data:today(),obs:'O.S. '+w.num});save();render()})}
+ modal(os?'Peça do estoque (dá baixa)':'Peça do estoque',[['pid','Peça','busca',PR().map(p=>[p.id,p.nome,p.cod||'',`${qty(p.id)} ${p.un} em estoque`,(p.fotos||[])[0]||'']),1],['q','Quantidade','number',0,1]],{q:1},o=>{const p=prod(o.pid),n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(os&&n>qty(p.id))return toast('Estoque insuficiente: restam '+qty(p.id));w.items.push({t:'Peça',d:p.nome,det:p.cod?'Cód. '+p.cod:'',q:n,v:p.preco||0,pid:p.id,...(DONO()?{custo:+p.custo||0}:{}),baixa:!!os});if(os)MV().push({id:uid(),pid:p.id,tipo:'S',q:n,data:today(),obs:'O.S. '+w.num});save();render()})}
 function rmOS(n){const o=od(S.id),i=o.items[n];if(i.baixa)MV().push({id:uid(),pid:i.pid,tipo:'E',q:i.q,data:today(),obs:'Estorno O.S. '+o.num});o.items.splice(n,1);save();render()}
 /* ---------- PDFs (padrão profissional de oficina) ---------- */
 /* ---------- PDFs (padrão profissional de oficina) ---------- */
@@ -1041,9 +1044,9 @@ function agOS(id,assim){const a=ag(id);if(a.os&&od(a.os))return go('order',a.os)
  const sv=SV().find(s=>s.nome==a.svc);
  const o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:a.cli,veh:a.veh,problema:[a.svc,a.obs].filter(Boolean).join(' - '),mec:'',status:'Aberta',items:sv?[{t:'Serviço',d:sv.nome,det:'',q:1,v:+sv.preco||0,...(sv.ctrib?{ctrib:sv.ctrib}:{})}]:[],desc:0,ck:{},laudo:{data:today()},fotos:[],pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);a.os=o.id;save();go('order',o.id)}
-const proxHora=()=>{const h=new Date().getHours()+1;return h>=7&&h<=18?String(h).padStart(2,'0')+':00':'08:00'};
+const proxHora=()=>{const h=new Date().getHours()+1;return h>=7&&h<=18?String(h).padStart(2,'0')+':00':'08:00'},proxDia=()=>{const d=new Date();if(d.getHours()+1>18){d.setDate(d.getDate()+1)}return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function editAg(id,pre){
- const orig=id?ag(id):null,a={...(orig||{cli:'',veh:'',data:today(),hora:proxHora(),dur:'',status:'Agendado'}),...(pre||{})},cat=SV().map(s=>s.nome);
+ const orig=id?ag(id):null,a={...(orig||{cli:'',veh:'',data:proxDia(),hora:proxHora(),dur:'',status:'Agendado'}),...(pre||{})},cat=SV().map(s=>s.nome);
  const sf=cat.length?['svc','Serviço','select',[['','Outro (descrever nas observações)'],...cat,...(a.svc&&!cat.includes(a.svc)?[a.svc]:[])]]:['svc','Serviço (ex.: diagnóstico com scanner)'];
  const vopts=c=>{const vs=db.vehicles.filter(v=>v.cli==c);return c?[...vs.map(v=>[v.id,vlabel(v)]),['','Sem veículo (colocar depois)']]:[['','Escolha o cliente primeiro']]};
  modal(id?'Editar agendamento':'Novo agendamento',[
@@ -1831,7 +1834,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.17.0';
+const APP_VER='2.17.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

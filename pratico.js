@@ -301,4 +301,10 @@ button.pix{background:color-mix(in srgb,#32BCAD 18%,transparent);color:#32BCAD;b
 .pxc{flex:none;margin:0}.pxc svg{width:15px;height:15px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:2}.pxc.ok{background:#2E8B57;color:#fff;border-color:#2E8B57}
 .pxh{font-size:13px;margin:16px 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}`;document.head.appendChild(_cssPx);
 
+/* ---------- foto pequena da peça nas linhas do orçamento e da O.S. ---------- */
+G.itFoto=function(i){if(!i||i.t!='Peça')return'';let p=i.pid&&prod(i.pid);
+ if(!(p&&p.id)){const n=nrm(i.d||'');p=n?PR().find(x=>nrm(x.nome)==n):null}
+ const f=p&&p.id&&(p.fotos||[])[0];return f?`<img class="itft" ${fimg(f)} alt="" onclick="event.stopPropagation();verFoto(this.src)">`:''};
+const _cssIt=document.createElement('style');_cssIt.textContent=`td:has(>.itft){position:relative;padding-left:62px!important;min-height:52px}.itft{position:absolute;left:6px;top:10px;width:46px;height:46px;object-fit:cover;border-radius:8px;cursor:zoom-in;border:1px solid var(--ln)}`;document.head.appendChild(_cssIt);
+
 })(window);
