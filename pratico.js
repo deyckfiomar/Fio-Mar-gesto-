@@ -252,4 +252,18 @@ G.addItem=addItem=function(w,pre){_addItem(w,pre);const f=$q('#modal form');if(!
   b.onclick=()=>{const t=tp.value;f.requestSubmit();setTimeout(()=>{if(!$q('#modal .ov'))addItem(w,{t})},30)};sv.before(b)}
  setTimeout(()=>{try{f.d.focus()}catch(x){}},60)};
 
+/* ---------- veículo da O.S.: colocar, editar (placa) ou trocar ---------- */
+function osPoeVeh(o,v){o.veh=v.id;if(!o.cli&&v.cli)o.cli=v.cli;
+ AG().forEach(a=>{if(a.os==o.id&&!a.veh)a.veh=v.id});db.quotes.forEach(q=>{if(q.os==o.id&&!q.veh)q.veh=v.id});save();render()}
+G.osVeh=function(id){const o=od(id);if(!o||!o.id)return;const v=o.veh?vh(o.veh):null,vs=db.vehicles.filter(x=>o.cli&&x.cli==o.cli&&x.id!=o.veh);
+ const novo=()=>editVeh(null,n=>{osPoeVeh(o,n);toast('Veículo colocado na O.S. '+o.num)},{cli:o.cli||''});
+ if(!v&&!vs.length)return novo();
+ sheet(v?e(vlabel(v)):'Veículo da O.S. '+e(o.num),`${v?`<p class="muted" style="margin:-4px 0 10px">${v.placa?'Placa '+e(v.placa):'<b style="color:var(--hi)">Sem placa</b>'}${v.km?' · '+e(v.km)+' km':''}</p>
+ <div class="bar" style="margin:0 0 12px"><button type="button" class="pr" onclick="closeM();editVeh('${v.id}')">${v.placa?'Editar veículo':'Colocar a placa e os dados'}</button><button type="button" onclick="closeM();go('veiculo','${v.id}')">Histórico</button></div>`:'<p class="muted" style="margin:-4px 0 10px">Escolha o carro do cliente ou cadastre um novo.</p>'}
+ ${vs.length?`<h3 style="font-size:13px;margin:8px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em">${v?'Trocar por outro carro do cliente':'Carros do cliente'}</h3>${vs.map(x=>`<button type="button" class="row" style="width:100%;margin:0 0 6px;text-align:left" onclick="closeM();osVehTroca('${o.id}','${x.id}')"><div>${e(vlabel(x))}<small>${e([x.ano,x.cor].filter(Boolean).join(' · '))}</small></div></button>`).join('')}`:''}
+ <div class="bar" style="margin:10px 0 0"><button type="button" onclick="closeM();osVehNovo('${o.id}')">+ Cadastrar ${v?'outro ':''}veículo</button></div>`);
+ G.osVehNovo=oid=>{const oo=od(oid);editVeh(null,n=>{osPoeVeh(oo,n);toast('Veículo colocado na O.S. '+oo.num)},{cli:oo.cli||''})};
+ G.osVehTroca=(oid,vid)=>{const oo=od(oid);osPoeVeh(oo,vh(vid));toast('Veículo da O.S. '+oo.num+': '+vlabel(vh(vid)))}};
+const _cssVh=document.createElement('style');_cssVh.textContent=`.osvh{cursor:pointer;border-radius:8px;margin:-4px -6px;padding:4px 6px;min-width:0}.osvh:active{background:color-mix(in srgb,var(--hi) 14%,transparent)}.osvhe{display:inline-block;vertical-align:middle;margin-left:6px;padding:1px 8px;border-radius:99px;font:600 12px/1.6 'Barlow',sans-serif;letter-spacing:0;text-transform:none;background:color-mix(in srgb,var(--hi) 20%,transparent);color:var(--hi);border:1px dashed color-mix(in srgb,var(--hi) 60%,transparent)}`;document.head.appendChild(_cssVh);
+
 })(window);
