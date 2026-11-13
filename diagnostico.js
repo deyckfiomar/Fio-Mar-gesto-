@@ -517,7 +517,7 @@ function histHTML(o){if(!o.veh)return'';const L=db.orders.filter(x=>x.veh==o.veh
   return`<button type="button" class="dg-hi" onclick="go('order','${x.id}')"><span><b>O.S. ${esc(x.num)}</b> · ${D(x.aberta)} · ${esc(x.status)}</span><b>${R(oTot(x))}</b>${dg?`<small>Diagnóstico: ${esc(dg)}${x.dg.conf=='ok'?' ✓':''}</small>`:''}${its.length?`<small>${esc(its.slice(0,4).join(', '))}${its.length>4?'…':''}</small>`:''}</button>`}).join('')}${L.length>8?`<small class="muted">E mais ${L.length-8} na lista de O.S.</small>`:''}</details>`}
 /* 7) fotos dos testes (vão para as fotos da O.S. e para o PDF) */
 function tfotos(o,tid){const L=(o.fotos||[]).map((f,i)=>[f,i]).filter(([f])=>f.tid==tid);
- return`<div class="dg-tf">${L.map(([f,i])=>`<figure><img ${fimg(f.src)} alt="Foto do teste" onclick="verFoto(this.src)"><button type="button" aria-label="Remover foto" onclick="DG.tfotoRm(${i})">×</button></figure>`).join('')}<label class="dg-tfb">${svgi('cam')}<span>${L.length?'Mais foto':'Foto'}</span><input type="file" accept="image/*" capture="environment" hidden onchange="DG.tfoto('${tid}',this)"></label></div>`}
+ return`<div class="dg-tf">${L.map(([f,i])=>`<figure><img ${fimg(f.src)} alt="Foto do teste" onclick="verFoto(this.src)"><button type="button" aria-label="Remover foto" onclick="DG.tfotoRm(${i})">×</button></figure>`).join('')}<span class="dg-tfbs"><label class="dg-tfb" title="Tirar foto com a câmera">${svgi('cam')}<span>${L.length?'Mais foto':'Foto'}</span><input type="file" accept="image/*" capture="environment" hidden onchange="DG.tfoto('${tid}',this)"></label><label class="dg-tfb" title="Escolher da galeria">${svgi('galeria')}<span>Galeria</span><input type="file" accept="image/*" multiple hidden onchange="DG.tfoto('${tid}',this)"></label></span></div>`}
 /* 8) dados do momento da falha (freeze frame) */
 const FF=[['rpm','Rotação','rpm'],['temp','Temp. do motor','°C'],['carga','Carga','%'],['vel','Velocidade','km/h'],['map','MAP','kPa'],['stft','STFT','%'],['ltft','LTFT','%'],['tens','Bateria','V']];
 const ffTxt=ff=>FF.filter(([k])=>ff&&ff[k]!=null&&String(ff[k]).trim()!=='').map(([k,l,u])=>`${l} ${ff[k]}${u?' '+u:''}`).join(' · ');
@@ -656,8 +656,9 @@ const DG={
  tmEdit(){const o=cur();if(!o||!o.dg||!o.dg.tm)return;const d=o.dg;modal('Tempo de diagnóstico',[['min','Minutos','text',0,1]],{min:String(Math.round(tmMs(d)/60000))},f=>{const m=Math.max(0,Math.round(nBR(f.min)||0));d.tm.ms=m*60000;if(d.tm.on)d.tm.on=Date.now();commit(o);render();toast('Tempo ajustado: '+tmTxt(m*60000))},'<p class="muted" style="margin:0">Corrija se o cronômetro ficou ligado sem querer.</p>')},
  retorno(id,nao){const o=cur();if(!o)return;const d=dgOf(o),c=casos().find(x=>x.id==id);if(!c)return;
   if(nao){c.conf='falhou';c.confEm=today();c.retornoOS=o.num;const oo=c.os&&od(c.os);if(oo&&oo.dg)oo.dg.conf={r:'falhou',data:today()};toast('Caso marcado como “não resolveu”')}else{d.retIgn=[...(d.retIgn||[]),id];toast('Ok, é outro problema')}commit(o);render()},
- tfoto(tid,inp){const f=inp.files&&inp.files[0];inp.value='';const o=cur();if(!f||!o)return;o.fotos=o.fotos||[];
-  picRef(f,ref=>{const r=dgOf(o).t[tid]||{};o.fotos.push({id:uid(),t:'Teste: '+(TESTS[tid]?TESTS[tid].n:tid),src:ref,obs:r.v||'',tid});commit(o);render();toast('Foto guardada no teste e nas fotos da O.S.')})},
+ tfoto(tid,inp){const F=[...(inp.files||[])].slice(0,6);inp.value='';const o=cur();if(!F.length||!o)return;o.fotos=o.fotos||[];let n=0;
+  const um=k=>{if(k>=F.length){commit(o);render();return toast(n>1?n+' fotos guardadas no teste e nas fotos da O.S.':'Foto guardada no teste e nas fotos da O.S.')}
+   picRef(F[k],ref=>{if(ref){const r=dgOf(o).t[tid]||{};o.fotos.push({id:uid(),t:'Teste: '+(TESTS[tid]?TESTS[tid].n:tid),src:ref,obs:r.v||'',tid});n++}um(k+1)})};um(0)},
  tfotoRm(i){const o=cur();if(!o||!o.fotos||!o.fotos[i])return;o.fotos.splice(i,1);commit(o);render()},
  ffSet(k,v){const o=cur();if(!o)return;const d=dgOf(o);d.ff=Object.assign({},d.ff||{},{[k]:String(v).trim()});commit(o);const sm=document.querySelector('.dg-ff summary .muted');if(sm)sm.textContent=ffTxt(d.ff)||'freeze frame (opcional)'},
  orc(){const o=cur();if(!o)return;const d=dgOf(o),ex=db.quotes.find(x=>x.os==o.id&&x.dg);if(ex)return editQuote(ex.id);
@@ -913,7 +914,7 @@ const css=`
 .dg-ffg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}.dg-ffg label{margin:0 0 8px}
 .dg-tf{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.dg-tf figure{position:relative;margin:0;width:64px;height:64px}.dg-tf img{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in}
 .dg-tf figure button{position:absolute;top:-8px;right:-8px;width:26px;height:26px;min-height:0;padding:0;border-radius:50%;line-height:1}
-.dg-tfb{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--ln);border-radius:8px;padding:8px 12px;cursor:pointer;margin:0;font-weight:600}.dg-tfb svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+.dg-tfb{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--ln);border-radius:8px;padding:8px 12px;cursor:pointer;margin:0;font-weight:600}.dg-tfb svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.dg-tfbs{display:flex;gap:8px;flex-wrap:wrap}
 .dg-prox{display:flex;flex-direction:column;gap:8px;margin-top:8px}.dg-prox button{width:100%}
 `;
 const st=document.createElement('style');st.id='dg-css';st.textContent=css;document.head.appendChild(st);
