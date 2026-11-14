@@ -865,14 +865,14 @@ const PR=()=>db.prods=db.prods||[],MV=()=>db.movs=db.movs||[];
 let _qm=null,_qk='';const qty=id=>{const M=MV(),k=M.length+'|'+(M.length?M[M.length-1].id:'')+'|'+RTICK;if(_qk!==k||!_qm){_qk=k;_qm={};M.forEach(m=>{_qm[m.pid]=(_qm[m.pid]||0)+(m.tipo=='E'?1:-1)*(+m.q||0)})}return Math.round((_qm[id]||0)*1000)/1000};
 const prod=id=>PR().find(p=>p.id==id)||{};
 const isLow=p=>qty(p.id)<=(+p.min||0);
-function editProd(id){const p=id?prod(id):{};
- const F=[['cod','Código / referência'],['nome','Nome da peça','text',0,1],['cat','Categoria (ex.: Injeção, Freios)'],['un','Unidade','select',['un','par','jogo','kg','L','m']],['custo','Custo (R$)','number'],['preco','Preço de venda (R$)','number'],['min','Estoque mínimo (alerta)','number'],['h','Dados fiscais (NF-e)'],['ncm','NCM (8 dígitos)'],['cest','CEST (se houver)'],['origem','Origem','select',[['','Padrão da oficina'],['0','0 - Nacional'],['1','1 - Estrangeira (importação direta)'],['2','2 - Estrangeira (mercado interno)']]],['csosn','CSOSN/CST (vazio = padrão)'],['cfop','CFOP (vazio = padrão)']];
+function editProd(id,pre){const p=id?prod(id):{};
+ const F=[['cod','Código / referência'],['ean','Código de barras (EAN)'],['nome','Nome da peça','text',0,1],['cat','Categoria (ex.: Injeção, Freios)'],['un','Unidade','select',['un','par','jogo','kg','L','m']],['custo','Custo (R$)','number'],['preco','Preço de venda (R$)','number'],['min','Estoque mínimo (alerta)','number'],['h','Dados fiscais (NF-e)'],['ncm','NCM (8 dígitos)'],['cest','CEST (se houver)'],['origem','Origem','select',[['','Padrão da oficina'],['0','0 - Nacional'],['1','1 - Estrangeira (importação direta)'],['2','2 - Estrangeira (mercado interno)']]],['csosn','CSOSN/CST (vazio = padrão)'],['cfop','CFOP (vazio = padrão)']];
  if(!id)F.push(['ini','Estoque inicial','number']);
- modal(id?'Editar peça':'Nova peça',F,id?p:{un:'un',min:0},o=>{const ini=+o.ini||0;delete o.ini;if(DONO())o.custo=+o.custo||0;else delete o.custo;o.preco=+o.preco||0;o.min=+o.min||0;if(id)Object.assign(p,o);else{const n={id:uid(),...o};PR().push(n);if(ini>0)MV().push({id:uid(),pid:n.id,tipo:'E',q:ini,data:today(),obs:'Estoque inicial'})}save();render()},0,id&&DONO()&&(()=>{const uso=db.orders.filter(o=>o.items.some(i=>i.pid==id)).map(o=>o.num),uq=db.quotes.filter(q=>q.items.some(i=>i.pid==id)).length;if(uso.length||uq)return toast(`Esta peça está em ${uso.length?'O.S. '+uso.slice(0,3).join(', ')+(uso.length>3?'...':''):''}${uso.length&&uq?' e em ':''}${uq?uq+' orçamento(s)':''}. Não é possível excluir.`);db.prods=PR().filter(x=>x.id!=id);db.movs=MV().filter(m=>m.pid!=id);save();go('stock');toast('Peça excluída')}))}
+ modal(id?'Editar peça':'Nova peça',F,id?p:{un:'un',min:0,...(pre||{})},o=>{o.ean=String(o.ean||'').replace(/\s+/g,'');const ini=+o.ini||0;delete o.ini;if(DONO())o.custo=+o.custo||0;else delete o.custo;o.preco=+o.preco||0;o.min=+o.min||0;if(id)Object.assign(p,o);else{const n={id:uid(),...o};PR().push(n);if(ini>0)MV().push({id:uid(),pid:n.id,tipo:'E',q:ini,data:today(),obs:'Estoque inicial'})}save();render()},0,id&&DONO()&&(()=>{const uso=db.orders.filter(o=>o.items.some(i=>i.pid==id)).map(o=>o.num),uq=db.quotes.filter(q=>q.items.some(i=>i.pid==id)).length;if(uso.length||uq)return toast(`Esta peça está em ${uso.length?'O.S. '+uso.slice(0,3).join(', ')+(uso.length>3?'...':''):''}${uso.length&&uq?' e em ':''}${uq?uq+' orçamento(s)':''}. Não é possível excluir.`);db.prods=PR().filter(x=>x.id!=id);db.movs=MV().filter(m=>m.pid!=id);save();go('stock');toast('Peça excluída')}))}
 function mov(id,tipo){const p=prod(id),en=tipo=='E';
  modal((en?'Entrada':'Saída')+' de estoque: '+p.nome,[['q','Quantidade','number',0,1],['data','Data','date',0,1],...(en?[['custo','Custo unitário (R$, opcional)','number']]:[]),['obs',en?'Fornecedor / nota fiscal':'Motivo / O.S.']],{data:today()},o=>{const n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(!en&&n>qty(id))return toast('Estoque insuficiente: restam '+qty(id));MV().push({id:uid(),pid:id,tipo,q:n,data:o.data,obs:o.obs||''});if(en&&DONO()&&+o.custo>0)p.custo=+o.custo;save();render();toast(en?'Entrada registrada':'Saída registrada')})}
 function addStock(w,os){if(!PR().length)return toast('Cadastre peças na aba Estoque primeiro');
- modal(os?'Peça do estoque (dá baixa)':'Peça do estoque',[['pid','Peça','busca',PR().map(p=>[p.id,p.nome,p.cod||'',`${qty(p.id)} ${p.un} em estoque`,(p.fotos||[])[0]||'']),1],['q','Quantidade','number',0,1]],{q:1},o=>{const p=prod(o.pid),n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(os&&n>qty(p.id))return toast('Estoque insuficiente: restam '+qty(p.id));w.items.push({t:'Peça',d:p.nome,det:p.cod?'Cód. '+p.cod:'',q:n,v:p.preco||0,pid:p.id,...(DONO()?{custo:+p.custo||0}:{}),baixa:!!os});if(os)MV().push({id:uid(),pid:p.id,tipo:'S',q:n,data:today(),obs:'O.S. '+w.num});save();render()})}
+ modal(os?'Peça do estoque (dá baixa)':'Peça do estoque',[['pid','Peça','busca',PR().map(p=>[p.id,p.nome,(p.cod||'')+' '+(p.ean||''),`${qty(p.id)} ${p.un} em estoque`,(p.fotos||[])[0]||'']),1],['q','Quantidade','number',0,1]],{q:1},o=>{const p=prod(o.pid),n=+o.q;if(!(n>0))return toast('Quantidade inválida');if(os&&n>qty(p.id))return toast('Estoque insuficiente: restam '+qty(p.id));w.items.push({t:'Peça',d:p.nome,det:p.cod?'Cód. '+p.cod:'',q:n,v:p.preco||0,pid:p.id,...(DONO()?{custo:+p.custo||0}:{}),baixa:!!os});if(os)MV().push({id:uid(),pid:p.id,tipo:'S',q:n,data:today(),obs:'O.S. '+w.num});save();render()})}
 function rmOS(n){const o=od(S.id),i=o.items[n];if(i.baixa)MV().push({id:uid(),pid:i.pid,tipo:'E',q:i.q,data:today(),obs:'Estorno O.S. '+o.num});o.items.splice(n,1);save();render()}
 /* ---------- PDFs (padrão profissional de oficina) ---------- */
 /* ---------- PDFs (padrão profissional de oficina) ---------- */
@@ -1834,7 +1834,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.18.0';
+const APP_VER='2.19.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1847,6 +1847,7 @@ boot();
 <script src="pedidos.js"></script>
 <script src="financas.js"></script>
 <script src="agenda.js"></script>
+<script src="barras.js"></script>
 <script src="forms.js"></script>
 <script src="ia.js"></script>
 <script src="nav.js"></script>
