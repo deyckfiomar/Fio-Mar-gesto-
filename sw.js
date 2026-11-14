@@ -2,9 +2,9 @@
    Sempre busca a versão mais nova no servidor (GitHub Pages).
    Só usa a cópia guardada no celular quando estiver sem internet.
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.17.1';
+const VERSAO = '2.18.0';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './forms.js', './ia.js', './nav.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './forms.js', './ia.js', './nav.js'];
 
 // bibliotecas de fora com versão fixa (Supabase e PDF): guardadas para o app abrir e gerar PDF sem internet
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];

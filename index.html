@@ -1702,13 +1702,13 @@ function Vvehicles(){const st=S.f.vs||'',q=nrm(S.f.q||'').trim(),V=db.vehicles,O
 function agRow(a){const c=cl(a.cli),v=vh(a.veh),os=a.os&&od(a.os);
  return lcard({c:SC[a.status],dim:a.status=='Cancelado',n:`<span class="lch">${e(a.hora)}</span>${a.dur?' · '+e(a.dur)+' min':''}`,pill:pill(a.status),t:a.veh?e(vlabel(v)):`${e(c.nome||'Sem cliente')} <span class="mb" style="--c:${KA}">Sem veículo</span>`,m:`${e(a.svc||'Serviço não informado')}${a.veh?' · '+e(c.nome||''):''}${a.aviso?' · aviso enviado '+D(a.aviso):''}`,
   f:`${!a.veh&&a.status!='Cancelado'?`<button class="sm" onclick="event.stopPropagation();editAg('${a.id}')">+ Veículo</button>`:''}<button class="sm wa" onclick="event.stopPropagation();waAg('${a.id}')">Avisar</button>${a.status=='Agendado'?`<button class="sm" onclick="event.stopPropagation();setAg('${a.id}','Confirmado')">Confirmar</button>`:''}${a.status!='Cancelado'?`<button class="sm ${os?'':'pr'}" onclick="event.stopPropagation();agOS('${a.id}')">${os?'Abrir O.S. '+e(os.num):'Gerar O.S.'}</button>`:''}`,on:`editAg('${a.id}')`})}
-function Vagenda(){const f=S.f.ag||'prox',t=today(),A=AG().filter(a=>a.status!='Cancelado'),nh=A.filter(a=>a.data==t).length,np=A.filter(a=>a.data>=t).length,na=AG().filter(a=>a.data<t).length;
- let l=aOrd(AG()).filter(a=>f=='hoje'?a.data==t:f=='ant'?a.data<t:a.data>=t);if(f=='ant')l.reverse();
+function Vagenda(){const f=S.f.ag||'prox',t=today(),dsel=S.f.agd||'',A=AG().filter(a=>a.status!='Cancelado'),nh=A.filter(a=>a.data==t).length,np=A.filter(a=>a.data>=t).length,na=AG().filter(a=>a.data<t).length;
+ let l=aOrd(AG()).filter(a=>dsel?a.data==dsel:f=='hoje'?a.data==t:f=='ant'?a.data<t:a.data>=t);if(f=='ant'&&!dsel)l.reverse();
  const days={};l.forEach(a=>(days[a.data]=days[a.data]||[]).push(a));
  const tl=[['hoje','Hoje','clock',plural(nh,'horário','horários'),nh?KB:KM],['prox','Próximos','agenda',String(np),np?KB:KM],['ant','Anteriores','osres',String(na)]];
- return head({ico:'agenda',kick:'Atendimento',title:'Agenda',c:PCOL.agenda,right:`<button class="pr hb" onclick="editAg()">+ Agendar</button>`,acts:`<button class="sm" onclick="go('agsvc')">Serviços da agenda (${SV().length})</button>`})+ftiles(tl,f,'ag')+
+ return head({ico:'agenda',kick:'Atendimento',title:'Agenda',c:PCOL.agenda,right:`<button class="pr hb" onclick="editAg()">+ Agendar</button>`,acts:`<button class="sm" onclick="go('agsvc')">Serviços da agenda (${SV().length})</button>`})+ftiles(tl,dsel?'':f,'ag')+(typeof agStrip=='function'&&f!='ant'?agStrip(dsel||(f=='hoje'?t:'')):'')+(typeof agLivres=='function'&&(dsel||f=='hoje')?agLivres(dsel||t):'')+
  (Object.entries(days).map(([d,x])=>sech(`<span>${e(((s)=>s.charAt(0).toUpperCase()+s.slice(1))(String(dayLbl(d))))}</span>`,plural(x.length,'horário','horários'))+x.map(agRow).join('')).join('')||
-  empty('agenda','Nenhum horário neste filtro.',`<button class="pr" onclick="editAg()">+ Novo agendamento</button>`))}
+  empty('agenda',dsel?'Nenhum horário marcado em '+dayLbl(dsel)+'.':'Nenhum horário neste filtro.',`<button class="pr" onclick="editAg(null${dsel?`,{data:'${dsel}'}`:''})">+ Novo agendamento</button>`))}
 function Vagsvc(){return head({back:"go('agenda')",kick:'Agenda',title:'Serviços',c:PCOL.agenda,right:`<button class="pr hb" onclick="editSvc()">+ Novo</button>`})+
  (SV().map(s=>lcard({c:PCOL.agenda,n:e(s.dur)+' min',v:R(s.preco),t:e(s.nome),m:s.ctrib?'Cód. tributação '+e(s.ctrib):'',on:`editSvc('${s.id}')`})).join('')||empty('agenda','Cadastre os serviços que você agenda. Ex.: diagnóstico com scanner, troca de óleo, revisão de freios.'))}
 
@@ -1834,7 +1834,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.17.1';
+const APP_VER='2.18.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1846,6 +1846,7 @@ boot();
 <script src="avisos.js"></script>
 <script src="pedidos.js"></script>
 <script src="financas.js"></script>
+<script src="agenda.js"></script>
 <script src="forms.js"></script>
 <script src="ia.js"></script>
 <script src="nav.js"></script>
