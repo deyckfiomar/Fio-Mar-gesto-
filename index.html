@@ -191,6 +191,10 @@ body.ok #boot{opacity:0;visibility:hidden;pointer-events:none}
 @keyframes btin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes btst{to{background-position:19.8px 0}}
 @media (prefers-reduced-motion:reduce){#boot .g1,#boot .g2{animation-duration:30s}#boot .bt-bar{animation:none}}
+.osprob{border-left:4px solid var(--hi);padding:10px 14px}.osprob small{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}.osprob p{margin:2px 0 0;font-size:16px;font-weight:600;color:var(--ink)}
+details.osent>summary,details.qterm>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}details.osent>summary small{color:var(--mut)}details.osent[open]>summary,details.qterm[open]>summary{margin-bottom:10px}
+details.osent>summary::after,details.qterm>summary::after,details.fgraf>summary::after{content:'▾';margin-left:auto;color:var(--mut);transition:transform .2s}details[open].osent>summary::after,details[open].qterm>summary::after,details[open].fgraf>summary::after{transform:rotate(180deg)}
+details.fgraf{margin:6px 0 4px}details.fgraf>summary{cursor:pointer;list-style:none;display:flex;align-items:center;padding:12px 16px;border:1px solid var(--ln);border-radius:12px;background:var(--sf);font-weight:700}details.fgraf[open]>summary{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -217,7 +221,7 @@ setTimeout(function(){if(window.bootFim)bootFim()},45000)})();
 <script>
 const $=s=>document.querySelector(s);
 const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const R=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const R=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}).replace(/^-/,'\u2212');
 const D=d=>d?d.split('-').reverse().join('/'):'';
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 const uid=()=>Math.random().toString(36).slice(2,9);
@@ -439,7 +443,7 @@ async function loadPlat(){const el=$('#plat');if(!el||!ADM)return;
 async function aprovarReq(em,nome){const{data,error}=await SB.rpc('fm_aprovar',{p_email:em,p_nome:nome||''});if(error)return toast('Erro: '+error.message);toast('Assinatura aprovada: oficina criada');loadPlat()}
 async function recusarReq(em){const{error}=await SB.from('wab_requests').delete().eq('email',em);if(error)return toast('Erro: '+error.message);loadPlat()}
 async function statusOf(id,st){const{error}=await SB.from('oficinas').update({status:st}).eq('id',id);if(error)return toast('Erro: '+error.message);toast(st=='ativa'?'Oficina liberada':'Oficina bloqueada');loadPlat()}
-function Vcfg(){setTimeout(()=>{loadTeam();loadPlat()},0);return Vcfg0()+'<div id="team"></div>'+(ADM?'<div id="plat"></div>':'')}
+function Vcfg(){setTimeout(()=>{loadTeam();loadPlat()},0);return Vcfg0()+bkpCard()+'<div id="team"></div>'+(ADM?'<div id="plat"></div>':'')}
 async function recheck(){await entra();render();if(PEND&&!REQ)toast('Este e-mail ainda não está em nenhuma oficina');else if(PEND)toast('Pedido ainda em análise')}
 async function signup(){const em=$('#le').value.trim(),pw=$('#lp').value,p2=$('#lp2').value,m=$('#lerr');m.style.color='#C8553A';m.textContent='';
  if(!em||!pw)return m.textContent='Informe e-mail e senha.';
@@ -727,7 +731,7 @@ function Vquote(){const q=S.q,vs=db.vehicles.filter(v=>v.cli==q.cli),ro=q.status
  <div class="card"><table><tr><th>Item</th><th class="n">Qtd</th><th class="n">Total</th><th></th></tr>${q.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(S.q,${n},0)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)} — ${R(i.v)}</small></td><td class="n">${i.q}</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(S.q,${n},0)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();S.q.items.splice(${n},1);render()">×</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">Adicione serviços, peças e mão de obra.</td></tr>'}</table>
  <div class="bar" style="margin-top:10px"><button onclick="addItem(S.q)">Adicionar item</button><button onclick="kits('q')">Kit / serviço pronto</button><button onclick="addStock(S.q,0)">Peça do estoque</button><span class="sp"></span><span class="muted">Total</span><span class="tot" id="qt">${R(sum(q.items,q.desc))}</span></div></div>
  <div class="card"><div class="bar" style="margin:0 0 8px"><b>Fotos do orçamento</b><span class="sp"></span><div class="fbs">${fotoBtns('qFotos([...this.files])')}</div></div><div class="ph">${(q.fotos||[]).map((f,i)=>`<figure><img ${fimg(f.src)} alt="Foto ${i+1}" onclick="verFoto(this.src)"><figcaption><input value="${e(f.obs)}" placeholder="Legenda" onchange="S.q.fotos[${i}].obs=this.value"><button class="sm" style="margin-top:4px" onclick="S.q.fotos.splice(${i},1);render()">Remover</button></figcaption></figure>`).join('')}</div></div>
- <div class="card"><b>Termos de aprovação</b><p class="muted">${TERMOS}</p>${q.aprov?`<p>Aprovado por <b>${e(q.aprov.nome)}</b> em ${D(q.aprov.data)}.</p>`:''}</div>
+ ${q.aprov?`<div class="card" style="border-left:4px solid #2E8B57">Aprovado por <b>${e(q.aprov.nome)}</b> em ${D(q.aprov.data)}.</div>`:''}<details class="card qterm"><summary><b>Termos de aprovação</b> <small class="muted">saem no PDF</small></summary><p class="muted">${TERMOS}</p></details>
  <div class="bar"><button onclick="saveQuote()">Salvar</button><button class="pr" onclick="genPDF(S.q)">Gerar PDF</button>${q.novo||!DONO()?'':'<button class="dg" onclick="confirmDel(this,delQuote)">Excluir</button>'}<button class="wa" onclick="waQuote()">Enviar por WhatsApp</button>${ro?'':`<button onclick="approve()">Registrar aprovação</button>${q.status=='Recusado'?'':`<button onclick="S.q.status='Recusado';saveQuote();render()">Marcar recusado</button>`}`}${ro&&!q.os?`<button class="pr" onclick="makeOS()">Gerar O.S.</button>${typeof qAgenda=='function'?'<button onclick="qAgenda()">Agendar o serviço</button>':''}`:''}${q.os?`<button class="pr" onclick="go('order','${q.os}')">Abrir O.S.</button>`:''}</div>`}
 
 /* ---------- Ordens de serviço ---------- */
@@ -745,12 +749,13 @@ function waOS(){const o=od(S.id),c=cl(o.cli),v=o.veh?vlabel(vh(o.veh)):'';
  waDoc(genOS,o,c.tel,`Olá, ${c.nome}! Tudo bem?\n\nEsse documento é a ordem de serviço Nº ${o.num}${v?' do seu '+v:''}, com os serviços e peças registrados.\nSituação: ${o.status}\nValor total: ${R(oTot(o))}\n\nQualquer dúvida, estou à disposição.\n\n${empNome()}`)}
 function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Resumo'],['diag','Diagnóstico'],['check','Checklist'],['laudo','Laudo'],['fotos','Fotos'],['pag','Pagamento'],...(DONO()?[['nf','Nota fiscal']]:[])];if(!DONO()&&S.tab=='nf')S.tab='resumo';
  let b='';
- if(S.tab=='resumo')b=`<div class="card"><div class="g2"><label>Mecânico responsável<input value="${e(o.mec)}" onchange="U('mec',this.value)"></label><label>Horas de mão de obra<input value="${e(o.horas)}" onchange="U('horas',this.value)"></label></div>
+ if(S.tab=='resumo'){const ok=x=>String(x||'').trim(),rs=[ok(o.mec)&&e(o.mec),ok(o.km)&&e(o.km)+' km',ok(o.comb)&&'tanque '+e(o.comb)].filter(Boolean).join(' · ');
+ b=`${ok(o.problema)?`<div class="card osprob"><small>Problema relatado</small><p>${e(o.problema)}</p></div>`:''}<div class="card"><b>Serviços e peças</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(od(S.id),${n},1)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
+ <div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}<span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>
+ <details class="card osent" ${!ok(o.problema)&&!ok(o.km)?'open':''}><summary><b>Entrada do carro</b><small>${rs||'mecânico, km, combustível, avarias'}</small></summary><div class="g2"><label>Mecânico responsável<input value="${e(o.mec)}" onchange="U('mec',this.value)"></label><label>Horas de mão de obra<input value="${e(o.horas)}" onchange="U('horas',this.value)"></label></div>
  <div class="g2"><label>Km na entrada<input inputmode="numeric" value="${e(o.km||'')}" onchange="U('km',this.value)"></label>${typeof fuelG=='function'?`<div class="lb">Combustível${fuelG(o.comb||'','os')}</div>`:`<label>Combustível<select onchange="U('comb',this.value)">${['','Reserva','1/4','1/2','3/4','Cheio'].map(x=>`<option value="${x}" ${(o.comb||'')==x?'selected':''}>${x||'—'}</option>`).join('')}</select></label>`}</div>
  <label>Avarias na entrada (riscos, amassados)<input value="${e(o.avarias||'')}" onchange="U('avarias',this.value)"></label>
- <label>Problema relatado<textarea onchange="U('problema',this.value)">${e(o.problema)}</textarea></label><label>Peças utilizadas<textarea onchange="U('pecas',this.value)">${e(o.pecas)}</textarea></label></div>
- <div class="card"><b>Serviços autorizados</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Editar item" onclick="event.stopPropagation();editItem(od(S.id),${n},1)">✎</button> <button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
- <div class="bar" style="margin-top:10px">${typeof osOrcBtn=='function'?osOrcBtn(o):''}<button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}<button onclick="genOS(od(S.id))">Gerar PDF da O.S.</button><span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>`;
+ <label>Problema relatado<textarea onchange="U('problema',this.value)">${e(o.problema)}</textarea></label><label>Peças utilizadas<textarea onchange="U('pecas',this.value)">${e(o.pecas)}</textarea></label></details>`}
  if(S.tab=='check')b=`<div class="bar"><button class="pr" onclick="genChecklist(od(S.id))">Gerar PDF do checklist</button></div><div class="card">${CK.map((n,i)=>{const c=o.ck[n]||{};return`<div class="ck"><b>${n}</b><select onchange="ckSet('${n}','s',this.value)">${['—','OK','Atenção','Defeito'].map(x=>`<option ${c.s==x?'selected':''}>${x}</option>`).join('')}</select><input type="text" placeholder="Observação" value="${e(c.obs)}" onchange="ckSet('${n}','obs',this.value)"><div class="fbs">${c.foto?`<img class="ckimg" ${fimg(c.foto)} height="34" alt="foto de ${e(n)}" onclick="verFoto(this.src)">`:''}${fotoBtns(`ckFoto('${n}',this.files[0])`,{ico:1,um:1})}</div></div>`}).join('')}</div>`;
  if(S.tab=='laudo')b=Vlaudo(o);
  if(S.tab=='diag')b=typeof DGrec=='function'?DGrec(o):'';
@@ -889,8 +894,10 @@ const ext=v=>{v=Math.round((+v||0)*100);const rs=Math.floor(v/100),ct=v%100,
   return P.map((x,i)=>i?((x[1]<100||x[1]%100==0)?' e ':' ')+x[0]:x[0]).join('')};
  const a=rs?(rs==1?'um real':g(rs)+(rs%1e6==0?' de reais':' reais')):'',z=ct?(ct==1?'um centavo':g(ct)+' centavos'):'';
  return a&&z?a+' e '+z:(a||z||'zero real')};
+/* no PDF o sinal de menos volta a ser o hífen comum (a fonte do PDF não tem o outro) */
+function pdfMenos(d){const f=x=>typeof x=='string'?x.replace(/\u2212/g,'-'):Array.isArray(x)?x.map(f):x;['text','splitTextToSize','getTextWidth'].forEach(k=>{const o=d[k];if(o)d[k]=function(a,...r){return o.call(this,f(a),...r)}});return d}
 function mkDoc(title,num,meta,opt){
- const c={nome:'Minha oficina',...CFG0,...db.cfg},d=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),W=210,M=14,CW=W-2*M,Z={y:0,d,c,W,M,CW};
+ const c={nome:'Minha oficina',...CFG0,...db.cfg},d=pdfMenos(new window.jspdf.jsPDF({unit:'mm',format:'a4'})),W=210,M=14,CW=W-2*M,Z={y:0,d,c,W,M,CW};
  const tx=Z.tx=(s,x,yy,t={})=>{d.setFont('helvetica',t.b?'bold':'normal');d.setFontSize(t.s||10);d.setTextColor(...(t.c||(t.g?PC.mu:PC.tx)));d.text(String(s),x,yy,t.a?{align:t.a}:undefined)};
  const lines=Z.lines=(s,w,sz,b)=>{d.setFont('helvetica',b?'bold':'normal');d.setFontSize(sz);return d.splitTextToSize(String(s),w)};
  Z.need=h=>{if(Z.y+h>(Z.maxY||278)){d.addPage();Z.y=opt&&opt.custom?18:22;return 1}return 0};
@@ -1142,10 +1149,10 @@ function Vfin(){const P=periodo(),a=aggF(P.ms),b=aggF(P.prev),cm=(P.n<6?monthsBa
  ${kpi('Recebido no período',R(a.rec),'<small class="muted">Pagamentos registrados</small>','#17A2B8')}
  ${kpi('A receber',R(arec),'<small class="muted">Saldo aberto de todas as O.S.</small>','#7F8C8D')}</div>
  ${a.sc?`<div class="card" style="border-left:5px solid #C98200"><b>Atenção:</b> ${a.sc} peça(s) vendida(s) neste período estão sem custo. O lucro pode estar maior do que o real. Informe o custo na peça (aba Estoque) ou ao adicionar o item.</div>`:''}
- <div class="card"><b>Evolução mensal</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Faturamento, lucro bruto e lucro líquido</p>${chMeses(cm)}</div>
+ <details class="fgraf" ${S.f.fgr?'open':''} ontoggle="S.f.fgr=this.open?1:0"><summary>Gráficos do período</summary><div class="card"><b>Evolução mensal</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Faturamento, lucro bruto e lucro líquido</p>${chMeses(cm)}</div>
  <div class="card"><b>Do faturamento ao lucro líquido</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Período selecionado. Lucro bruto = faturamento − custo de peças e terceiros. Lucro líquido = lucro bruto − despesas.</p>${chCascata(a)}</div>
  <div class="g2"><div class="card"><b>Rentabilidade por tipo</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Receita e lucro, antes do desconto</p>${chTipo(a)}</div>
- <div class="card"><b>Despesas por categoria</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Período selecionado</p>${chRosca(a.cats)}</div></div>
+ <div class="card"><b>Despesas por categoria</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Período selecionado</p>${chRosca(a.cats)}</div></div></details>
  `+sech('Lucro por O.S.',ls.length?plural(ls.length,'O.S.','O.S.'):'')+(ls.map(rowOS).join('')||'<p class="muted">Nenhuma O.S. concluída neste período. Ao concluir uma O.S., ela entra aqui com faturamento, custo e margem.</p>')+
  sech('Despesas cadastradas',DP().length?String(DP().length):'')+(DP().slice().sort((x,y)=>y.data.localeCompare(x.data)).map(rowDesp).join('')||'<p class="muted">Cadastre aluguel, energia, salários e outros custos para calcular o lucro líquido.</p>')}
 
@@ -1153,6 +1160,7 @@ function Vfin(){const P=periodo(),a=aggF(P.ms),b=aggF(P.prev),cm=(P.n<6?monthsBa
 /* Modo "sim": simula a autorização no próprio aparelho (sem valor fiscal), para testar o fluxo.
    Modo "api": envia para a função "fiscal" no Supabase, que fala com a Focus NFe usando o certificado A1 cadastrado lá. */
 const NF=()=>db.notas=db.notas||[];
+const usaNF=()=>NF().length>0||Object.keys((db.cfg||{}).fiscal||{}).some(k=>String(db.cfg.fiscal[k]||'').trim());
 const dig=x=>String(x==null?'':x).replace(/\D/g,'');
 const docN=x=>String(x==null?'':x).toUpperCase().replace(/[^0-9A-Z]/g,'');
 const r2=x=>Math.round((+x||0)*100)/100;
@@ -1634,11 +1642,10 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  const sts=s=>O.filter(o=>o.status==s).length;
  return head({ico:'dash',kick:new Date(t0+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}),title:'Painel da oficina',c:PCOL.dash,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Entrada do carro</button>`})+
  `<div class="kts">${K('orders',sts('Em andamento'),'Em andamento',"go('orders',0,0,{st:'Em andamento'})",KA)}${K('vehicles',open.length,'Carros no pátio',"go('patio')",KB)}${K('stock',sts('Aguardando peças'),'Aguardando peças',"go('orders',0,0,{st:'Aguardando peças'})",KR)}
- ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go('orders',0,0,{st:'receber'})",KA)}${DONO()?K('fin',R(fat),'Recebido no mês',"go('fin')",KG):''}${DONO()&&typeof finHoje=='function'?(l=>K('fin',R(l),l<0?'Prejuízo de hoje':'Lucro de hoje',"go('fin',0,0,{fd:'"+t0+"'})",l<0?KR:KG))(finHoje()):''}
- ${K('clock',AT.length,'Horários hoje',"go('agenda',0,0,{ag:'hoje'})",KB)}${K('agenda',A7,'Próximos 7 dias',"go('agenda')",'#17A2B8')}${DONO()?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof fazerHTML=='function'?fazerHTML():'')+
+ ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go('orders',0,0,{st:'receber'})",KA)}${DONO()&&typeof finHoje=='function'?(l=>K('fin',R(l),l<0?'Prejuízo de hoje':'Lucro de hoje',"go('fin',0,0,{fd:'"+t0+"'})",l<0?KR:KG))(finHoje()):''}${DONO()&&entPend().length?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof fazerHTML=='function'?fazerHTML():'')+
  sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
- (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))+
- (DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
+ (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))}
+function bkpCard(){return(DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
 /* ---------- Ordens de serviço ---------- */
 const osFim=o=>['Concluída','Entregue'].includes(o.status),osDeve=o=>oTot(o)-paid(o)>0.005;
@@ -1714,12 +1721,12 @@ function Vagsvc(){return head({back:"go('agenda')",kick:'Agenda',title:'Serviço
 
 /* ---------- Estoque ---------- */
 function Vstock(){const st=S.f.sk||'',q=nrm(S.f.q||'').trim(),P=PR(),semN=p=>dig(p.ncm).length!=8,val=P.reduce((a,p)=>a+Math.max(0,qty(p.id))*(+p.custo||0),0),nl=P.filter(isLow).length,nn=P.filter(semN).length;
- const tl=[['','Todas','stock',plural(P.length,'peça','peças')],['low','Estoque baixo','alert',String(nl),nl?KR:KM],['ncm','Sem NCM','notas',String(nn),nn?KA:KM]];
+ const tl=[['','Todas','stock',plural(P.length,'peça','peças')],['low','Estoque baixo','alert',String(nl),nl?KR:KM],...(usaNF()?[['ncm','Sem NCM','notas',String(nn),nn?KA:KM]]:[])];
  let L=P.filter(p=>!st||(st=='low'?isLow(p):semN(p)));if(q)L=L.filter(p=>nrm([p.nome,p.cod,p.cat,p.ean].join(' ')).includes(q));
  L=L.slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
  return head({ico:'stock',kick:'Peças',title:'Estoque',c:PCOL.stock,right:`<button class="pr hb" onclick="editProd()">+ Nova peça</button>`,sub:hsub(plural(P.length,'peça cadastrada','peças cadastradas'),plural(MV().length,'movimentação','movimentações'),...(DONO()?['Valor em estoque',R(val)]:[])),acts:(typeof pdAbertos=='function'?`<button class="sm pr" onclick="go('peds')">${svgi('pedido')} Pedidos de peças${pdAbertos()?' ('+pdAbertos()+' em aberto)':''}</button>`:'')+(DONO()?`<button class="sm" onclick="go('entradas')">Entrada por nota fiscal</button>`:'')})+
  ftiles(tl,st,'sk')+srch('Buscar peça por nome ou código',S.f.q)+sech(`${st=='low'?'Estoque baixo':st=='ncm'?'Sem NCM (não sai na NF-e)':'Todas as peças'} <span class="muted">(${L.length})</span>`)+
- (lista(L,p=>{const lw=isLow(p);return lcard({c:lw?KR:KG,n:e(p.cod||'Sem código'),pill:semN(p)?mb('Sem NCM',KA):'',v:`<span style="color:${lw?KR:'inherit'}">${qty(p.id)} ${e(p.un)}</span>`,t:(typeof pfThumb=='function'?pfThumb(p):'')+e(p.nome),
+ (lista(L,p=>{const lw=isLow(p);return lcard({c:lw?KR:KG,n:e(p.cod||'Sem código'),pill:semN(p)&&usaNF()?mb('Sem NCM',KA):'',v:`<span style="color:${lw?KR:'inherit'}">${qty(p.id)} ${e(p.un)}</span>`,t:(typeof pfThumb=='function'?pfThumb(p):'')+e(p.nome),
   m:[p.cat&&e(p.cat),'venda '+R(p.preco),DONO()&&'custo '+R(p.custo)].filter(Boolean).join(' · '),f:`${lw?mb('Abaixo do mínimo ('+(+p.min||0)+')',KR):''}<span class="sp"></span><button class="sm" onclick="event.stopPropagation();mov('${p.id}','E')">+ Entrada</button><button class="sm" onclick="event.stopPropagation();mov('${p.id}','S')">− Saída</button>`,on:`go('prod','${p.id}')`})})||
   empty('stock',q?'Nenhuma peça encontrada.':'Nenhuma peça neste filtro.',st||q?'':`<button class="pr" onclick="editProd()">+ Nova peça</button>`))}
 function Vprod(){const p=prod(S.id);if(!p.id)return Vstock();const lw=isLow(p),mg=+p.custo>0?Math.round((p.preco-p.custo)/p.custo*100):0,OR={0:'0 - Nacional',1:'1 - Estrangeira direta',2:'2 - Estrangeira interna'};
@@ -1834,7 +1841,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.19.0';
+const APP_VER='2.20.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
