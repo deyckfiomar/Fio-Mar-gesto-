@@ -102,7 +102,12 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 .recibo h1{text-align:center;border-bottom:3px solid #111;padding-bottom:8px;margin-bottom:14px}
 .recibo td,.recibo th{border-color:#ccc}
 .muted{color:var(--mut)}
-#toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;display:none;z-index:30}
+#toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:max-content;max-width:min(92vw,460px);display:none;align-items:flex-start;gap:10px;padding:11px 14px 11px 12px;border-radius:14px;z-index:60;background:#1f2125;color:#f3f3f1;border:1px solid rgba(255,255,255,.1);border-left:4px solid var(--c,#F5B700);box-shadow:0 10px 28px rgba(0,0,0,.45);font-size:15px;line-height:1.35;font-weight:500;cursor:pointer;animation:tup .22s ease-out;pointer-events:auto}
+#toast .tic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:800 13px/1 system-ui,sans-serif;background:var(--c,#F5B700);color:#141414;margin-top:1px}#toast .ttx{min-width:0;overflow-wrap:anywhere}#toast small{display:block;margin-top:3px;font-size:12px;opacity:.6;font-weight:400}
+#toast.t-ok{--c:#3fb06f}#toast.t-av{--c:#F5B700}#toast.t-erro{--c:#E0553F}#toast.t-in{--c:#5B9BD5}
+:root[data-theme=light] #toast{background:#fff;color:#1b1b1b;border-color:rgba(0,0,0,.1);box-shadow:0 10px 28px rgba(0,0,0,.18)}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]) #toast{background:#fff;color:#1b1b1b;border-color:rgba(0,0,0,.1);box-shadow:0 10px 28px rgba(0,0,0,.18)}}
+@keyframes tup{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 @media (max-width:760px){
 nav .nb{padding:0 12px}nav .nbtn span{display:none}nav .nbtn{padding:8px}nav .nbtn svg{width:18px;height:18px}
 nav a{flex-direction:column;gap:3px;min-width:72px;justify-content:center;padding:9px 8px 10px;font-size:11.5px;text-align:center}nav a svg{width:22px;height:22px}
@@ -465,7 +470,8 @@ async function login(){const em=$('#le').value.trim(),pw=$('#lp').value;$('#lerr
  SES=data.session;await entra();S.v='dash';if(typeof navLogin=='function')navLogin();render()}
 async function doOut(){clearTimeout(TS);if(DIRTY)await push();if(!DIRTY){clearTimeout(TSN);await IDB.del(sk()).catch(()=>{})}SEMDADOS=false;await SB.auth.signOut();SES=null;ADM=false;OF=null;PAPEL='';OFS=null;BLOQ=false;PEND=false;REQ=null;RS.s={v:null,b:null};RS.p={v:null,b:null};CONF=false;DIRTY=false;document.body.classList.remove('colab');db=load();S.v='dash';render()}
 function dlBlob(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();a.remove();toast('PDF baixado')}
-let SAVEN=0,TOASTN=0,TOT=0;function toast(t){TOASTN++;const o=$('#toast');o.textContent=t;o.style.display='block';clearTimeout(TOT);TOT=setTimeout(()=>o.style.display='none',Math.min(6000,2400+String(t).length*25))}
+let SAVEN=0,TOASTN=0,TOT=0;function toast(t,tipo){TOASTN++;const o=$('#toast');t=String(t==null?'':t);if(!tipo)tipo=/^(Erro|Não |Nao |Atenção|Valor maior|Informe|Escolha|Escreva|Quantidade inválida|Falta|Sem )/i.test(t)?'av':/(salv|registrad|adicionad|criad|enviad|copiad|lançad|recebido|guardad|excluíd|atualizad)/i.test(t)?'ok':'';
+ const ic={ok:'✓',av:'!',erro:'×'}[tipo]||'i',[a,...b]=t.split('\n');o.className='t-'+(tipo||'in');o.innerHTML=`<span class="tic">${ic}</span><span class="ttx">${e(a)}${b.length?`<small>${e(b.join(' '))}</small>`:''}</span>`;o.style.display='flex';clearTimeout(TOT);TOT=setTimeout(()=>o.style.display='none',Math.min(7000,2600+t.length*30))}
 const cl=id=>db.clients.find(x=>x.id==id)||{};
 const vh=id=>db.vehicles.find(x=>x.id==id)||{};
 const od=id=>db.orders.find(x=>x.id==id);
@@ -1829,7 +1835,7 @@ function render(keep){RTICK++;setTimeout(fhyd,0);if(!SES)return authView();if(PE
  $('#nav').innerHTML=navHtml();{const ac=$('#nav a.on'),nt=$('#nav .nt');if(ac&&nt)nt.scrollLeft=ac.offsetLeft-(nt.clientWidth-ac.offsetWidth)/2}
  m.innerHTML=V[S.v]();document.querySelectorAll('nav a,.tabs a,.row,.tile,.lc:not(.nc)').forEach(x=>x.tabIndex=0);
  if(keep&&id){const n=[...m.querySelectorAll('input')].find(x=>x.placeholder==id);if(n){n.focus();n.setSelectionRange(pos,pos)}}}
-window.addEventListener('error',ev=>toast('Erro: '+ev.message));
+let ERRT=0;window.addEventListener('error',ev=>{const m=String(ev.message||'');if(!m||/Script error|ResizeObserver/i.test(m))return;console.error(ev.error||m);if(Date.now()-ERRT<3000)return;ERRT=Date.now();toast('Algo deu errado nesta ação. Tente de novo; se repetir, mande um print.\nDetalhe: '+m.replace(/^Uncaught\s*/,'').slice(0,90),'erro')});
 document.addEventListener('keydown',ev=>{if(ev.key=='Escape')closeM();if(ev.key=='Enter'&&ev.target.matches&&ev.target.matches('nav a,.tabs a,.row,.tile,.lc:not(.nc)'))ev.target.click()});
 /* ---------- Instalar como app (PWA) ---------- */
 let INST=null;
@@ -1846,7 +1852,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.23.0';
+const APP_VER='2.23.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

@@ -87,7 +87,7 @@ G.scanTrata=trata;
 
 /* ---------- leitor Bluetooth / USB (age como teclado) ---------- */
 let BUF='',T0=0,TL=0,INI=null,VAL0='';
-document.addEventListener('keydown',ev=>{if(ev.ctrlKey||ev.altKey||ev.metaKey)return;const agora=performance.now(),k=ev.key;
+document.addEventListener('keydown',ev=>{if(ev.ctrlKey||ev.altKey||ev.metaKey)return;const agora=performance.now(),k=typeof ev.key=='string'?ev.key:'';if(!k)return;
  if(k=='Enter'||k=='Tab'){const ok=BUF.length>=6&&(agora-TL)<120&&(TL-T0)/Math.max(1,BUF.length-1)<45;
   if(ok){ev.preventDefault();ev.stopPropagation();const c=BUF,el=document.activeElement;
    if(el&&INI===el&&el.name!='ean'&&!el.closest('.srch')&&'value' in el&&el.value.endsWith(c)){el.value=VAL0;el.dispatchEvent(new Event('input',{bubbles:true}))}

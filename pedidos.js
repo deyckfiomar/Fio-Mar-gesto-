@@ -64,23 +64,27 @@ G.pdFornUsa=b=>{const f=$q('#modal form');if(!f)return;f.forn.value=b.dataset.n;
 /* ---------- peça do pedido (foto + nome) ---------- */
 let PI=null;
 G.pdItem=function(pid,iid,pre){const p=ped(pid);if(!p)return;const i=iid?p.itens.find(x=>x.id==iid):null;PI={pid,iid:iid||null,fotos:[...((i&&i.fotos)||(pre&&pre.fotos)||[])]};const v={q:1,un:'un',...(pre||{}),...(i||{})};
- const OS=db.orders.filter(o=>!osFim(o)).slice().reverse(),nomes=[...new Set([...PR().map(x=>x.nome),...PD().flatMap(x=>x.itens.map(y=>y.nome))].filter(Boolean))].slice(0,300);
+ const fs=[...new Map(PD().filter(x=>x.forn).map(x=>[nrm(x.forn),x])).values()].reverse(),OS=db.orders.filter(o=>!osFim(o)).slice().reverse(),nomes=[...new Set([...PR().map(x=>x.nome),...PD().flatMap(x=>x.itens.map(y=>y.nome))].filter(Boolean))].slice(0,300);
  sheet(i?'Editar peça':'Adicionar peça',`<form class="pdf" autocomplete="off" onsubmit="event.preventDefault();pdItemOk()">
  <small class="muted">Foto da peça (velha, da etiqueta ou do catálogo)</small><div class="pdfa" id="pdfa"></div>
  <div class="fbs" style="margin:0 0 12px">${fotoBtns('pdFoto(this.files)')}</div>
- <label>Nome da peça<input name="nome" list="pdnomes" required value="${e(v.nome||'')}" placeholder="Ex.: Bomba de combustível"></label><datalist id="pdnomes">${nomes.map(x=>`<option value="${e(x)}">`).join('')}</datalist>
+ <label>Nome da peça<input name="nome" list="pdnomes" required value="${e(v.nome||'')}" placeholder="Ex.: Bomba de combustível" onchange="pdNomeEst(this.value)"></label><datalist id="pdnomes">${nomes.map(x=>`<option value="${e(x)}">`).join('')}</datalist>
  <div class="g2 pdg"><label>Quantidade<input name="q" inputmode="decimal" value="${e(v.q)}" required></label><label>Unidade<select name="un">${UN.map(u=>`<option ${v.un==u?'selected':''}>${u}</option>`).join('')}</select></label></div>
  <label>Código / referência (se souber)<input name="cod" value="${e(v.cod||'')}" placeholder="Ex.: 7086.30.0011"></label>
  <label>Para qual carro<select name="os" onchange="pdCarro(this.value)"><option value="">Estoque / outro carro</option>${OS.map(o=>`<option value="${o.id}" ${v.os==o.id?'selected':''}>O.S. ${e(o.num)} · ${e(vlabel(vh(o.veh)))}</option>`).join('')}</select></label>
  <label>Carro (modelo, ano, motor)<input name="carro" value="${e(v.carro||'')}" placeholder="Ex.: Onix 2015 1.0"></label>
  <label>Observação<input name="obs" value="${e(v.obs||'')}" placeholder="Ex.: lado esquerdo, com sensor de ABS"></label>
+ <label>Fornecedor <small class="muted" style="font-weight:400">(vale para o pedido Nº ${e(p.n)} inteiro)</small><input name="forn" list="pdforns" value="${e(p.forn||'')}" placeholder="Ex.: Autopeças Central" autocomplete="off"></label><datalist id="pdforns">${fs.map(x=>`<option value="${e(x.forn)}">${e(x.ftel||'')}</option>`).join('')}</datalist>
+ ${fs.length?`<div class="pdsug" style="margin:-6px 0 12px">${fs.slice(0,4).map(x=>`<button type="button" class="sm" onclick="this.closest('form').forn.value=this.dataset.n" data-n="${e(x.forn)}">${e(x.forn)}</button>`).join('')}</div>`:''}
  <div class="bar" style="margin:6px 0 0"><button type="button" onclick="closeM()">Cancelar</button><span class="sp"></span><button class="pr">${i?'Salvar':'Adicionar ao pedido'}</button></div></form>`);pdFotos();
  if(!i&&pre&&pre.os&&!v.carro)pdCarro(pre.os)};
 function pdFotos(){const b=$q('#pdfa');if(!b||!PI)return;b.innerHTML=PI.fotos.map((s,k)=>`<span class="pdfx"><img ${fimg(s)} alt="Foto ${k+1}"><button type="button" aria-label="Tirar foto ${k+1}" onclick="pdFotoDel(${k})">×</button></span>`).join('')||'<span class="muted pdfv">Nenhuma foto ainda</span>';setTimeout(fhyd,0)}
 G.pdFoto=function(fs){if(!PI)return;const L=[...(fs||[])].slice(0,Math.max(0,4-PI.fotos.length));if(!L.length)return toast('Até 4 fotos por peça');L.forEach(f=>picRef(f,r=>{if(!PI)return;PI.fotos.push(r);pdFotos()}))};
 G.pdFotoDel=k=>{if(PI){PI.fotos.splice(k,1);pdFotos()}};
+G.pdNomeEst=function(n){const f=$q('#modal form.pdf'),x=n&&PR().find(y=>nrm(y.nome)==nrm(n));if(!f||!x)return;if(!f.cod.value.trim()&&(x.cod||x.ean))f.cod.value=x.cod||x.ean;if(x.un&&[...f.un.options].some(o=>o.value==x.un))f.un.value=x.un;if(PI&&!PI.fotos.length&&(x.fotos||[]).length){PI.fotos=x.fotos.slice(0,2);pdFotos()}};
 G.pdCarro=function(oid){const f=$q('#modal form.pdf');if(!f)return;const o=oid&&od(oid);if(o){const c=carroOS(o);if(c)f.carro.value=c}};
 G.pdItemOk=function(){const f=$q('#modal form.pdf'),p=PI&&ped(PI.pid);if(!f||!p)return;const q=nBR(f.q.value);if(!(q>0))return toast('Quantidade inválida');
+ if(f.forn){const fn=f.forn.value.trim();if(fn&&nrm(fn)!=nrm(p.forn||'')){p.forn=fn;const ant=PD().find(x=>x!==p&&x.ftel&&nrm(x.forn||'')==nrm(fn));if(ant)p.ftel=ant.ftel;else if(!p.ftel)p.ftel=''}else if(!fn&&p.forn)p.forn=''}
  const o={nome:f.nome.value.trim(),q,un:f.un.value,cod:f.cod.value.trim(),os:f.os.value||'',carro:f.carro.value.trim(),obs:f.obs.value.trim(),fotos:PI.fotos.slice()};if(!o.nome)return toast('Escreva o nome da peça');
  if(PI.iid){const i=p.itens.find(x=>x.id==PI.iid);Object.assign(i,o)}else{const pr=PR().find(x=>nrm(x.nome)==nrm(o.nome));p.itens.push({id:uid(),...o,rec:0,...(pr?{pid:pr.id}:{})})}
  const volta=PI.volta;PI=null;save();closeM();render();toast(volta?'Peça adicionada ao pedido Nº '+p.n:'Peça salva no pedido')};
