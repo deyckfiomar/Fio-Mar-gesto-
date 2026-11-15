@@ -41,7 +41,7 @@ function bolha(m,ult){if(m.papel=='assistant'){const A=parteApp(m.texto);return`
  return`<div class="iam ia-u">${dados?`<span class="iachip">${svgi('osdiag')} ${/atualizados/.test(t)?'Dados atualizados do caso enviados':'Dados do caso enviados'}</span>`:''}${p?`<p>${p.includes(SUG)?'<b>Não achei o defeito.</b> Qual é o mais provável e o que falta testar?':esc(p.replace(/^Pergunta do mecânico: /,''))}</p>`:''}</div>`}
 
 /* ---------- botão na página do diagnóstico ---------- */
-G.iaBar=function(o){if(!DONO())return'';if(!SAL)chama({acao:'saldo'}).then(()=>{if(S.v=='diag')render(1)}).catch(()=>{});
+G.iaBar=function(o){if(!DONO())return'';if(!SAL)chama({acao:'saldo'}).then(()=>{if(S.v=='diag')(typeof renderBg=='function'?renderBg():render(1))}).catch(()=>{});
  const k=CK[o.id],fim=o.dg&&o.dg.fim;
  return`<div class="card iabar"><span class="iaic">${svgi('ia')}</span><div class="iatx"><b>Especialista em diagnóstico (IA)</b><small>${k?`Consulta aberta · ${k.perguntas} de ${k.max} perguntas · continuar é grátis`:fim?'Diagnóstico fechado':saldoTxt()}</small></div>
  <button type="button" class="${fim?'':'pr'}" onclick="iaAbre('${o.id}')">${k?'Continuar':fim?'Ver conversa':'Consultar'}</button></div>`};

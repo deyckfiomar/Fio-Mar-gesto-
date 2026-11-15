@@ -37,7 +37,7 @@ function melhora(inp,form){if(inp.dataset.fx)return;inp.dataset.fx=1;
  if(/\(R\$|^(valor|pre[çc]o|custo)\b/i.test(L)||['preco','custo','valor'].includes(n)){
   const custo=n=='custo'||/^custo/i.test(L)||/despesa|conta|compra/.test(tit);
   wrap(inp,custo?'fmoney fcusto':'fmoney fvenda','<span class="fcur">R$</span>');tira(inp,/\s*\(R\$\)\s*$/);if(!inp.placeholder)inp.placeholder='0,00';inp.setAttribute('inputmode','decimal');
-  const fmt=()=>{if(!inp.hasAttribute('data-num'))return;const v=nBR(inp.value);if(inp.value.trim()&&isFinite(v))inp.value=brl(v)};fmt();inp.addEventListener('blur',fmt);inp.addEventListener('input',()=>margem(form));return}
+  const fmt=()=>{if(!inp.hasAttribute('data-num'))return;const v=nBR(inp.value);if(inp.value.trim()&&isFinite(v))inp.value=brl(v)};fmt();inp.addEventListener('blur',fmt);inp.addEventListener('input',()=>margem(grupo(inp,form)));return}
  /* telefone */
  if(ty=='tel'||/^(tel|ctel|ftel|tel1|tel2|fone|celular)$/.test(n)||/telefone|whatsapp/i.test(L)){wrap(inp,'fpre',`<span class="fic">${ico(I.tel)}</span>`);inp.setAttribute('inputmode','tel');if(!inp.placeholder)inp.placeholder='(11) 98888-7777';mascara(inp,mTel);return}
  if(ty=='email'){wrap(inp,'fpre',`<span class="fic">${ico(I.mail)}</span>`);return}
@@ -52,20 +52,29 @@ function melhora(inp,form){if(inp.dataset.fx)return;inp.dataset.fx=1;
  /* quantidade / estoque: − e + */
  if(['q','qtd','min','ini'].includes(n)&&/quantidade|estoque|qtd/i.test(L)||n=='q'){
   const w=wrap(inp,'fstep','<button type="button" class="fsb" aria-label="Diminuir" data-d="-1">−</button>');w.insertAdjacentHTML('beforeend','<button type="button" class="fsb" aria-label="Aumentar" data-d="1">+</button>');inp.setAttribute('inputmode','decimal');
-  w.querySelectorAll('.fsb').forEach(b=>b.onclick=()=>{const v=nBR(inp.value),x=Math.max(0,(isFinite(v)?v:0)+(+b.dataset.d));inp.value=String(+x.toFixed(3)).replace('.',',');inp.dispatchEvent(new Event('input',{bubbles:true}));margem(form)});
-  inp.addEventListener('input',()=>margem(form));return}
+  w.querySelectorAll('.fsb').forEach(b=>b.onclick=()=>{const v=nBR(inp.value),x=Math.max(0,(isFinite(v)?v:0)+(+b.dataset.d));inp.value=String(+x.toFixed(3)).replace('.',',');inp.dispatchEvent(new Event('input',{bubbles:true}));margem(grupo(inp,form))});
+  inp.addEventListener('input',()=>margem(grupo(inp,form)));return}
 }
 /* margem de lucro ao vivo quando o formulário tem custo e venda */
+/* bloco do campo: a linha da peça (quando o formulário tem várias) ou o formulário inteiro */
+const grupo=(inp,form)=>inp.closest('.pdrr,[data-grupo]')||form;
 function margem(form){const c=form.querySelector('[name=custo]'),v=form.querySelector('[name=preco],[name=v]');if(!c||!v)return;
- let b=form.querySelector('.fmar');if(!b){b=document.createElement('div');b.className='fmar';const l=v.closest('label');(l||v).after(b)}
- const cu=nBR(c.value),pv=nBR(v.value);if(!(cu>0)||!(pv>0)){b.innerHTML='<span class="muted">Preencha custo e venda para ver a margem.</span>';b.className='fmar';return}
+ /* "Chegaram as peças": somando numa peça que já existe, compara com o preço de venda dela */
+ const dest=form.querySelector('select[name=dest]'),pe=dest&&dest.value&&dest.value!='novo'&&typeof prod=='function'?prod(dest.value):null;
+ if(dest&&!dest.dataset.fxm){dest.dataset.fxm=1;dest.addEventListener('change',()=>margem(form))}
+ let b=form.querySelector('.fmar');if(!b){b=document.createElement('div');b.className='fmar'}
+ const ond=pe?(c.closest('.g2')||c.closest('label')||c):(v.closest('label')||v);if(b.previousElementSibling!==ond)ond.after(b);
+ if(dest&&!dest.value){b.hidden=true;return}b.hidden=false;
+ const cu=nBR(c.value),pv=pe?(+pe.preco||0):nBR(v.value);if(pe&&!(pv>0)){b.innerHTML='<span class="muted">A peça do estoque está sem preço de venda.</span>';b.className='fmar';return}if(!(cu>0)||!(pv>0)){b.innerHTML='<span class="muted">Preencha custo e venda para ver a margem.</span>';b.className='fmar';return}
  const lu=pv-cu,mg=lu/cu*100;b.className='fmar '+(lu<0?'neg':mg<20?'baixa':'ok');
- b.innerHTML=`${lu<0?'Prejuízo':'Lucro'} de <b>R$ ${brl(Math.abs(lu))}</b> por unidade · margem <b>${Math.round(mg)}%</b>${lu<0?' (venda abaixo do custo)':mg<20?' (margem baixa)':''}`}
+ b.innerHTML=`${pe?'Vendendo a R$ '+brl(pv)+': ':''}${lu<0?'Prejuízo':'Lucro'} de <b>R$ ${brl(Math.abs(lu))}</b> por unidade · margem <b>${Math.round(mg)}%</b>${lu<0?' (venda abaixo do custo)':mg<20?' (margem baixa)':''}`}
 
 function melhoraTudo(root){(root||document).querySelectorAll('#modal form, #modal .md').forEach(form=>{
  /* conserta título de seção que virou campo (ex.: "Dados fiscais (NF-e)") */
  form.querySelectorAll('input[name=h]').forEach(i=>{const l=i.closest('label');if(!l)return;const h=document.createElement('h3');h.className='fsec';h.textContent=lbl(i);l.replaceWith(h)});
- form.querySelectorAll('input,select,textarea').forEach(i=>melhora(i,form));margem(form)})}
+ form.querySelectorAll('input,select,textarea').forEach(i=>melhora(i,form));
+ /* um cálculo de margem para cada bloco que tem custo e venda (ex.: cada peça em "Chegaram as peças") */
+ const G=new Set();form.querySelectorAll('[name=custo]').forEach(c=>G.add(grupo(c,form)));G.forEach(margem)})}
 let T=0;const ob=new MutationObserver(()=>{if(T)return;T=requestAnimationFrame(()=>{T=0;melhoraTudo()})});
 const md=document.getElementById('modal');if(md)ob.observe(md,{childList:true,subtree:true});
 G.fxMelhora=melhoraTudo;
@@ -109,4 +118,15 @@ const st=document.createElement('style');st.textContent=`
 .fsb{flex:none;width:48px;margin:0;padding:0;font-size:22px;font-weight:700;border:1px solid color-mix(in srgb,var(--ln) 70%,var(--mut));background:var(--sf);color:var(--ink)}
 .fsb:first-child{border-radius:9px 0 0 9px}.fsb:last-child{border-radius:0 9px 9px 0}.fsb:active{background:var(--hi);color:#17181A}
 `;document.head.appendChild(st);
+
+/* redesenho em segundo plano (algo terminou de carregar): se a pessoa está digitando, espera ela sair do campo */
+let RBG=0;G.renderBg=function(){const el=document.activeElement;if(el&&/INPUT|TEXTAREA|SELECT/.test(el.tagName)&&!el.closest('#modal')){if(!RBG){RBG=1;el.addEventListener('blur',()=>setTimeout(()=>{RBG=0;if(!/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||''))render(1);else renderBg()},60),{once:true})}return}render(1)};
+/* ---------- teclado aberto: esconde o que fica preso no rodapé e mostra o campo ---------- */
+(function(){const txt=el=>el&&(el.tagName=='TEXTAREA'||el.isContentEditable||(el.tagName=='INPUT'&&!/^(checkbox|radio|button|submit|file|range|color|date|time|datetime-local|month|week)$/i.test(el.type)));
+ let t=0;const liga=v=>{clearTimeout(t);if(v)document.body.classList.add('kbopen');else t=setTimeout(()=>document.body.classList.remove('kbopen'),120)};
+ const mostra=el=>{if(!el||document.activeElement!==el)return;const r=el.getBoundingClientRect(),vh=(window.visualViewport?visualViewport.height:innerHeight);if(r.bottom>vh-12||r.top<70)el.scrollIntoView({block:'center',behavior:'smooth'})};
+ document.addEventListener('focusin',ev=>{if(!txt(ev.target))return;liga(1);const el=ev.target;[150,400,750].forEach(ms=>setTimeout(()=>mostra(el),ms))});
+ document.addEventListener('focusout',ev=>{if(txt(ev.target))liga(0)});
+ if(window.visualViewport)visualViewport.addEventListener('resize',()=>{const el=document.activeElement;if(txt(el))mostra(el)});
+ const st=document.createElement('style');st.textContent=`body.kbopen #bnav,body.kbopen #vzfab,body.kbopen .dg-next,body.kbopen .vzh{display:none!important}body.kbopen{padding-bottom:0!important}`;document.head.appendChild(st)})();
 })(window);

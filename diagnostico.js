@@ -186,7 +186,7 @@ function parseCode(raw){
    Fonte dos títulos: OBDex (CC0, github.com/foerbsnavi/OBDex), traduzidos por regras.
    As causas e os testes são montados pelo componente e pelo tipo de falha. */
 let XB=null,XBload=null;
-function carregaXB(){if(XB||XBload)return XBload;XBload=fetch('codigos-extra.json').then(r=>r.ok?r.json():null).then(j=>{XB=j||{};if(typeof render=='function'&&S&&['order','diag'].includes(S.v)&&!document.querySelector('#modal .ov'))render(1)}).catch(()=>{XBload=null});return XBload}
+function carregaXB(){if(XB||XBload)return XBload;XBload=fetch('codigos-extra.json').then(r=>r.ok?r.json():null).then(j=>{XB=j||{};if(typeof render=='function'&&S&&['order','diag'].includes(S.v)&&!document.querySelector('#modal .ov'))(typeof renderBg=='function'?renderBg():render(1))}).catch(()=>{XBload=null});return XBload}
 setTimeout(carregaXB,1500);
 const CK_EL=['Chicote ou conector (fio rompido, em curto ou com mau contato)'],CK_ECU='Estágio de saída (driver) da ECU';
 /* componente: [nome, causas de falha elétrica, testes elétricos, causas de funcionamento, testes de funcionamento] */
@@ -570,7 +570,7 @@ function vozDG(frase){const o=cur();if(!o||S.v!='diag')return null;const n=norm(
  return null}
 
 const DG={
- popRel(){const o=cur(),t=document.getElementById('poprel');if(!o||!t)return;o.problema=t.value.trim();if(!o.problema)return toast('Escreva o que o cliente relatou');UI.popk='';save();render()},
+ popRel(){const o=cur(),t=document.getElementById('poprel');if(!o||!t)return;o.problema=t.value.trim();UI.poprel='';if(!o.problema)return toast('Escreva o que o cliente relatou');UI.popk='';save();render()},
  popI(k,v){const o=cur();if(!o)return;const P=dgOf(o).pop=dgOf(o).pop||{},I=P.insp=P.insp||{};I[k]=k!='obs'&&I[k]==v?'':v;if(INSP.every(x=>I[x[0]]))UI.popk='';commit(o);if(k!='obs')render()},
  popF(k,v){const o=cur();if(!o)return;const P=dgOf(o).pop=dgOf(o).pop||{};(P.fin=P.fin||{})[k]=v?1:0;commit(o);render()},
  popSet(k,v){const o=cur();if(!o)return;(dgOf(o).pop=dgOf(o).pop||{})[k]=v;commit(o);render()},
@@ -772,7 +772,7 @@ function popSteps(o){const d=dgOf(o),P=d.pop=d.pop&&typeof d.pop=='object'?d.pop
   {k:'fin',t:'Reparo e conferência final',s:'Apagar os códigos, testar de novo e confirmar o reparo',ok:!!(F.apag&&F.test&&d.conf&&d.conf.r=='ok'),res:'Reparo confirmado'}]}
 function popHTML(o){const d=dgOf(o),L=popSteps(o),P=d.pop,n=L.filter(x=>x.ok).length,i=L.findIndex(x=>!x.ok),at=i<0?null:L[i],ab=UI.pop===undefined?false:UI.pop,I=P.insp||{},F=P.fin||{};
  const corpo=x=>{
-  if(x.k=='rel')return`<div class="pop-in"><textarea id="poprel" rows="2" placeholder="Ex.: falha quando esquenta, luz da injeção acende na estrada…">${esc(o.problema||'')}</textarea><button type="button" class="pr sm" onclick="DG.popRel()">Salvar relato</button></div>`;
+  if(x.k=='rel')return`<div class="pop-in"><textarea id="poprel" rows="2" placeholder="Ex.: falha quando esquenta, luz da injeção acende na estrada…" oninput="DG.ui.poprel=this.value">${esc(UI.poprel!=null&&UI.poprel!==''?UI.poprel:(o.problema||''))}</textarea><button type="button" class="pr sm" onclick="DG.popRel()">Salvar relato</button></div>`;
   if(x.k=='insp')return`<div class="pop-insp">${INSP.map(([k,t,h])=>`<div class="pop-ir"><span><b>${t}</b><small>${h}</small></span><span class="dg-seg"><button type="button" data-r="ok" aria-pressed="${I[k]=='ok'}" onclick="DG.popI('${k}','ok')">OK</button><button type="button" data-r="falha" aria-pressed="${I[k]=='at'}" onclick="DG.popI('${k}','at')">Atenção</button></span></div>`).join('')}<input placeholder="Tensão da bateria e observações (opcional)" value="${esc(I.obs||'')}" onchange="DG.popI('obs',this.value)"></div>`;
   if(x.k=='scan')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('sin','dgcode')">Digitar ou fotografar os códigos</button><button type="button" class="sm" onclick="DG.popSet('semcod',1)">Não tem código</button></div>`;
   if(x.k=='sin')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('sin','dgsym')">Escolher os sintomas</button><button type="button" class="sm" onclick="DG.popSet('semsin',1)">Sem sintoma aparente</button></div>`;
