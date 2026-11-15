@@ -395,7 +395,7 @@ function DGtab(o){const d=dgOf(o),st=UI.step[o.id]=curStep(o),done={sin:!!(d.cod
  const nav=`<div class="dg-steps" role="tablist" aria-label="Etapas do diagnóstico">${STEPS.map(([k,l],i)=>`<button type="button" role="tab" aria-selected="${st==k}" class="dg-stp${st==k?' on':done[k]?' ok':''}" onclick="DG.step('${k}')"><b>${done[k]&&st!=k?'✓':i+1}</b><span>${l}</span></button>`).join('')}</div>`;
  return nav+(typeof G.iaBar=='function'?G.iaBar(o):'')+(st=='diag'?stepDiag(o):st=='def'?stepDef(o):stepSin(o))+(st!='sin'&&typeof G.iaAjuda=='function'?G.iaAjuda(o,st):'')}
 function codePrev(o){const p=parseCode(UI.code);
- if(p.empty)return`<span class="muted">Formato: letra + 4 números. Pode digitar só os números (0171) ou com letra O (PO171).</span>`;
+ if(p.empty)return'';
  if(!p.ok)return p.raw.length<5?`<span class="muted">Continue digitando… (${esc(p.raw)})</span>`:`<span class="dg-err">“${esc(p.raw)}” não é um código válido. Exemplo: P0171</span>`;
  const r=lookupV(p.code,o?vOf(o):undefined);return`<b>${p.code}</b> <span>${r?esc(r.t):'Ainda sem descrição. Ao adicionar, você poderá cadastrar a descrição.'}</span> <span class="muted">· toque em Adicionar</span>`}
 function symSug(o){const q=UI.sym;if(!q||norm(q).trim().length<3)return'';const d=dgOf(o);const m=matchSym(q).filter(s=>!d.sin.includes(s.id));
@@ -417,7 +417,8 @@ function stepSin(o){const d=dgOf(o),v=vOf(o),L=lOf(o);
   ${fromQ.length?`<small class="muted">Encontrados no relato</small><div class="dg-sugs">${fromQ.map(s=>`<button type="button" class="dg-sug" onclick="DG.addSym('${s.id}')"><b>+ ${esc(s.t)}</b><small>Toque para adicionar</small></button>`).join('')}</div>`:''}
   <input id="dgsym" placeholder="Descreva: barulho no motor, esquentando…" autocomplete="off" aria-label="Descrever sintoma" value="${esc(UI.sym)}" oninput="DG.sin(this.value)" onkeydown="if(event.key=='Enter'){event.preventDefault();const b=document.querySelector('#dgsug .dg-sug');if(b)b.click()}">
   <div id="dgsug" class="dg-sugs">${symSug(o)}</div>
-  ${SG.map(g=>`<small class="muted dg-gl">${g[0]}</small><div class="dg-chips">${g[1].map(id=>`<button type="button" class="dg-chip" aria-pressed="${d.sin.includes(id)}" onclick="DG.tsym('${id}')">${esc(SYM[id].t)}</button>`).join('')}</div>`).join('')}
+  ${d.sin.length?`<div class="dg-chips dg-sel">${d.sin.filter(id=>SYM[id]).map(id=>`<button type="button" class="dg-chip" aria-pressed="true" title="Tirar" onclick="DG.tsym('${id}')">${esc(SYM[id].t)} ×</button>`).join('')}</div>`:''}
+  <details class="dg-all" ${UI.symAll?'open':''} ontoggle="DG.ui.symAll=this.open"><summary>Escolher na lista de sintomas</summary>${SG.map(g=>`<small class="muted dg-gl">${g[0]}</small><div class="dg-chips">${g[1].map(id=>`<button type="button" class="dg-chip" aria-pressed="${d.sin.includes(id)}" onclick="DG.tsym('${id}')">${esc(SYM[id].t)}</button>`).join('')}</div>`).join('')}</details>
  </div>
  <div class="dg-next"><span class="muted" id="dgab">${abMsg(o)}</span><button type="button" class="pr" onclick="DG.step('diag')">Ver diagnóstico →</button></div>`}
 function codeCard(o,c){const v=vOf(o),r=lookupV(c,v);const tag=r&&r.custom?`<span class="mb" style="--c:${KB}">${r.custom.modelo?'Oficina · '+esc(r.custom.modelo):'Descrição da oficina'}</span>`:r&&r.auto?mb(r.auto=='fab'?'Sugestão automática':'Base ampliada',r.auto=='fab'?KA:KB):'';const en=r&&!r.custom&&r.en?`<small class="muted" style="display:block">SAE: ${esc(r.en)}</small>`:'';
@@ -440,22 +441,23 @@ function stepDiag(o){const d=dgOf(o),av=eqSet(),M=matchCases(o),sug=suggestions(
    <small>Último: ${esc([last.veh&&last.veh.modelo,last.veh&&last.veh.motor].filter(Boolean).join(' '))} · ${D(last.data)}</small>
    <div><button type="button" class="sm pr" onclick="DG.pick(${esc(JSON.stringify(g.def))},${esc(JSON.stringify(g.sis||''))})">É este o defeito</button></div></div>`}).join('')}</div>`:''}
  <div class="card"><div class="dg-h"><b>Causas prováveis</b><small class="muted">da mais para a menos provável</small></div>
-  <ol class="dg-causes">${C.slice(0,8).map(c=>`<li class="${c.hist?'hist':''}"><span><b>${esc(c.t)}</b><small>${c.hist?`Encontrado em ${plural(c.hist,'caso','casos')} da oficina${c.src.length?' · ':''}`:''}${c.src.map(esc).join(' · ')}</small><i style="--w:${Math.round(c.w/mx*100)}%"></i></span><button type="button" class="sm" onclick="DG.pick(${esc(JSON.stringify(c.t))},'')">Este é o defeito</button></li>`).join('')}</ol></div>
+  <ol class="dg-causes">${C.slice(0,UI.cmore?8:3).map(c=>`<li class="${c.hist?'hist':''}"><span><b>${esc(c.t)}</b><small>${c.hist?`Encontrado em ${plural(c.hist,'caso','casos')} da oficina${c.src.length?' · ':''}`:''}${c.src.map(esc).join(' · ')}</small><i style="--w:${Math.round(c.w/mx*100)}%"></i></span><button type="button" class="sm" onclick="DG.pick(${esc(JSON.stringify(c.t))},'')">É este</button></li>`).join('')}</ol>${C.length>3?`<button type="button" class="sm dg-more" onclick="DG.ui.cmore=!DG.ui.cmore;render()">${UI.cmore?'Mostrar menos':'Ver mais '+(Math.min(8,C.length)-3)+' causas'}</button>`:''}</div>
  <div class="card"><div class="dg-h"><b>Testes</b><small class="muted">${reg} de ${can.length} feitos${fal.length?` · <span style="color:${KR}">${fal.length} fora do esperado</span>`:''}</small></div>
   <div class="dg-bar"><i style="width:${can.length?reg/can.length*100:0}%"></i></div>
   ${seg([['todos','Todos'],['pend','Pendentes'],['falha','Fora do esperado']],UI.tf,'_dgtf').replace(/setF\('_dgtf',/g,'DG.tfil(')}
-  ${shown.map(t=>tcard(o,t,sug.get(t),av)).join('')||'<p class="muted">Nenhum teste neste filtro.</p>'}
+  ${(UI.tmore?shown:[...shown.filter(t=>res(d,t)),...shown.filter(t=>!res(d,t))].slice(0,Math.max(5,shown.filter(t=>res(d,t)).length+3))).map(t=>tcard(o,t,sug.get(t),av)).join('')||'<p class="muted">Nenhum teste neste filtro.</p>'}
+  ${(()=>{const n=shown.length-Math.max(5,shown.filter(t=>res(d,t)).length+3);return n>0||UI.tmore&&shown.length>5?`<button type="button" class="sm dg-more" onclick="DG.ui.tmore=!DG.ui.tmore;render()">${UI.tmore?'Mostrar menos testes':'Ver mais '+plural(n,'teste','testes')}</button>`:''})()}
   ${cannot.length?`<details class="dg-miss"><summary>${plural(cannot.length,'teste pede','testes pedem')} equipamento que a oficina não marcou</summary>${cannot.map(t=>tcard(o,t,sug.get(t),av)).join('')}</details>`:''}
   <label>Fazer outro teste</label>${tBusca('add','Digite: compressão, bobina, fumaça, injetor…')}
  </div>
  <div class="dg-next"><span class="muted">${plural(Object.values(d.t).filter(x=>x&&x.r).length,'teste registrado','testes registrados')}</span><button type="button" class="pr" onclick="DG.step('def')">Achei o defeito →</button></div>`}
-function tcard(o,tid,info,av){const t=TESTS[tid],d=dgOf(o),r=d.t[tid]||{},man=d.ext.includes(tid),from=info?info.from:[];
+function tcard(o,tid,info,av){const t=TESTS[tid],d=dgOf(o),r=d.t[tid]||{},man=d.ext.includes(tid),from=info?info.from:[],ab=!!(r.r||r.v||r.o||(UI.top||{})[tid]||(o.fotos||[]).some(f=>f.tid==tid));
  return`<div class="dg-tc${r.r?' r-'+r.r:''}"><div class="dg-th"><b>${esc(t.n)}</b><span class="dg-eqs">${info&&info.hist?`<span class="dg-hb">Confirmou defeito em ${plural(info.hist,'caso','casos')}</span>`:''}${eqLabel(t,av)}</span></div>
   ${from.length?`<small class="muted">Indicado por: ${from.map(esc).join(' · ')}</small>`:''}
   <details><summary>Como fazer e valor esperado</summary><p>${esc(t.como)}</p><p><b>Esperado:</b> ${esc(t.esp)}</p></details>
   <div class="dg-seg" role="group" aria-label="Resultado">${[['ok','OK'],['falha','Fora'],['inc','Inconclusivo']].map(([k,l])=>`<button type="button" data-r="${k}" aria-pressed="${r.r==k}" onclick="DG.res('${tid}','${k}')">${l}</button>`).join('')}</div>
-  <div class="dg-tin"><input placeholder="Valor medido" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"><input placeholder="Observação" value="${esc(r.o)}" onchange="DG.tval('${tid}','o',this.value)" aria-label="Observação"></div>
-  ${tfotos(o,tid)}
+  ${ab?`<div class="dg-tin"><input placeholder="Valor medido" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"><input placeholder="Observação" value="${esc(r.o)}" onchange="DG.tval('${tid}','o',this.value)" aria-label="Observação"></div>
+  ${tfotos(o,tid)}`:`<button type="button" class="dg-tmais" onclick="(DG.ui.top=DG.ui.top||{})['${tid}']=1;render()">+ valor medido, observação ou foto</button>`}
   ${man?`<button type="button" class="sm" onclick="DG.rmTest('${tid}')">Remover teste</button>`:''}</div>`}
 /* busca de teste: digita e aparece */
 const RLB={ok:'OK',falha:'Fora',inc:'Inconclusivo'};
@@ -568,6 +570,11 @@ function vozDG(frase){const o=cur();if(!o||S.v!='diag')return null;const n=norm(
  return null}
 
 const DG={
+ popRel(){const o=cur(),t=document.getElementById('poprel');if(!o||!t)return;o.problema=t.value.trim();if(!o.problema)return toast('Escreva o que o cliente relatou');UI.popk='';save();render()},
+ popI(k,v){const o=cur();if(!o)return;const P=dgOf(o).pop=dgOf(o).pop||{},I=P.insp=P.insp||{};I[k]=k!='obs'&&I[k]==v?'':v;if(INSP.every(x=>I[x[0]]))UI.popk='';commit(o);if(k!='obs')render()},
+ popF(k,v){const o=cur();if(!o)return;const P=dgOf(o).pop=dgOf(o).pop||{};(P.fin=P.fin||{})[k]=v?1:0;commit(o);render()},
+ popSet(k,v){const o=cur();if(!o)return;(dgOf(o).pop=dgOf(o).pop||{})[k]=v;commit(o);render()},
+ popGo(st,foco){const o=cur();if(!o)return;UI.popk='';if(curStep(o)!=st)DG.step(st,1);else render();setTimeout(()=>{const e=foco&&document.getElementById(foco),alvo=e||document.querySelector('.dg-steps');if(alvo){alvo.scrollIntoView({block:'center',behavior:'smooth'});if(e)try{e.focus({preventScroll:true})}catch(x){}}},120)},
  step(k,force){const o=cur();if(!o)return;const st=curStep(o);
   if(st=='sin'&&k!='sin'){const dr=String(UI.code||'').trim(),p=parseCode(dr),d=dgOf(o);
    if(dr&&!p.ok&&!force)return msg({title:'Código de falha inválido',intro:`“${dr}” não é um código válido e não foi adicionado.`,items:['O código tem uma letra e 4 números. Exemplo: P0171','Pode digitar só os números (0171) que a letra P entra sozinha'],okLabel:'Corrigir o código',focus:'dgcode',warn:1,
@@ -750,12 +757,39 @@ function DGrec(o){const d=o.dg,v=vOf(o);
   ${d.tm?`<small class="muted">Tempo de diagnóstico</small><p style="margin:0">${tmTxt(tmMs(d))}</p>`:''}
   ${d.fim?`<p style="margin:8px 0 0">${d.conf&&d.conf.r=='ok'?'<b style="color:'+KG+'">✓ Reparo confirmado em '+D(d.conf.data)+'</b>':'<span class="muted">Reparo ainda não confirmado</span>'}</p><button style="width:100%;margin-top:10px" class="wa" onclick="DG.relOS('${o.id}')">Enviar diagnóstico ao cliente</button>`:''}
   <button style="width:100%;margin-top:10px" class="${d.fim?'':'pr'}" onclick="DG.open('${o.id}')">${d.fim?'Ver no Diagnóstico':'Continuar o diagnóstico'}</button></div>`}
+
+/* ================= POP — Procedimento Operacional Padrão do diagnóstico ================= */
+const INSP=[['bat','Bateria','tensão com o motor desligado (12,4 V ou mais)'],['flu','Óleo e água','nível e aspecto'],['vis','Visual do motor','vazamentos, chicotes, mangueiras, correias'],['pain','Painel','luzes de avaria acesas']];
+function popSteps(o){const d=dgOf(o),P=d.pop=d.pop&&typeof d.pop=='object'?d.pop:{},I=P.insp||{},F=P.fin||{},q=db.quotes.find(x=>x.os==o.id&&x.status!='Recusado');
+ return[
+  {k:'rel',t:'Ouvir o cliente',s:'Anotar o que ele relata e quando acontece',ok:!!String(o.problema||'').trim(),res:String(o.problema||'').trim()},
+  {k:'insp',t:'Inspeção inicial',s:'Bateria, óleo e água, visual do motor, painel',ok:INSP.every(x=>I[x[0]]),res:INSP.filter(x=>I[x[0]]=='at').map(x=>x[1]).join(', ')?'Atenção: '+INSP.filter(x=>I[x[0]]=='at').map(x=>x[1]).join(', '):'Tudo em ordem'},
+  {k:'scan',t:'Ler os códigos no scanner',s:'Anotar códigos e dados do momento da falha',ok:!!(d.cod.length||P.semcod),res:d.cod.length?d.cod.join(', '):'Sem códigos gravados',go:'sin'},
+  {k:'sin',t:'Confirmar os sintomas',s:'Ver o defeito acontecer (teste de rodagem, se preciso)',ok:!!(d.sin.length||P.semsin),res:d.sin.length?d.sin.filter(x=>SYM[x]).map(x=>SYM[x].t).join(', '):'Sem sintoma aparente',go:'sin'},
+  {k:'tes',t:'Fazer os testes indicados',s:'Do mais provável para o menos; registrar cada resultado',ok:Object.values(d.t).some(x=>x&&x.r),res:plural(Object.values(d.t).filter(x=>x&&x.r).length,'teste registrado','testes registrados'),go:'diag'},
+  {k:'def',t:'Fechar o defeito',s:'Causa, como confirmou e a solução',ok:!!d.fim,res:d.def||'',go:'def'},
+  {k:'orc',t:'Orçamento e aprovação do cliente',s:'Só mexer no carro depois de aprovado',ok:!!q&&q.status=='Aprovado',res:q?'Orçamento Nº '+q.n+' · '+q.status:'',orc:1},
+  {k:'fin',t:'Reparo e conferência final',s:'Apagar os códigos, testar de novo e confirmar o reparo',ok:!!(F.apag&&F.test&&d.conf&&d.conf.r=='ok'),res:'Reparo confirmado'}]}
+function popHTML(o){const d=dgOf(o),L=popSteps(o),P=d.pop,n=L.filter(x=>x.ok).length,i=L.findIndex(x=>!x.ok),at=i<0?null:L[i],ab=UI.pop===undefined?false:UI.pop,I=P.insp||{},F=P.fin||{};
+ const corpo=x=>{
+  if(x.k=='rel')return`<div class="pop-in"><textarea id="poprel" rows="2" placeholder="Ex.: falha quando esquenta, luz da injeção acende na estrada…">${esc(o.problema||'')}</textarea><button type="button" class="pr sm" onclick="DG.popRel()">Salvar relato</button></div>`;
+  if(x.k=='insp')return`<div class="pop-insp">${INSP.map(([k,t,h])=>`<div class="pop-ir"><span><b>${t}</b><small>${h}</small></span><span class="dg-seg"><button type="button" data-r="ok" aria-pressed="${I[k]=='ok'}" onclick="DG.popI('${k}','ok')">OK</button><button type="button" data-r="falha" aria-pressed="${I[k]=='at'}" onclick="DG.popI('${k}','at')">Atenção</button></span></div>`).join('')}<input placeholder="Tensão da bateria e observações (opcional)" value="${esc(I.obs||'')}" onchange="DG.popI('obs',this.value)"></div>`;
+  if(x.k=='scan')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('sin','dgcode')">Digitar ou fotografar os códigos</button><button type="button" class="sm" onclick="DG.popSet('semcod',1)">Não tem código</button></div>`;
+  if(x.k=='sin')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('sin','dgsym')">Escolher os sintomas</button><button type="button" class="sm" onclick="DG.popSet('semsin',1)">Sem sintoma aparente</button></div>`;
+  if(x.k=='tes')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('diag')">Ver causas e testes</button></div>`;
+  if(x.k=='def')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.popGo('def')">Registrar o defeito encontrado</button></div>`;
+  if(x.k=='orc')return`<div class="bar pop-b"><button type="button" class="pr sm" onclick="${typeof osOrc=='function'?`osOrc('${o.id}')`:'DG.orc()'}">${x.res?'Abrir o orçamento':'Fazer o orçamento'}</button>${x.res?'':`<button type="button" class="sm" onclick="DG.rel()">Enviar diagnóstico ao cliente</button>`}</div>`;
+  return`<div class="pop-insp"><label class="pop-ck"><input type="checkbox" ${F.apag?'checked':''} onchange="DG.popF('apag',this.checked)"> Códigos apagados no scanner</label><label class="pop-ck"><input type="checkbox" ${F.test?'checked':''} onchange="DG.popF('test',this.checked)"> Testado de novo (rodagem) e o defeito não voltou</label>${d.fim&&!(d.conf&&d.conf.r=='ok')?`<div class="bar pop-b"><button type="button" class="pr sm" onclick="DG.conf('ok')">Reparo confirmado</button><button type="button" class="sm" onclick="DG.conf('falhou')">Não resolveu</button></div>`:''}</div>`};
+ return`<div class="card pop${at?'':' fim'}"><button type="button" class="pop-h" aria-expanded="${ab}" onclick="DG.ui.pop=!${ab};render()"><span class="pop-tt"><small>POP · procedimento padrão</small><b>${at?`Passo ${i+1} de ${L.length}: ${at.t}`:'Procedimento completo'}</b></span><span class="pop-n">${n}/${L.length}</span></button>
+ <div class="pop-bar">${L.map((x,j)=>`<i class="${x.ok?'ok':j==i?'at':''}"></i>`).join('')}</div>
+ ${ab?`<ol class="pop-l">${L.map((x,j)=>`<li class="${x.ok?'ok':j==i?'at':''}"><span class="pop-c">${x.ok?'✓':j+1}</span><div><b>${x.t}</b><small>${x.ok&&x.res?esc(x.res):x.s}</small>${j==i||UI.popk==x.k?corpo(x):x.ok?`<button type="button" class="pop-ed" onclick="DG.ui.popk='${x.k}';render()">rever</button>`:''}</div></li>`).join('')}</ol>`
+  :at?`<small class="pop-s">${at.s}</small>${corpo(at)}`:`<small class="pop-s">Todos os ${L.length} passos foram feitos neste carro.</small>`}</div>`}
 /* página de trabalho dentro do menu Diagnóstico */
 function Vtrab(o){const v=vh(o.veh),c=cl(o.cli),[s,col]=dgInfo(o);
  return`<div class="dg-top"><button type="button" class="sm" onclick="go('diag')">← Diagnósticos</button><span class="sp"></span><button type="button" class="sm" onclick="go('order','${o.id}','diag')">Abrir O.S. ${esc(o.num)}</button></div>
  <div class="card dg-car"><div><b style="font-size:18px">${esc(vlabel(v))}</b><small class="muted" style="display:block">${esc(c.nome||'Sem cliente')} · O.S. ${esc(o.num)}${v.km?' · '+esc(v.km)+' km':''}</small></div>${mb(s,col)}</div>
  ${o.dg&&o.dg.tm?`<div class="dg-tmr"><span>⏱ Tempo de diagnóstico: <b id="dgtm" onclick="DG.tmEdit()">${tmTxt(tmMs(o.dg))}</b></span><span class="sp"></span>${o.dg.fim?'':`<button type="button" class="sm" onclick="DG.tmTog()">${o.dg.tm.on?'Pausar':'Continuar'}</button>`}</div>`:''}
- ${retornoHTML(o)}${histHTML(o)}`+DGtab(o)}
+ ${retornoHTML(o)}${popHTML(o)}${histHTML(o)}`+DGtab(o)}
 
 function Vdiag(){if(S.id){const o0=od(S.id);if(o0)return Vtrab(o0)}
  const k=S.f.dt||'and',O=db.orders.filter(started),and=O.filter(o=>!o.dg.fim);
@@ -842,6 +876,32 @@ const css=`
 .dg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}.dg-h b{font:600 19px "Barlow Condensed",sans-serif}
 .dg-row{display:flex;gap:8px;align-items:stretch}.dg-row input{margin:0;flex:1;min-width:0}.dg-row button{margin:0}
 .dg-code{font:700 20px ui-monospace,Menlo,monospace!important;letter-spacing:.08em;text-transform:uppercase}
+.dg-prev:empty{display:none}
+.dg-sel{margin:8px 0 2px}.dg-all{margin-top:8px;border-top:1px solid var(--ln);padding-top:4px}.dg-all>summary{cursor:pointer;padding:8px 0;font-weight:600;color:var(--mut)}
+.dg-more{display:block;width:100%;margin:8px 0 0;border-style:dashed}
+.dg-tmais{margin:0;padding:4px 0;border:0;background:none;color:var(--mut);font-size:13px;text-align:left;font-weight:500;text-decoration:underline dotted;min-height:32px}
+.dg-tc{gap:5px;padding:10px 12px}.dg-causes li{padding:7px 10px}
+.iabar{padding:8px 12px!important}.iabar .iatx b{font-size:14.5px}.iabar .iaic{width:34px;height:34px}.iabar button{padding:6px 12px;min-height:38px}
+.pop{padding:0;overflow:hidden;border-left:5px solid var(--hi)}.pop.fim{border-left-color:#2E8B57}
+.pop-h{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:11px 14px 8px;border:0;border-radius:0;background:none;color:var(--ink);text-align:left}
+.pop-tt{flex:1;min-width:0}.pop-tt small{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:600}.pop-tt b{display:block;font:700 19px/1.2 "Barlow Condensed","Barlow",sans-serif}
+.pop-n{flex:none;font:700 15px/1 "Barlow Condensed",sans-serif;padding:5px 9px;border-radius:99px;background:color-mix(in srgb,var(--hi) 18%,transparent);color:var(--hi)}.pop.fim .pop-n{background:color-mix(in srgb,#2E8B57 22%,transparent);color:#2E8B57}
+.pop-h::after{content:'▾';color:var(--mut)}.pop-h[aria-expanded=true]::after{transform:rotate(180deg)}
+.pop-bar{display:flex;gap:3px;padding:0 14px}.pop-bar i{flex:1;height:5px;border-radius:3px;background:var(--ln)}.pop-bar i.ok{background:#2E8B57}.pop-bar i.at{background:var(--hi)}
+.pop-s{display:block;padding:8px 14px 0;color:var(--mut);font-size:13.5px}
+.pop>.pop-b,.pop>.pop-in,.pop>.pop-insp{padding:8px 14px 12px}.pop>.pop-s:last-child{padding-bottom:12px}
+.pop-b{margin:0;display:flex;gap:8px;flex-wrap:wrap}.pop-b button{margin:0}
+.pop-in{display:grid;gap:8px}.pop-in textarea{margin:0}.pop-in button{justify-self:start;margin:0}
+.pop-insp{display:grid;gap:8px}.pop-insp input:not([type=checkbox]){margin:0}
+.pop-ir{display:flex;align-items:center;gap:10px}.pop-ir>span:first-child{flex:1;min-width:0}.pop-ir b{display:block;font-size:15px}.pop-ir small{display:block;color:var(--mut);font-size:12px}.pop-ir .dg-seg{flex:none;margin:0}
+.pop-ck{display:flex;align-items:center;gap:10px;margin:0;font-weight:500;min-height:36px}.pop-ck input{width:22px;height:22px;margin:0;flex:none}
+.pop-l{list-style:none;margin:0;padding:6px 14px 12px;display:grid;gap:2px}
+.pop-l li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--ln)}.pop-l li:first-child{border-top:0}.pop-l li>div{flex:1;min-width:0}
+.pop-l b{display:block;font-size:15px}.pop-l small{display:block;color:var(--mut);font-size:12.5px;overflow-wrap:anywhere}
+.pop-c{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 13px/1 "Barlow",sans-serif;background:var(--ln);color:var(--mut)}
+.pop-l li.ok .pop-c{background:#2E8B57;color:#fff}.pop-l li.at .pop-c{background:var(--hi);color:#1a1a1a}.pop-l li.ok b{color:var(--mut);font-weight:600}
+.pop-l .pop-b,.pop-l .pop-in,.pop-l .pop-insp{margin-top:8px}
+.pop-ed{margin:2px 0 0;padding:0;border:0;background:none;color:var(--mut);font-size:12.5px;text-decoration:underline dotted;min-height:28px}
 .dg-prev{margin:8px 0 10px;padding:8px 11px;border:1px dashed var(--ln);border-radius:8px;font-size:14px}.dg-prev b{font-family:ui-monospace,Menlo,monospace}
 .dg-err{color:#B4472E;font-weight:600}
 .dg-ro{font:700 15px ui-monospace,Menlo,monospace;padding:5px 9px;border-radius:5px;background:#17181A;color:#F5B700;white-space:nowrap;letter-spacing:.04em}.dg-ro.sm{font-size:12.5px;padding:2px 7px}
