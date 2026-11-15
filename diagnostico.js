@@ -390,6 +390,7 @@ function aprendidos(o){const d=dgOf(o),P=pal(o.problema),m=new Map();
   if(!sc.length&&!ss.length&&!sp.length)return;const why=sc[0]||(ss[0]&&SYM[ss[0]]?SYM[ss[0]].t:'')||('relato com “'+sp[0]+'”');
   ts.forEach(k=>{const a=m.get(k)||{n:0,why:new Set(),fora:0};a.n++;a.why.add(why);if(T[k].r=='falha')a.fora++;m.set(k,a)})});
  return m}
+function meusHTML(){syncT();const L=meus();return`<div class="card"><b>Testes da oficina</b><p class="muted" style="margin:4px 0 10px">Testes que você criou em "Fazer outro teste". Aparecem na busca e como sugestão em carros com defeito parecido.</p>${L.length?L.map(t=>{const n=db.orders.filter(o=>o.dg&&o.dg.t&&o.dg.t[t.id]&&o.dg.t[t.id].r).length;return`<div class="dg-meu"><div><b>${esc(t.n)}</b><small>${n?'usado em '+plural(n,'carro','carros'):'ainda não usado'}${t.esp?' · esperado: '+esc(t.esp):''}</small></div><button type="button" class="sm" onclick="DG.editTeste('${t.id}')">Editar</button><button type="button" class="sm dg" onclick="DG.delTeste('${t.id}')">Excluir</button></div>`}).join(''):'<p class="muted">Nenhum teste criado ainda.</p>'}</div>`}
 function suggestions(o,M){syncT();const d=dgOf(o),v=vOf(o),m=new Map();const add=(t,f)=>{if(!TESTS[t])return;if(!m.has(t))m.set(t,{from:[],hist:0,ord:m.size});const x=m.get(t);if(f&&!x.from.includes(f))x.from.push(f)};
  (M||[]).forEach(g=>g.testes.forEach((n,t)=>{add(t,null);if(m.get(t))m.get(t).hist+=n}));
  d.cod.forEach(c=>{const r=lookupV(c,v);(r?r.tests:['codes']).forEach(t=>add(t,c))});d.sin.forEach(s=>{const y=SYM[s];if(y)y.tests.forEach(t=>add(t,y.t))});
@@ -553,7 +554,7 @@ function relTxt(o){const d=dgOf(o),c=cl(o.cli),v=vh(o.veh),vv=vOf(o),q=db.quotes
  const cods=d.cod.map(x=>{const r=lookupV(x,vv);return'• '+x+(r&&r.t?' — '+r.t:'')}).join('\n');
  return`Olá, ${c.nome||''}! Tudo bem?\n\nSegue o diagnóstico do seu ${vlabel(v)}${o.num?' (O.S. '+o.num+')':''}:\n`+
   (cods?`\n*Códigos de falha*\n${cods}\n`:'')+(d.sin.length?`\n*O que o carro apresentava*\n${d.sin.map(s=>'• '+(SYM[s]?SYM[s].t:s)).join('\n')}\n`:'')+
-  (d.def?`\n*O que encontramos*\n${d.def}\n`:'')+(d.tc&&TESTS[d.tc]||d.tcd?`\n*Como confirmamos*\n${d.tc&&TESTS[d.tc]?TESTS[d.tc].n:''}${d.tc&&TESTS[d.tc]&&d.tcd?': ':''}${d.tcd||''}\n`:'')+
+  (inspTxt(o)?`\n*Inspeção inicial*\n${inspTxt(o).split('\n').map(x=>'• '+x).join('\n')}\n`:'')+(d.def?`\n*O que encontramos*\n${d.def}\n`:'')+(d.tc&&TESTS[d.tc]||d.tcd?`\n*Como confirmamos*\n${d.tc&&TESTS[d.tc]?TESTS[d.tc].n:''}${d.tc&&TESTS[d.tc]&&d.tcd?': ':''}${d.tcd||''}\n`:'')+
   (d.sol?`\n*O que recomendamos*\n${d.sol}\n`:'')+(q?`\nOrçamento Nº ${q.n}: ${R(sum(q.items,q.desc))}\n`:'')+`\nQualquer dúvida, estou à disposição.\n\n${typeof empNome=='function'?empNome():''}`}
 /* 10) confirmação do reparo */
 function confHTML(o){const d=dgOf(o);if(!d.fim)return'';
@@ -620,6 +621,7 @@ const DG={
  tbPick(k,t){UI['tb'+k]='';if(k=='add')return DG.addTest(t);DG.set('tc',t);render();const el=document.getElementById('dgtcd');if(el&&!el.value)el.focus()},
  novoTeste(k){const n=String(UI['tb'+k]||'').trim().replace(/\s+/g,' ');if(n.length<3)return;const t={id:'u'+uid(),n:n[0].toUpperCase()+n.slice(1),como:'',esp:'',em:today()};meus().push(t);syncT();save();toast('Teste criado e salvo na oficina');DG.tbPick(k,t.id)},
  editTeste(id){const t=meus().find(x=>x.id==id);if(!t)return;modal('Teste da oficina',[['n','Nome do teste','text',null,1],['como','Como fazer (opcional)','area'],['esp','Valor ou resultado esperado (opcional)']],t,o=>{if(!String(o.n||'').trim())return toast('Informe o nome do teste');t.n=o.n.trim();t.como=String(o.como||'').trim();t.esp=String(o.esp||'').trim();syncT();save();render()})},
+ delTeste(id){const t=meus().find(x=>x.id==id);if(!t)return;const n=db.orders.filter(o=>o.dg&&o.dg.t&&o.dg.t[id]&&o.dg.t[id].r).length;if(!confirm('Excluir o teste “'+t.n+'”?'+(n?'\n\nEle foi usado em '+plural(n,'carro','carros')+'. O resultado deixa de aparecer nesses diagnósticos.':'')))return;db.dtests=meus().filter(x=>x.id!=id);delete TESTS[id];db.orders.forEach(o=>{if(o.dg&&Array.isArray(o.dg.ext))o.dg.ext=o.dg.ext.filter(x=>x!=id)});save();render();toast('Teste excluído')},
  addTest(t){const o=cur();if(!o||!t)return;const d=dgOf(o);if(!d.ext.includes(t))d.ext.push(t);UI.tf='todos';commit(o);render();toast('Teste adicionado à lista')},
  rmTest(t){const o=cur();if(!o)return;const d=dgOf(o);d.ext=d.ext.filter(x=>x!=t);d.t[t]=null;commit(o);render()},
  pick(def,sis,stay){const o=cur();if(!o)return;const d=dgOf(o);d.def=def;if(sis)d.sis=sis;commit(o);if(stay)render();else DG.step('def')},
@@ -777,6 +779,7 @@ function DGrec(o){const d=o.dg,v=vOf(o);
 
 /* ================= POP — Procedimento Operacional Padrão do diagnóstico ================= */
 const INSP=[['bat','Bateria','tensão com o motor desligado (12,4 V ou mais)'],['flu','Óleo e água','nível e aspecto'],['vis','Visual do motor','vazamentos, chicotes, mangueiras, correias'],['pain','Painel','luzes de avaria acesas']];
+function inspTxt(o,sep){const I=((o.dg||{}).pop||{}).insp||{},L=INSP.filter(x=>I[x[0]]).map(x=>x[1]+': '+(I[x[0]]=='at'?'precisa de atenção':'ok'));if(!L.length)return'';if(String(I.obs||'').trim())L.push('Obs.: '+String(I.obs).trim());return L.join(sep||'\n')}
 function popSteps(o){const d=dgOf(o),P=d.pop=d.pop&&typeof d.pop=='object'?d.pop:{},I=P.insp||{},F=P.fin||{},q=db.quotes.find(x=>x.os==o.id&&x.status!='Recusado');
  return[
   {k:'rel',t:'Ouvir o cliente',s:'Anotar o que ele relata e quando acontece',ok:!!String(o.problema||'').trim(),res:String(o.problema||'').trim()},
@@ -823,7 +826,7 @@ function Vdiag(){if(S.id){const o0=od(S.id);if(o0)return Vtrab(o0)}
   b=`<p class="muted">Descrições de códigos cadastradas pela oficina. Elas são criadas quando você edita a descrição de um código ou escolhe a descrição do scanner na foto.</p>`+(L.map(x=>lcard({c:KB,n:`<span class="dg-ro sm">${esc(x.code)}</span>`,pill:mb(x.modelo?'Só '+esc(x.modelo):'Todos os veículos',KB),t:esc(x.t),m:esc((x.ca||[]).slice(0,3).join(' · ')),f:`<span class="sp"></span><button class="sm dg" onclick="confirmDel(this,()=>{const L=db.dcodes,j=L.findIndex(y=>y.id=='${esc(x.id)}');if(j>=0)L.splice(j,1);save();render()})">Apagar</button>`})).join('')||empty('notas','Nenhum código descrito pela oficina ainda.'))}
  if(k=='val')b=srchIn('Filtrar: bateria, MAP, compressão, óleo…',UI.vq,'DG.vq(this.value)')+`<p class="muted" style="margin:8px 0">Valores típicos para motores gasolina, etanol e flex. Confirme sempre no manual da montadora.</p><div id="dgvals">${valsHTML()}</div>`;
  if(k=='calc'){b=calcHTML();setTimeout(calcAll,0)}
- if(k=='eq'){const s=eqSet(),tx=taxa()||{};b=`<div class="card"><b>Cobrança do diagnóstico</b><p class="muted" style="margin:4px 0 10px">Entra sozinha na O.S. quando o diagnóstico começa (uma vez por O.S.). Deixe 0 para não cobrar.</p>${DONO()?`<div class="g2"><label>Valor (R$)<input id="dgtxv" inputmode="decimal" value="${tx.v!=null?esc(String(tx.v).replace('.',',')):''}" placeholder="150,00"></label><label>Descrição na O.S.<input id="dgtxd" value="${esc(tx.d||'Diagnóstico com scanner')}"></label></div><button class="pr" onclick="DG.taxa()">Salvar</button>`:`<p><b>${tx.v>0?R(tx.v)+' · '+esc(tx.d||''):'Não definida'}</b> <span class="muted">(só o dono altera)</span></p>`}</div>`+`<div class="card"><b>Equipamentos da oficina</b><p class="muted" style="margin:4px 0 10px">Os testes que usam equipamento não marcado vão para o fim da lista no diagnóstico.</p><div class="dg-eqlist">${Object.keys(EQ).map(x=>`<label><input type="checkbox" ${s.has(x)?'checked':''} onchange="DG.eq('${x}',this.checked)">${EQ[x]}</label>`).join('')}</div></div>`}
+ if(k=='eq'){const s=eqSet(),tx=taxa()||{};b=`<div class="card"><b>Cobrança do diagnóstico</b><p class="muted" style="margin:4px 0 10px">Entra sozinha na O.S. quando o diagnóstico começa (uma vez por O.S.). Deixe 0 para não cobrar.</p>${DONO()?`<div class="g2"><label>Valor (R$)<input id="dgtxv" inputmode="decimal" value="${tx.v!=null?esc(String(tx.v).replace('.',',')):''}" placeholder="150,00"></label><label>Descrição na O.S.<input id="dgtxd" value="${esc(tx.d||'Diagnóstico com scanner')}"></label></div><button class="pr" onclick="DG.taxa()">Salvar</button>`:`<p><b>${tx.v>0?R(tx.v)+' · '+esc(tx.d||''):'Não definida'}</b> <span class="muted">(só o dono altera)</span></p>`}</div>`+`<div class="card"><b>Equipamentos da oficina</b><p class="muted" style="margin:4px 0 10px">Os testes que usam equipamento não marcado vão para o fim da lista no diagnóstico.</p><div class="dg-eqlist">${Object.keys(EQ).map(x=>`<label><input type="checkbox" ${s.has(x)?'checked':''} onchange="DG.eq('${x}',this.checked)">${EQ[x]}</label>`).join('')}</div></div>`+meusHTML()}
  return head({ico:'diag',kick:'Motores gasolina, etanol e flex',title:'Diagnóstico',c:DCOL,right:`<button class="pr hb" onclick="DG.novo()">+ Diagnosticar</button>`})+
   `<div class="seg" role="group">${T.map(([x,t])=>`<button type="button" class="${k==x?'on':''}" aria-pressed="${k==x}" onclick="DG.tab('${x}')">${t}</button>`).join('')}</div>`+b}
 const srchIn=(ph,v,fn)=>`<div class="srch">${svgi('search')}<input ${fn.includes('cq')?'id="dgcqi"':''} type="search" placeholder="${ph}" value="${esc(v)}" oninput="${fn}"></div>`;
@@ -894,6 +897,7 @@ const css=`
 .dg-row{display:flex;gap:8px;align-items:stretch}.dg-row input{margin:0;flex:1;min-width:0}.dg-row button{margin:0}
 .dg-code{font:700 20px ui-monospace,Menlo,monospace!important;letter-spacing:.08em;text-transform:uppercase}
 .dg-prev:empty{display:none}
+.dg-meu{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--ln)}.dg-meu>div{flex:1;min-width:0}.dg-meu b{display:block}.dg-meu small{display:block;color:var(--mut);font-size:12.5px}.dg-meu button{margin:0;flex:none}
 .dg-novo{border-style:dashed!important;border-color:var(--hi)!important}.dg-novo b{color:var(--hi)}.dg-apr{color:var(--hi)!important;font-weight:600}
 .dg-sel{margin:8px 0 2px}.dg-all{margin-top:8px;border-top:1px solid var(--ln);padding-top:4px}.dg-all>summary{cursor:pointer;padding:8px 0;font-weight:600;color:var(--mut)}
 .dg-more{display:block;width:100%;margin:8px 0 0;border-style:dashed}
@@ -1022,6 +1026,7 @@ async function genDgPDF(o){if(noLib())return;await fpre(o);const d=dgOf(o),v=vh(
  if(d.cod.length){Z.sec('Códigos de falha');Z.table([{h:'Código',w:.16},{h:'Descrição',w:.6},{h:'Tipo',w:.24}],d.cod.map(c=>{const r=lookupV(c,V);return[c,r?r.t:'Sem descrição',ctype(c)]}))}
  if(d.sin.length)Z.note('Sintomas',d.sin.map(x=>SYM[x]?SYM[x].t:x).join(' · '));
  if(d.ff&&ffTxt(d.ff))Z.note('Freeze frame (momento da falha)',ffTxt(d.ff));
+ if(inspTxt(o))Z.note('Inspeção inicial',inspTxt(o,' · '));
  const T=Object.entries(d.t||{}).filter(([k,x])=>x&&(x.r||x.v||x.o)&&TESTS[k]).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
  Z.sec('Testes realizados ('+T.length+')');
  if(!T.length)Z.note('Testes','Nenhum teste registrado ainda.');

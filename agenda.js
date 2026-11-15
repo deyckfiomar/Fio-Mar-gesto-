@@ -9,11 +9,13 @@ try{if(!ICO.car)ICO.car='<path d="M5 16.5h14M3.5 13l2-5.2A2 2 0 0 1 7.4 6.5h9.2a
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const addD=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return ymd(d)};
 const SEM=['dom','seg','ter','qua','qui','sex','sáb'];
-const H0=8,H1=17; /* horários sugeridos: 08:00 até 17:00 */
+/* horário da oficina (Configurações): padrão 08:00 às 17:00, sábado até 12:00, domingo fechado */
+G.agHor=()=>{const c=db.cfg||{},n=(v,d)=>v==null||v===''||isNaN(+v)?d:+v;return{i:n(c.agIni,8),f:n(c.agFim,17),sab:n(c.agSab,12),dom:n(c.agDom,0)}};
+const faixa=d=>{const H=agHor(),w=new Date(d+'T12:00').getDay(),f=w==0?H.dom:w==6?H.sab:H.f;return f?[H.i,Math.max(H.i,f)]:null},faixaTxt=d=>{const x=faixa(d);return x?'entre '+pad(x[0])+':00 e '+pad(x[1])+':00':'(oficina fechada neste dia)'};
 const agoraMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const ativos=d=>AG().filter(a=>a.data==d&&a.status!='Cancelado');
 const ocupado=(d,h,dur,ign)=>ativos(d).some(x=>x.id!=ign&&mins(x.hora)<mins(h)+(dur||60)&&mins(h)<mins(x.hora)+(+x.dur||60));
-function livres(d,dur,ign){const L=[];for(let h=H0;h<=H1;h++){const hh=pad(h)+':00';if(d==today()&&h*60<=agoraMin())continue;if(!ocupado(d,hh,dur,ign))L.push(hh)}return L}
+function livres(d,dur,ign){const L=[],fx=faixa(d);if(!fx)return L;for(let h=fx[0];h<=fx[1];h++){const hh=pad(h)+':00';if(d==today()&&h*60<=agoraMin())continue;if(!ocupado(d,hh,dur,ign))L.push(hh)}return L}
 const ini=n=>String(n||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'?';
 
 /* ---------- cartão do agendamento ---------- */
@@ -29,7 +31,7 @@ G.agStrip=function(sel){const t=today();let h='';for(let i=0;i<14;i++){const d=a
  return`<div class="agds" role="group" aria-label="Escolher o dia">${h}</div>`};
 G.agDia=function(d){S.f.agd=S.f.agd==d?'':d;render()};
 G.agLivres=function(d){const L=livres(d,60);if(d<today())return'';
- return`<div class="card agfree"><div class="agfh"><b>${L.length?'Horários livres':'Dia cheio'}</b><small>${L.length?'toque para agendar':'nenhum horário livre entre 08:00 e 17:00'}</small></div>${L.length?`<div class="agfl">${L.map(h=>`<button type="button" class="sm agh" onclick="editAg(null,{data:'${d}',hora:'${h}'})">+ ${h}</button>`).join('')}</div>`:''}</div>`};
+ return`<div class="card agfree"><div class="agfh"><b>${L.length?'Horários livres':'Dia cheio'}</b><small>${L.length?'toque para agendar':'nenhum horário livre '+faixaTxt(d)}</small></div>${L.length?`<div class="agfl">${L.map(h=>`<button type="button" class="sm agh" onclick="editAg(null,{data:'${d}',hora:'${h}'})">+ ${h}</button>`).join('')}</div>`:''}</div>`};
 /* trocar de aba (Hoje, Próximos, Anteriores) limpa o dia escolhido */
 const _setF=setF;G.setF=setF=function(k,v){if(k=='ag')S.f.agd='';return _setF(k,v)};
 
@@ -44,7 +46,7 @@ G.editAg=editAg=function(id,pre){_editAg(id,pre);const f=$q('#modal form');if(!f
  /* hora: só as livres no dia escolhido */
  const hl=lab('hora');hl.insertAdjacentHTML('afterend','<div class="agq" id="agqh"></div>');
  const dur=()=>+(f.dur&&nBR(f.dur.value))||(SV().find(s=>s.nome==(f.svc&&f.svc.value))||{}).dur||60;
- const desH=()=>{const L=livres(f.data.value,dur(),id),cur=f.hora.value;$q('#agqh').innerHTML=L.length?`<small class="agql">Livres:</small>`+L.map(h=>`<button type="button" class="agc${cur==h?' on':''}" data-h="${h}">${h}</button>`).join(''):`<small class="agql">${f.data.value<t?'Dia que já passou':'Sem horário livre entre 08:00 e 17:00 neste dia'}</small>`};
+ const desH=()=>{const L=livres(f.data.value,dur(),id),cur=f.hora.value;$q('#agqh').innerHTML=L.length?`<small class="agql">Livres:</small>`+L.map(h=>`<button type="button" class="agc${cur==h?' on':''}" data-h="${h}">${h}</button>`).join(''):`<small class="agql">${f.data.value<t?'Dia que já passou':'Sem horário livre '+faixaTxt(f.data.value)}</small>`};
  $q('#agqd').onclick=ev=>{const b=ev.target.closest('[data-d]');if(!b)return;f.data.value=b.dataset.d;f.data.dispatchEvent(new Event('change',{bubbles:true}));desD();
   const L=livres(f.data.value,dur(),id);if(!id&&L.length&&!L.includes(f.hora.value))f.hora.value=L[0];desH()};
  $q('#agqh').onclick=ev=>{const b=ev.target.closest('[data-h]');if(!b)return;f.hora.value=b.dataset.h;f.hora.dispatchEvent(new Event('change',{bubbles:true}));desH()};

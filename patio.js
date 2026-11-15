@@ -161,7 +161,7 @@ function kcard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),n=d
  <div class="kc1">${plc(v)}<small>O.S. ${e(o.num)}</small><span class="sp"></span>${mb(par?'peça há '+par+(par==1?' dia':' dias'):tempo(o),(par>=3||n>=7)&&o.status!='Concluída'?KR:'')}</div>
  <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}</small><button type="button" class="kmec${o.mec?'':' z'}" onclick="event.stopPropagation();patioMec('${o.id}')">${svgi('stwr')} ${o.mec?e(o.mec):'Escolher mecânico'}</button>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
  <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):mb('Sem itens')}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
- <div class="kca">${av}${b}</div></div>`}
+ <div class="kca">${av}${b}${rest>0.005&&typeof recebe=='function'?`<button type="button" class="rcb" onclick="event.stopPropagation();recebe('${o.id}')">Receber</button>`:''}</div></div>`}
 /* pátio no Painel: quadro (cartões) ou lista, escolha guardada no aparelho */
 const PK='fm_patio',modo=()=>{try{return localStorage.getItem(PK)=='lista'?'lista':'quadro'}catch(x){return'quadro'}};
 G.patioModo=function(m){try{localStorage.setItem(PK,m)}catch(x){}KBX=0;render(1)};
@@ -169,7 +169,7 @@ const naPatio=()=>db.orders.filter(o=>COLS.includes(o.status));
 const porSt=(O,s)=>O.filter(o=>o.status==s).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
 function quadro(O){return`<div class="kbs" role="tablist" aria-label="Situações">${COLS.map((s,i)=>{const n=porSt(O,s).length;return`<button type="button" role="tab" class="${i?'':'on'}${n?'':' z'}" style="--c:${SC[s]}" onclick="kbVai(${i})">${stIco(s)}<span>${s}</span><b>${n}</b></button>`}).join('')}</div>
  <div class="kb" onscroll="kbX(this)">${COLS.map(s=>{const L=porSt(O,s);return`<section class="kbc${L.length?'':' vz'}" style="--c:${SC[s]}" aria-label="${s}"><div class="kbh">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(kcard).join('')||'<div class="kbv">Nenhum carro aqui</div>'}</section>`}).join('')}</div>`}
-function listaP(O){return COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(o=>osCard(o).replace('<div class="lc','<div data-o="'+o.id+'" class="lc')).join('')}`:''}).join('')}
+function listaP(O){return (O.length?'<small class="muted swdica">Arraste o cartão para a esquerda para avançar a situação.</small>':'')+COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(o=>osCard(o).replace('<div class="lc','<div data-o="'+o.id+'" class="lc')).join('')}`:''}).join('')}
 G.patioDash=function(){const O=naPatio(),m=modo(),bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
  return`<div id="patio" class="sech pth"><h2>Carros no pátio${O.length?` <span class="muted">(${O.length})</span>`:''}</h2><div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><button type="button" class="sm" style="margin:0" onclick="go('patio')">Abrir o pátio</button></div>`+
  (O.length?(m=='lista'?listaP(O):quadro(O)):empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))};

@@ -127,6 +127,8 @@ let RBG=0;G.renderBg=function(){const el=document.activeElement;if(el&&/INPUT|TE
  const mostra=el=>{if(!el||document.activeElement!==el)return;const r=el.getBoundingClientRect(),vh=(window.visualViewport?visualViewport.height:innerHeight);if(r.bottom>vh-12||r.top<70)el.scrollIntoView({block:'center',behavior:'smooth'})};
  document.addEventListener('focusin',ev=>{if(!txt(ev.target))return;liga(1);const el=ev.target;[150,400,750].forEach(ms=>setTimeout(()=>mostra(el),ms))});
  document.addEventListener('focusout',ev=>{if(txt(ev.target))liga(0)});
+ /* campo apagado por um redesenho não avisa que perdeu o foco: confere de tempos em tempos */
+ setInterval(()=>{if(document.body.classList.contains('kbopen')&&!txt(document.activeElement))document.body.classList.remove('kbopen')},400);
  if(window.visualViewport)visualViewport.addEventListener('resize',()=>{const el=document.activeElement;if(txt(el))mostra(el)});
  const st=document.createElement('style');st.textContent=`body.kbopen #bnav,body.kbopen #vzfab,body.kbopen .dg-next,body.kbopen .vzh{display:none!important}body.kbopen{padding-bottom:0!important}`;document.head.appendChild(st)})();
 })(window);
