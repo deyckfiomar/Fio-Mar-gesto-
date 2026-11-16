@@ -58,19 +58,21 @@ if(typeof ICO!='undefined'){Object.assign(ICO,{plus:'<path d="M12 5v14M5 12h14"/
 
 /* ---------- 1) menu embaixo ---------- */
 const BN=[['dash','Painel'],['agenda','Agenda'],['plus',''],['diag','Diagnóstico'],['patio','Pátio']];
-const grupo=v=>({veiculo:'vehicles',order:'orders',recibo:'orders',agsvc:'agenda'}[v]||v);
+const grupo=v=>({veiculo:'vehicles',order:'orders',recibo:'orders',agsvc:'agenda',pessoal:'fin',receber:'fin'}[v]||v);
+/* menu de baixo: o dono tem Finanças no lugar do Diagnóstico (o mecânico continua com Diagnóstico) */
+const BNL=()=>BN.map(x=>x[0]=='diag'&&DONO()?['fin','Finanças']:x);
 function bnav(){let b=document.getElementById('bnav');const show=SES&&!PEND&&!BLOQ&&!SEMOF;
  if(!b){b=document.createElement('div');b.id='bnav';b.setAttribute('role','navigation');b.setAttribute('aria-label','Menu principal');document.body.appendChild(b)}
  if(!show){b.innerHTML='';b.style.visibility='hidden';return}b.style.visibility='';const g=grupo(S.v),base=['dash','agenda','diag'];
- b.innerHTML=BN.map(([k,l])=>k=='plus'?`<a class="pl" role="button" aria-label="Novo" onclick="maisAcoes()"><span class="c">${svgi('plus')}</span></a>`:
+ b.innerHTML=BNL().map(([k,l])=>k=='plus'?`<a class="pl" role="button" aria-label="Novo" onclick="maisAcoes()"><span class="c">${svgi('plus')}</span></a>`:
   `<a class="${g==k?'on':''}" onclick="${k=='busca'?'buscaG()':`go('${k}')`}">${svgi(k)}<span>${l}</span></a>`).join('')}
 const _render=render;G.render=render=function(k){_render(k);try{bnav()}catch(x){}};
 const _nav=navHtml;G.navHtml=navHtml=function(){return _nav().replace('<div class="nbr">',`<div class="nbr"><button type="button" class="nbtn pbus" aria-label="Buscar" onclick="buscaG()">${svgi('busca')}<span>Buscar</span></button><button type="button" class="nbtn pmais" onclick="maisAcoes()">${svgi('plus')}<span>Novo</span></button>`)};
-G.menuMais=function(){const L=NAVX().filter(([k])=>!['dash','agenda','diag','patio','out'].includes(k)).sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));
+G.menuMais=function(){const bk=BNL().map(x=>x[0]),L=NAVX().filter(([k])=>!bk.includes(k)&&k!='out').sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));
  sheet('Mais',`<div class="pgrid">${L.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}<button type="button" onclick="closeM();doOut()">${svgi('out')}<span>Sair</span></button></div>`)};
 
 /* ---------- 2) botão "+" ---------- */
-G.maisAcoes=function(){const IR=NAVX().filter(([k])=>!['dash','agenda','diag','patio','out'].includes(k)).sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));const A=[['entrada','Entrada do carro','closeM();checkin()','big'],['quotes','Orçamento',"closeM();go('quotes');editQuote()"],['agenda','Agendar','closeM();editAg()'],['diag','Diagnosticar','closeM();go(\'diag\');DG.novo()'],['clients','Cliente','closeM();editClient()'],['pedido','Pedido de peças','closeM();pdNovo()'],['vehicles','Veículo','closeM();editVeh()'],...(DONO()?[['fin','Despesa',"closeM();go('fin');editDesp()"]]:[])];
+G.maisAcoes=function(){const bk=BNL().map(x=>x[0]),IR=NAVX().filter(([k])=>!bk.includes(k)&&k!='out').sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));const A=[['entrada','Entrada do carro','closeM();checkin()','big'],['quotes','Orçamento',"closeM();go('quotes');editQuote()"],['agenda','Agendar','closeM();editAg()'],['diag','Diagnosticar','closeM();go(\'diag\');DG.novo()'],['clients','Cliente','closeM();editClient()'],['pedido','Pedido de peças','closeM();pdNovo()'],['vehicles','Veículo','closeM();editVeh()'],...(DONO()?[['fin','Despesa',"closeM();go('fin');editDesp()"]]:[])];
  sheet('O que você quer fazer?',`<small class="psec">Novo</small><div class="pgrid">${A.map(([i,l,f,c])=>`<button type="button" class="${c||''}${c?' pr':''}" onclick="${f}">${svgi(i)}<span>${l}</span></button>`).join('')}</div>
  <small class="psec">Ir para</small><div class="pgrid">${IR.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}</div>`)};
 
