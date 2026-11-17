@@ -1082,8 +1082,11 @@ function editAg(id,pre){
 function agVeh(c){const vs=$('#modal [name=veh]'),L=db.vehicles.filter(v=>v.cli==c);
  vs.innerHTML=c?L.map(v=>`<option value="${e(v.id)}">${e(vlabel(v))}</option>`).join('')+'<option value="">Sem veículo (colocar depois)</option>':'<option value="">Escolha o cliente primeiro</option>';
  vs.disabled=!c;$('#agnv').disabled=!c}
-function editSvc(id){const s=id?SV().find(x=>x.id==id):{dur:60,preco:0};
- modal(id?'Editar serviço':'Novo serviço',[['nome','Nome do serviço','text',0,1],['dur','Duração (min)','number'],['preco','Preço (R$)','number'],['ctrib','Cód. tributação nacional (vazio = padrão)']],s,o=>{o.dur=+o.dur||60;o.preco=+o.preco||0;if(id)Object.assign(s,o);else SV().push({id:uid(),...o});save();render()},0,id&&(()=>{db.svcs=SV().filter(x=>x.id!=id);save();render();toast('Serviço excluído')}))}
+function editSvc(id,cb){const s=id?SV().find(x=>x.id==id):{dur:60,preco:0};
+ modal(id?'Editar serviço':'Novo serviço',[['nome','Nome do serviço','text',0,1],['dur','Duração (min)','number'],['preco','Preço (R$)','number'],['ctrib','Cód. tributação nacional (vazio = padrão)']],s,o=>{o.nome=String(o.nome||'').trim().replace(/\s+/g,' ');o.dur=+o.dur||60;o.preco=+o.preco||0;
+  if(SV().some(x=>x.id!=id&&nrm(x.nome)==nrm(o.nome)))return toast('Já existe um serviço com esse nome');let n=s;
+  if(id){const ant=s.nome;Object.assign(s,o);if(ant&&ant!=s.nome)AG().forEach(a=>{if(a.svc==ant&&a.data>=today())a.svc=s.nome})}else{n={id:uid(),...o};SV().push(n)}
+  save();render();toast(id?'Serviço salvo':'Serviço cadastrado: '+n.nome);if(cb)cb(n)},0,id&&(()=>{db.svcs=SV().filter(x=>x.id!=id);save();render();toast('Serviço excluído');if(cb)cb(null)}))}
 /* ---------- Baixa automática de estoque ---------- */
 function baixaOS(o){let n=0;const falta=[];(o.items||[]).forEach(i=>{if(i.t!='Peça'||!i.pid||i.baixa)return;const p=prod(i.pid),q=+i.q||0;if(!p.id||q<=0)return;
  if(q>qty(p.id))falta.push(p.nome);if(DONO()&&(i.custo==null||i.custo===''))i.custo=+p.custo||0;
@@ -1852,7 +1855,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.25.0';
+const APP_VER='2.25.1';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

@@ -55,16 +55,24 @@ G.editAg=editAg=function(id,pre){_editAg(id,pre);const f=$q('#modal form');if(!f
  if(!id&&!(pre&&pre.hora)){const L=livres(f.data.value,60,id);if(L.length&&!L.includes(f.hora.value))f.hora.value=L[0]}
  desD();desH();
  /* serviço: atalhos com os serviços cadastrados */
- if(f.svc&&f.svc.tagName=='SELECT'&&SV().length){const sl=lab('svc');sl.insertAdjacentHTML('afterend','<div class="agq" id="agqs"></div>');
-  const desS=()=>{$q('#agqs').innerHTML=SV().slice(0,8).map(s=>`<button type="button" class="agc${f.svc.value==s.nome?' on':''}" data-s="${e(s.nome)}">${e(s.nome)}</button>`).join('')};
+ let desS2=null;if(f.svc&&f.svc.tagName=='SELECT'&&SV().length){const sl=lab('svc');sl.insertAdjacentHTML('afterend','<div class="agq" id="agqs"></div>');
+  const desS=desS2=()=>{const q=$q('#agqs');q.innerHTML=SV().slice(0,q.classList.contains('todos')?99:8).map(s=>`<button type="button" class="agc${f.svc.value==s.nome?' on':''}" data-s="${e(s.nome)}">${e(s.nome)}</button>`).join('')};
   $q('#agqs').onclick=ev=>{const b=ev.target.closest('[data-s]');if(!b)return;f.svc.value=f.svc.value==b.dataset.s?'':b.dataset.s;f.svc.dispatchEvent(new Event('change',{bubbles:true}));desS()};
   f.svc.addEventListener('change',desS);desS()}
+ /* serviço: cadastrar um novo ou editar o escolhido sem sair do agendamento */
+ const sl0=lab('svc');if(sl0){const sb=document.createElement('div');sb.className='bar agsb';sb.innerHTML=`<button type="button" class="sm" id="agsn">+ Novo serviço</button><button type="button" class="sm" id="agse">Editar este serviço</button>${SV().length?'<button type="button" class="sm" id="agsl">Ver todos</button>':''}`;
+  ($q('#agqs')||sl0).after(sb);const atual=()=>SV().find(x=>x.nome==f.svc.value),upd=()=>{const b=$q('#agse');if(b)b.hidden=!atual()};
+  const volta=(x,cur)=>editAg(id,x);
+  $q('#agsn').onclick=()=>{const cur=modalVals();viaModal(x=>volta(x,cur),cur,set=>editSvc(null,n=>{if(n)set({svc:n.nome,dur:''})}))};
+  $q('#agse').onclick=()=>{const s=atual();if(!s)return;const cur=modalVals();viaModal(x=>volta(x,cur),cur,set=>editSvc(s.id,n=>set({svc:n?n.nome:'',dur:''})))};
+  const vl=$q('#agsl');if(vl)vl.onclick=()=>{const q=$q('#agqs');if(!q)return;const ab=q.classList.toggle('todos');vl.textContent=ab?'Mostrar menos':'Ver todos';desS2&&desS2()};
+  f.svc.addEventListener('change',upd);upd()}
  /* data e hora lado a lado */
  const g=document.createElement('div');g.className='agdh';dl.before(g);g.append(dl,$q('#agqd'),hl,$q('#agqh'));
  /* duração e situação: menos usados, ficam em "Mais opções" (no agendamento novo) */
  if(!id){const dd=document.createElement('details');dd.className='agmais';dd.innerHTML='<summary>Mais opções: duração e situação</summary>';const L=[lab('dur'),lab('status')].filter(Boolean);if(L.length){L[0].before(dd);L.forEach(x=>dd.append(x))}}
  /* ordem do formulário: cliente, veículo, serviço, dia e hora, observações */
- const sv=lab('svc'),q=$q('#agqs');if(sv){g.before(sv);if(q)g.before(q)}
+ const sv=lab('svc'),q=$q('#agqs'),sb=$q('#modal .agsb');if(sv){g.before(sv);if(q)g.before(q);if(sb)g.before(sb)}
 };
 
 const st=document.createElement('style');st.textContent=`
@@ -89,6 +97,7 @@ const st=document.createElement('style');st.textContent=`
 .agc{margin:0;padding:6px 11px;min-height:36px;border-radius:99px;font-size:14px;font-weight:600;border:1px solid var(--ln);background:transparent;color:var(--ink);font-variant-numeric:tabular-nums}
 .agc.on{background:var(--hi);border-color:var(--hi);color:#1a1a1a}
 .agdh{border:1px solid var(--ln);border-radius:12px;padding:10px 12px 2px;margin:4px 0 12px;background:color-mix(in srgb,var(--hi) 5%,transparent)}
+.agsb{margin:-6px 0 12px}.agsb button{margin:0}
 .agmais{margin:4px 0 12px;border-top:1px solid var(--ln);padding-top:6px}.agmais summary{cursor:pointer;color:var(--mut);font-weight:600;padding:8px 0}
 `;document.head.appendChild(st);
 })(window);
