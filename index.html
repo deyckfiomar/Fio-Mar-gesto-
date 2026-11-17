@@ -1079,7 +1079,8 @@ function editAg(id,pre){
  const vs=$('#modal [name=veh]');vs.required=false;vs.disabled=!a.cli;
  vs.closest('label').insertAdjacentHTML('afterend','<div class="bar" style="margin:-4px 0 12px"><button type="button" class="sm" id="agnv">+ Novo veículo</button></div>');
  const nb=$('#agnv');nb.disabled=!a.cli;
- nb.onclick=()=>{const cur=modalVals();viaModal(x=>editAg(id,x),cur,set=>editVeh(null,v=>set({veh:v.id,cli:v.cli}),{cli:cur.cli}))}}
+ const pm=window.VZ&&VZ.pendMod;if(pm&&a.cli&&!db.vehicles.some(v=>v.cli==a.cli)){nb.textContent='+ Cadastrar '+pm;nb.classList.add('pr')}
+ nb.onclick=()=>{const cur=modalVals(),m=window.VZ&&VZ.pendMod;if(window.VZ)VZ.pendMod='';viaModal(x=>editAg(id,x),cur,set=>editVeh(null,v=>set({veh:v.id,cli:v.cli}),{cli:cur.cli,...(m?{modelo:m}:{})}))}}
 function agVeh(c){const vs=$('#modal [name=veh]'),L=db.vehicles.filter(v=>v.cli==c);
  vs.innerHTML=c?L.map(v=>`<option value="${e(v.id)}">${e(vlabel(v))}</option>`).join('')+'<option value="">Sem veículo (colocar depois)</option>':'<option value="">Escolha o cliente primeiro</option>';
  vs.disabled=!c;$('#agnv').disabled=!c}
@@ -1856,7 +1857,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.25.4';
+const APP_VER='2.25.5';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

@@ -282,9 +282,16 @@ function achaEnt(words, usados, placaInfo) {
   /* "para o cliente Fulano": se não achou no cadastro, avisa com o nome dito e não deixa o nome ir para o serviço */
   for (let i = 0; i < words.length - 1; i++) {
     if (!/^(cliente|senhor|senhora|sr|sra|dona)$/.test(N(words[i]).replace(/[^a-z]/g, ''))) continue;
-    const nm = []; for (let j = i + 1; j < words.length && nm.length < 2; j++) { const k = N(words[j]).replace(/[^a-z]/g, ''); if (!k || LIGA.has(k) || /^\d/.test(words[j])) break; nm.push(j) }
+    const doMod = new Set(vc.flatMap(x => x.us));
+    const nm = []; for (let j = i + 1; j < words.length && nm.length < 3; j++) { const k = N(words[j]).replace(/[^a-z]/g, ''); if (!k || LIGA.has(k) || STOP.has(k) || doMod.has(j) || /^\d/.test(words[j])) break; nm.push(j); if (/[.,!?;:]$/.test(words[j])) break }
     if (!nm.length) continue;
-    if (!r.cli && !r.avisos.some(x => /parecido|modelo/.test(x))) r.avisos.push('Cliente “' + nm.map(j => words[j].replace(/[.,!?;:]+$/, '')).join(' ') + '” não encontrado no cadastro: escolha ou cadastre');
+    const dito = nm.map(j => words[j].replace(/[.,!?;:]+$/, '')).join(' ');
+    if (!r.cli && !r.avisos.some(x => /parecido/.test(x))) {
+      r.nomeCli = dito.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+      r.avisos = r.avisos.filter(x => !/modelo: escolha o cliente/.test(x));
+      if (vc.length && !r.veh) r.modelo = [...new Set(vc[0].us)].sort((a, b) => a - b).map(j => words[j].replace(/[.,!?;:]+$/, '')).join(' ').replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+      r.avisos.push('Cliente “' + r.nomeCli + '” não está cadastrado: toque em “Cadastrar ' + r.nomeCli + '”' + (r.modelo ? ' e depois em “Cadastrar ' + r.modelo + '”' : ''))
+    }
     r.usa.push(i, ...nm); r.nomeDito = true; break
   }
   return r
@@ -409,7 +416,7 @@ function interpreta(frase) {
     if (plInfo && !plInfo.veh) R.avisos.push(plInfo.placa ? 'Placa ' + plInfo.placa + ' não cadastrada' : 'Placa não encontrada');
     if (!ent.cli && !ent.veh && !ent.avisos.length && !ent.nomeDito) R.avisos.push('Cliente não identificado: escolha na lista');
     if (!data && !R.avisos.some(a => /Data inv/.test(a))) R.avisos.push('Data não informada: ficou hoje');
-    return { ...R, tipo, avisos: [...R.avisos, ...ent.avisos], cli: ent.cli, veh: ent.veh, data: data || hoje(), hora: hora || '08:00', svc: sv ? sv.nome : desc, obs: obsLivre || (sv && extra.length >= 2 ? desc : '') }
+    return { ...R, tipo, avisos: [...R.avisos, ...ent.avisos], cli: ent.cli, veh: ent.veh, nomeCli: ent.nomeCli || '', modelo: ent.modelo || '', data: data || hoje(), hora: hora || '08:00', svc: sv ? sv.nome : desc, obs: obsLivre || (sv && extra.length >= 2 ? desc : '') }
   }
 
   if (tipo == 'desp') {
@@ -689,7 +696,8 @@ function faixa(r) {
   (h || f).insertAdjacentHTML(h ? 'afterend' : 'afterbegin', `<div class="vzb">${MIC}<div><b>Você disse:</b> “${esc(r.texto)}”${r.info ? '<br>' + r.info : ''}<br><span class="muted">Confira e toque em Salvar.</span>${av.length ? '<ul>' + av.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : ''}<div class="vzok"><button type="button" class="pr" id="vzsalva">Salvar</button><button type="button" id="vzcorr">Corrigir</button><button type="button" id="vzfala">Falar de novo</button></div></div></div>`);
   /* veio da voz: não abre o teclado; Salvar fica à vista */
   const tira = () => { const a = document.activeElement; if (a && f.contains(a) && a.matches('input,textarea,select')) a.blur() };
-  tira(); setTimeout(tira, 90); setTimeout(tira, 250);
+  const fechaL = () => f.querySelectorAll('.cbl').forEach(l => l.hidden = true);
+  tira(); fechaL(); setTimeout(() => { tira(); fechaL() }, 90); setTimeout(() => { tira(); fechaL() }, 300);
   const sb = f.querySelector('#vzsalva'); if (sb) sb.onclick = () => f.requestSubmit();
   const cb = f.querySelector('#vzcorr'); if (cb) cb.onclick = () => { const x = [...f.querySelectorAll('input:not([type=hidden]),textarea')].find(i => !i.closest('[hidden]') && i.offsetParent); if (x) { x.focus(); try { x.setSelectionRange(x.value.length, x.value.length) } catch (e) { } } };
   const fb = f.querySelector('#vzfala'); if (fb) fb.onclick = () => { if (typeof closeM == 'function') closeM(1); setTimeout(() => { if (typeof abre == 'function') abre() }, 80) }
@@ -712,8 +720,19 @@ function executa(r) {
     case 'cliente': go('clients', 0, 0, { q: (cl(r.cli).nome || '') }); return;
     case 'agenda':
       if (S.v != 'agenda') go('agenda');
+      G.VZ.pendMod = r.modelo || '';
       editAg(null, { cli: r.cli || '', veh: r.veh || '', data: r.data, hora: r.hora, svc: r.svc || '', obs: r.obs || '', status: 'Agendado' });
-      faixa(r); return;
+      faixa(r);
+      if (r.nomeCli && !r.cli) {
+        /* cliente dito mas não cadastrado: deixa o nome na busca e um botão para cadastrar já com o nome */
+        const ci = document.querySelector('#modal .cb .cbi'); if (ci) ci.value = r.nomeCli;
+        const ok = document.querySelector('#modal .vzok'); if (ok) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'pr'; b.textContent = 'Cadastrar ' + r.nomeCli;
+          b.onclick = () => { const cur = modalVals(); viaModal(x => editAg(null, x), cur, set => editClient(null, n => set({ cli: n.id, veh: '' }), { nome: r.nomeCli })) };
+          ok.prepend(b); const sv = ok.querySelector('#vzsalva'); if (sv) sv.classList.remove('pr')
+        }
+      }
+      return;
     case 'desp':
       if (!DONO()) { toast('Apenas o dono lança despesas'); return }
       if (S.v != 'fin') go('fin');
