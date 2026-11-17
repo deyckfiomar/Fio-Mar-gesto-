@@ -204,6 +204,7 @@ details.fgraf{margin:6px 0 4px}details.fgraf>summary{cursor:pointer;list-style:n
 .qbar button{margin:0;flex:none}.qbt{flex:1;min-width:0}.qbt small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}.qbt b{display:block;font:700 22px/1.1 'Barlow Condensed','Barlow',sans-serif;white-space:nowrap}
 body.kbopen .qbar{position:static}
 details.cfgs{margin:0 0 10px;border:1px solid var(--ln);border-radius:12px;background:var(--sf)}details.cfgs>summary{cursor:pointer;list-style:none;display:flex;align-items:center;padding:13px 16px;font-weight:700}details.cfgs>summary::after{content:'▾';margin-left:auto;color:var(--mut)}details.cfgs[open]>summary::after{transform:rotate(180deg)}details.cfgs[open]{padding:0 12px 12px;background:transparent}details.cfgs[open]>summary{padding:13px 4px}details.cfgs .card:last-child{margin-bottom:0}
+.agok{margin:0 2px 16px;padding:10px 14px;border:1px solid var(--line,#333);border-radius:12px;color:var(--mut,#9aa);font-size:15px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1650,14 +1651,14 @@ let RTICK=0,_nfc=null,_nft=-1;function nfCount(id){if(_nft!==RTICK){_nft=RTICK;_
 
 /* ---------- Painel ---------- */
 function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(Date.now()+7*864e5-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
- const AT=aOrd(AG()).filter(a=>a.data==t0&&a.status!='Cancelado'),A7=AG().filter(a=>a.data>=t0&&a.data<=d7&&a.status!='Cancelado').length;
+ const AT=aOrd(AG()).filter(a=>a.data==t0&&!['Cancelado','Concluído'].includes(a.status)),ATok=AG().filter(a=>a.data==t0&&a.status=='Concluído').length,A7=AG().filter(a=>a.data>=t0&&a.data<=d7&&a.status!='Cancelado').length;
  const rec=O.reduce((a,o)=>a+Math.max(0,oTot(o)-paid(o)),0),fat=O.reduce((a,o)=>a+o.pags.filter(p=>(p.data||'').startsWith(m)).reduce((x,p)=>x+(+p.valor||0),0),0),open=O.filter(o=>!osFim(o));
  const K=(ic,num,l,on,c)=>`<button type="button" class="kt" style="--c:${c}" onclick="${on}">${svgi(ic)}<span class="num${String(num).length>5?' sm':''}">${num}</span><span>${l}</span></button>`;
  const sts=s=>O.filter(o=>o.status==s).length;
  return head({ico:'dash',kick:new Date(t0+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}),title:'Painel da oficina',c:PCOL.dash,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Entrada do carro</button>`})+
  `<div class="kts">${K('orders',sts('Em andamento'),'Em andamento',"go('orders',0,0,{st:'Em andamento'})",KA)}${K('vehicles',open.length,'Carros no pátio',"go('patio')",KB)}${K('stock',sts('Aguardando peças'),'Aguardando peças',"go('orders',0,0,{st:'Aguardando peças'})",KR)}
  ${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos aguardando',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${K('ospag',R(rec),'A receber',"go(V.receber?'receber':'orders',0,0,V.receber?{}:{st:'receber'})",KA)}${DONO()&&typeof finHoje=='function'?(l=>K('fin',R(l),l<0?'Prejuízo de hoje':'Lucro de hoje',"go('fin',0,0,{fd:'"+t0+"'})",l<0?KR:KG))(finHoje()):''}${DONO()&&entPend().length?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>`+(typeof dashExtra=='function'?dashExtra():'')+(typeof fazerHTML=='function'?fazerHTML():'')+(typeof retDash=='function'?retDash():'')+
- sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`))+
+ sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||(ATok?'':empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`)))+(ATok?`<p class="agok" onclick="go('agenda')">✓ ${plural(ATok,'atendido hoje','atendidos hoje')}${AT.length?'':' · nenhum pendente'} · <u>ver na agenda</u></p>`:'')+
  (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))}
 function bkpCard(){return(DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
@@ -1855,7 +1856,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.25.1';
+const APP_VER='2.25.2';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
