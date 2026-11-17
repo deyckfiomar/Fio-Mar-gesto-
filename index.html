@@ -140,7 +140,7 @@ main{padding:14px 14px 28px}:root{padding-bottom:0}
 .hb{flex:none;white-space:nowrap;padding:9px 14px;border-radius:9px;margin:0}
 .osh2>div:only-child{flex:1}
 .ftabs{grid-template-columns:repeat(var(--n),1fr)}.ftabs .ost{padding:9px 4px 8px}.ftabs .ost svg{width:20px;height:20px}
-.seg{display:flex;gap:4px;padding:4px;background:var(--sf);border:1px solid var(--ln);border-radius:10px;margin:-4px 0 12px;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
+.seg{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--sf);border:1px solid var(--ln);border-radius:10px;margin:-4px 0 12px;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
 .seg button{flex:1 0 auto;border:0;background:transparent;color:var(--mut);padding:7px 10px;border-radius:7px;margin:0;font-size:13.5px}
 .seg button.on{background:color-mix(in srgb,var(--hi) 15%,var(--sf));color:var(--ink);box-shadow:inset 0 -2px 0 var(--hi)}
 .srch{position:relative;margin-bottom:4px}.srch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--mut);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
@@ -732,7 +732,7 @@ async function waDocShare(){const w=WD;if(!w)return;const f=new File([w.blob],w.
 async function waQuote(){const q=S.q;if(!q.cli)return toast('Escolha ou cadastre o cliente');saveQuote(1);const c=cl(q.cli),v=q.veh?vlabel(vh(q.veh)):'';
  const ok=await waDoc(genPDF,q,c.tel,`Olá, ${c.nome}! Tudo bem?\n\nEsse documento é o orçamento do serviço${v?' do seu '+v:''}, Nº ${q.n}.\nValor total: ${R(sum(q.items,q.desc))}${q.prazo?'\nPrazo: '+q.prazo:''}\n\nFicando de acordo, é só me avisar para darmos andamento. Qualquer dúvida, estou à disposição.\n\n${empNome()}`);
  if(ok&&q.status=='Rascunho'){q.status='Aguardando';saveQuote(1);render()}}
-function Vquote(){const q=S.q,vs=db.vehicles.filter(v=>v.cli==q.cli),ro=q.status=='Aprovado',qo=q.os&&od(q.os);
+function Vquote(){if(!S.q)return Vquotes();const q=S.q,vs=db.vehicles.filter(v=>v.cli==q.cli),ro=q.status=='Aprovado',qo=q.os&&od(q.os);
  return (qo?(()=>{const D=qDif(q,qo);if((q.dg||q.daos)&&q.status!='Aprovado')return`<div class="fbar">${svgi(q.dg?'diag':'oscheck')}<span>Orçamento ${q.dg?'do diagnóstico ':''}da <b>O.S. ${e(qo.num)}</b>. Mande para o cliente; quando ele aprovar, ${q.dg?'os itens entram':'as mudanças que você fizer aqui entram'} na O.S.</span><button class="sm" onclick="go('order','${qo.id}')">Abrir O.S.</button></div>`;return D.tem?`<div class="fbar" style="border-color:#C98200">${svgi('alert')}<span>A <b>O.S. ${e(qo.num)}</b> está diferente deste orçamento: ${R(oTot(qo))} na O.S. e ${R(sum(q.items,q.desc))} aqui.</span><button class="sm pr" onclick="qSync()">Atualizar O.S.</button></div>`:`<div class="fbar">${svgi('oscheck')}<span>Este orçamento virou a <b>O.S. ${e(qo.num)}</b> e está igual a ela. Mudou algo aqui? Ao salvar, a O.S. é atualizada junto.</span><button class="sm" onclick="go('order','${qo.id}')">Abrir O.S.</button></div>`})():'')+head({back:'qBack()',kick:'Orçamento',title:'Nº '+e(q.n),c:SC[q.status],right:pill(q.status),sub:hsub(e(cl(q.cli).nome||'Escolha o cliente'),`${e(q.veh?vlabel(vh(q.veh)):'Sem veículo')}${q.prazo?' · prazo '+e(q.prazo):''}`,'Total',`<span class="qtot">${R(sum(q.items,q.desc))}</span>`),acts:`${q.os?`<span class="sp"></span><button class="sm pr" onclick="go('order','${q.os}')">Abrir O.S.</button>`:''}`})+`
  <div class="card"><div class="g2"><div class="lb"><div class="cbhd"><span>Cliente</span><button type="button" class="sm" onclick="qNovoCli()">+ Novo cliente</button></div>${combo('q-cli',{items:toItems(cliArr()),value:q.cli,ph:'Digite o nome do cliente...',pick:id=>qs('cli',id),novo:t=>qNovoCli(t),novoTxt:'Cadastrar novo cliente'})}</div>
  <div class="lb"><div class="cbhd"><span>Veículo</span><button type="button" class="sm" onclick="qNovoVeh()" ${q.cli?'':'disabled'}>+ Novo veículo</button></div><select onchange="qs('veh',this.value)" ${q.cli?'':'disabled'}>${vs.length?`<option value="" ${q.veh?'':'selected'}>Sem veículo</option>`+vs.map(v=>`<option value="${v.id}" ${v.id==q.veh?'selected':''}>${e(vlabel(v))}</option>`).join(''):`<option value="">${q.cli?'Sem veículo (opcional)':'Escolha o cliente primeiro'}</option>`}</select></div>
@@ -797,7 +797,7 @@ function osTab(k){S.tab=k;render();const t=$('#ostabs'),nv=$('#nav');if(!t)retur
 function waRecibo(){const o=od(S.id),c=cl(o.cli);if(!o.pags.length)return toast('Registre um pagamento antes do recibo');
  waDoc(genRecibo,o,c.tel,`Olá, ${c.nome}! Tudo bem?\n\nEsse documento é o recibo referente ao seu pagamento da O.S. Nº ${o.num}.\nValor recebido: ${R(paid(o))}${oTot(o)-paid(o)>0.005?'\nRestante: '+R(oTot(o)-paid(o)):''}\n\nAgradecemos a confiança!\n\n${empNome()}`)}
 function reciboTxt(o){return`RECIBO DE PAGAMENTO - O.S. ${o.num}\nCliente: ${cl(o.cli).nome}\nVeículo: ${vlabel(vh(o.veh))}\nTotal: ${R(oTot(o))}\nPago: ${R(paid(o))}\nRestante: ${R(oTot(o)-paid(o))}`}
-function Vrecibo(){const o=od(S.id),v=vh(o.veh),c=cl(o.cli);
+function Vrecibo(){if(!od(S.id))return Vorders();const o=od(S.id),v=vh(o.veh),c=cl(o.cli);
  return`<div class="bar"><button onclick="go('order','${o.id}','pag')">Voltar</button><span class="sp"></span><button class="pr" onclick="genRecibo(od(S.id))">Salvar PDF</button><button onclick="copiaTxt(reciboTxt(od(S.id))).then(k=>k?toast('Texto copiado'):modal('Copiar recibo',[['b','Selecione e copie o texto','area']],{b:reciboTxt(od(S.id))},()=>{}))">Copiar texto</button><button class="wa" onclick="waRecibo()">Enviar por WhatsApp</button></div>
  <div class="recibo"><h1>RECIBO DE PAGAMENTO</h1><p><b>${e((db.cfg||{}).nome||'Oficina')}</b><br>O.S. ${o.num} — emitido em ${D(today())}</p>
  <p>Cliente: <b>${e(c.nome)}</b> ${e(c.doc)}<br>Veículo: <b>${e(vlabel(v))}</b> ${e(v.ano)} ${e(v.cor)} — ${e(v.km)} km</p>
@@ -1836,7 +1836,7 @@ function navHtml(){const L=NAVX(),c=db.cfg||{},nm=c.nome||'Fio-Mar',
  <div class="nt">${L.filter(x=>!['out','inst'].includes(x[0])).map(([k,l])=>`<a class="${on(k)?'on':''}" onclick="go('${k}')">${svgi(k)}<span>${l}</span></a>`).join('')}</div></div>`}
 const V={diag:()=>typeof Vdiag=='function'?Vdiag():'<div class="card">Carregando o diagnóstico...</div>',entradas:Ventradas,entrada:Ventrada,notas:Vnotas,dash:Vdash,fin:Vfin,agenda:Vagenda,agsvc:Vagsvc,clients:Vclients,vehicles:Vvehicles,quotes:Vquotes,quote:Vquote,orders:Vorders,order:Vorder,recibo:Vrecibo,cfg:Vcfg,stock:Vstock,prod:Vprod,out:()=>{doOut();return ''}};
 const NAV=[['dash','Painel'],['diag','Diagnóstico'],['patio','Pátio'],['agenda','Agenda'],['clients','Clientes'],['vehicles','Veículos'],['quotes','Orçamentos'],['orders','O.S.'],['notas','Notas'],['entradas','Entradas'],['stock','Estoque'],['fin','Finanças'],['cfg','Oficina'],['out','Sair']];
-function render(keep){RTICK++;setTimeout(fhyd,0);if(!SES)return authView();if(PEND)return pendView();if(BLOQ)return bloqView();if(SEMOF)return semOfView();if(!DONO()&&DONLY.includes(S.v))S.v='dash';const m=$('#main');$('#nav').style.display='';const a=document.activeElement,id=a&&a.placeholder,pos=a&&a.selectionStart;
+function render(keep){RTICK++;setTimeout(fhyd,0);if(!SES)return authView();if(PEND)return pendView();if(BLOQ)return bloqView();if(SEMOF)return semOfView();if(!DONO()&&DONLY.includes(S.v))S.v='dash';if(typeof V[S.v]!='function')S.v='dash';const m=$('#main');$('#nav').style.display='';const a=document.activeElement,id=a&&a.placeholder,pos=a&&a.selectionStart;
  $('#nav').innerHTML=navHtml();{const ac=$('#nav a.on'),nt=$('#nav .nt');if(ac&&nt)nt.scrollLeft=ac.offsetLeft-(nt.clientWidth-ac.offsetWidth)/2}
  m.innerHTML=V[S.v]();document.querySelectorAll('nav a,.tabs a,.row,.tile,.lc:not(.nc)').forEach(x=>x.tabIndex=0);
  if(keep&&id){const n=[...m.querySelectorAll('input')].find(x=>x.placeholder==id);if(n){n.focus();n.setSelectionRange(pos,pos)}}}
@@ -1857,7 +1857,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.26.1';
+const APP_VER='2.26.2';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

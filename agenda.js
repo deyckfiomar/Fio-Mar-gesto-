@@ -16,6 +16,7 @@ const agoraMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const ativos=d=>AG().filter(a=>a.data==d&&a.status!='Cancelado');
 const ocupado=(d,h,dur,ign)=>ativos(d).some(x=>x.id!=ign&&mins(x.hora)<mins(h)+(dur||60)&&mins(h)<mins(x.hora)+(+x.dur||60));
 function livres(d,dur,ign){const L=[],fx=faixa(d);if(!fx)return L;for(let h=fx[0];h<=fx[1];h++){const hh=pad(h)+':00';if(d==today()&&h*60<=agoraMin())continue;if(!ocupado(d,hh,dur,ign))L.push(hh)}return L}
+G.agHorasLivres=livres; /* usado pela voz: hora não dita = primeiro horário livre */
 const ini=n=>String(n||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'?';
 
 /* ---------- cartão do agendamento ---------- */

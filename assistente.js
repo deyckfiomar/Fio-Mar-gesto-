@@ -400,7 +400,13 @@ function interpreta(frase) {
     T.take(/\b(?:por favor\s+)?(?:(?:me\s+)?(?:faz|faca|fazer)\s+(?:um|o)\s+)?(?:agend\w*|marc(?:a|ar|ou|e|ando)|reserv\w*)\b(?:\s+(?:um|uma|o|a)\s+(?:horario|agendamento)\b)?(?:\s+(?:para|pra|de)\b)?/);
     let data = pegaData(T, false), hora = pegaHora(T);
     if (data == 'INV') { data = ''; R.avisos.push('Data inválida: escolha a data') }
-    if (hora == 'INV') { hora = ''; R.avisos.push('Hora inválida: escolha a hora') } else if (!hora) R.avisos.push('Hora não informada: confira');
+    if (hora == 'INV') { hora = ''; R.avisos.push('Hora inválida: escolha a hora') }
+    else if (!hora) {
+      /* sem hora: usa o primeiro horário livre do dia (à tarde, 08:00 de hoje já passou) */
+      const lv = typeof agHorasLivres == 'function' ? agHorasLivres(data || hoje()) : [];
+      if (lv.length) { hora = lv[0]; R.avisos.push('Hora não informada: ficou ' + hora + ', o primeiro horário livre') }
+      else R.avisos.push(typeof agHorasLivres == 'function' ? 'Hora não informada e sem horário livre nesse dia: escolha a hora' : 'Hora não informada: confira');
+    }
     tiraPlaca();
     const W = palavras(T.o), us = new Set(), ent = achaEnt(W, us, plInfo);
     ent.usa.forEach(i => us.add(i));
