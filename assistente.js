@@ -513,7 +513,7 @@ function css() {
 .vzhc .vzo{margin:8px 0;min-height:44px;font-size:16px}
 .vzhd{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;gap:8px}
 .vzh.cancel .vzhd{color:#B4472E;font-weight:600}
-.vzdica{font-size:12.5px;color:var(--mut);margin:-4px 0 10px}
+.vzdica{font-size:12.5px;color:var(--mut);margin:8px 0 10px}
 #modal:not(:empty)~#vzfab,#vz:not(:empty)~#vzfab{display:none}
 body:has(#nav[style*="none"]) #vzfab{display:none}
 #vz .ov{align-items:flex-end;padding:0}
@@ -565,7 +565,10 @@ function botaoSegurar(b) {
     const c = (pd.x - ev.clientX) > 80 || (pd.y - ev.clientY) > 120;
     if (c != canc) { canc = c; b.classList.toggle('cancel', c); const h = document.querySelector('.vzh'); if (h) h.classList.toggle('cancel', c); const d = document.getElementById('vzhd'); if (d) d.innerHTML = c ? '<span>Solte para cancelar</span>' : '<span>‹ Arraste para cancelar</span><span>Solte para enviar</span>'; if (c) vibra(15) }
   });
-  const fim = cancelou => { clearTimeout(tm); if (!pd) return; pd = null; b.classList.remove('cancel'); if (hold) { hold = false; terminaSegurar(cancelou || canc) } else if (!cancelou) abre() };
+  /* o toque que abre o painel não pode "vazar" para o que aparece embaixo do dedo
+     (era o que disparava o exemplo "Adiciona 2 velas..." sozinho) */
+  const engole = () => { const f = e => { if (e.target === b && e.detail === 0) return; e.stopPropagation(); e.preventDefault() }; document.addEventListener('click', f, true); setTimeout(() => document.removeEventListener('click', f, true), 500) };
+  const fim = cancelou => { clearTimeout(tm); if (!pd) return; pd = null; engole(); b.classList.remove('cancel'); if (hold) { hold = false; terminaSegurar(cancelou || canc) } else if (!cancelou) abre() };
   b.addEventListener('pointerup', () => fim(false));
   b.addEventListener('pointercancel', () => fim(true));
   b.addEventListener('lostpointercapture', () => { if (pd && hold) fim(false) });
@@ -600,7 +603,8 @@ function abre(semOuvir) {
   <div class="vzo" id="vzout"><i>${SR ? 'Ex.: “agenda troca de óleo do Gol do João amanhã às 9h”' : 'Este navegador não tem reconhecimento de voz. Use o Chrome no Android, ou digite abaixo.'}</i></div>
   ${SR ? `<div class="vzbar"><i id="vzbarra"></i></div><div class="vzp">Enviar depois de ${PAUSAS.map(p => `<button type="button" class="sm${p == PAUSA ? ' on' : ''}" onclick="VZ.pausa(${p},this)">${p / 1000} s</button>`).join('')} de silêncio</div>` : ''}
   <form class="vzf" onsubmit="event.preventDefault();VZ.roda(this.q.value)"><input name="q" id="vzq" placeholder="Ou digite aqui..." autocomplete="off"><button class="pr">OK</button></form>
-  ${SR ? '<div class="vzdica">Dica: no botão amarelo, segure enquanto fala e solte para enviar (como no WhatsApp).</div>' : ''}<div class="vzx"><small>Exemplos (toque para testar)</small>${EX.map(x => `<button type="button" onclick="VZ.roda(this.textContent)">${esc(x)}</button>`).join('')}</div></div></div>`;
+  ${SR ? '<div class="vzdica">Dica: no botão amarelo, segure enquanto fala e solte para enviar (como no WhatsApp).</div>' : ''}<div class="vzx"><small>Exemplos (toque para testar)</small>${EX.map(x => `<button type="button" onclick="VZ.exemplo(this)">${esc(x)}</button>`).join('')}</div></div></div>`;
+  z.dataset.t = Date.now();
   document.getElementById('vzmic').onclick = () => ouvindo ? pronto() : ouve();
   if (SR && semOuvir !== true) ouve()
 }
@@ -783,7 +787,9 @@ function mostraPlaca(r) {
   document.getElementById('modal').innerHTML = `<div class="ov" onclick="if(event.target===this)closeM()"><div class="md">${h}</div></div>`
 }
 
-G.VZ = { interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa, diz, vozPT };
+/* exemplo do painel: só vale um toque de verdade (não o toque que abriu o painel) */
+function exemplo(b) { const z = document.getElementById('vz'); if (z && Date.now() - (+z.dataset.t || 0) < 700) return; roda(b.textContent) }
+G.VZ = { exemplo, interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa, diz, vozPT };
 if (UI) { if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', monta); else monta();
   document.addEventListener('keydown', ev => { if (ev.key == 'Escape' && document.getElementById('vz') && document.getElementById('vz').innerHTML) fecha() }) }
 })(typeof window != 'undefined' ? window : globalThis);
