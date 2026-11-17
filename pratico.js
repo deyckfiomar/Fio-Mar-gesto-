@@ -252,7 +252,7 @@ G.addItem=addItem=function(w,pre){_addItem(w,pre);const f=$q('#modal form');if(!
  const bar=f.querySelector('.bar:last-of-type')||f.lastElementChild,sv=bar&&bar.querySelector('button.pr');
  if(sv){const b=document.createElement('button');b.type='button';b.textContent='Salvar e outro';b.title='Salva este item e já abre o próximo';
   b.onclick=()=>{const t=tp.value;f.requestSubmit();setTimeout(()=>{if(!$q('#modal .ov'))addItem(w,{t})},30)};sv.before(b)}
- setTimeout(()=>{try{f.d.focus()}catch(x){}},60)};
+ setTimeout(()=>{try{if(!f.d.value.trim())f.d.focus()}catch(x){}},60)};
 
 /* ---------- veículo da O.S.: colocar, editar (placa) ou trocar ---------- */
 function osPoeVeh(o,v){o.veh=v.id;if(!o.cli&&v.cli)o.cli=v.cli;

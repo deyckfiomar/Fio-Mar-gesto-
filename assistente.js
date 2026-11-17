@@ -527,6 +527,7 @@ body:has(#nav[style*="none"]) #vzfab{display:none}
 .vzv .bar{margin:10px 0 0}.vzv .bar button{margin:0}
 .vzok{margin:0;flex:none}
 .vzp{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--mut)}.vzp button{margin:0;padding:5px 10px;font-size:13px;border-radius:99px}.vzp button.on{background:var(--hi);color:#17181A;border-color:var(--hi)}
+.vzok{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.vzok button{margin:0;min-height:40px}.vzok .pr{flex:1 1 120px}
 .vzbar{height:4px;border-radius:2px;background:var(--ln);overflow:hidden;margin:-6px 0 12px}.vzbar i{display:block;height:100%;width:0;background:var(--hi)}`;
   document.head.appendChild(s)
 }
@@ -662,13 +663,36 @@ function para() { fimV = true; parar() }
 function pausa(ms, b) { PAUSA = ms; lsS('vz_pausa', ms); document.querySelectorAll('.vzp button').forEach(x => x.classList.toggle('on', x === b)); if (ouvindo && ouviu) arma(PAUSA) }
 
 /* fala uma resposta curta (útil com as mãos sujas) */
-function diz(t) { try { if (!window.speechSynthesis) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'pt-BR'; u.rate = 1.05; speechSynthesis.speak(u) } catch (x) { } }
+/* escolhe uma voz em português: no Android, sem isso o celular pode ler com a voz em inglês */
+let VOZPT = null;
+function vozPT() {
+  try {
+    const L = speechSynthesis.getVoices() || []; if (!L.length) return VOZPT;
+    const n = v => String(v.lang || '').toLowerCase().replace('_', '-');
+    VOZPT = L.find(v => n(v) == 'pt-br' && /google|natural|online/i.test(v.name)) || L.find(v => n(v) == 'pt-br') || L.find(v => n(v).startsWith('pt')) || L.find(v => /portugu|brasil|brazil/i.test(v.name)) || false;
+    return VOZPT
+  } catch (x) { return null }
+}
+try { if (window.speechSynthesis) { vozPT(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener('voiceschanged', vozPT) : (speechSynthesis.onvoiceschanged = vozPT) } } catch (x) { }
+function diz(t) {
+  try {
+    if (!window.speechSynthesis || !t) return; const v = vozPT();
+    if (v === false) return; /* o celular não tem voz em português: melhor ficar calado do que ler com sotaque em inglês */
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(t).replace(/O\.S\./g, 'O S').replace(/R\$\s?([\d.,]+)/g, '$1 reais')); u.lang = 'pt-BR'; if (v) try { u.voice = v } catch (e) { } u.rate = 1.05; speechSynthesis.speak(u)
+  } catch (x) { }
+}
 
 function faixa(r) {
   const f = document.querySelector('#modal form'); if (!f) return;
   const av = (r.avisos || []).filter(Boolean);
   const h = f.querySelector('h2');
-  (h || f).insertAdjacentHTML(h ? 'afterend' : 'afterbegin', `<div class="vzb">${MIC}<div><b>Você disse:</b> “${esc(r.texto)}”${r.info ? '<br>' + r.info : ''}<br><span class="muted">Confira e toque em Salvar.</span>${av.length ? '<ul>' + av.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : ''}</div></div>`)
+  (h || f).insertAdjacentHTML(h ? 'afterend' : 'afterbegin', `<div class="vzb">${MIC}<div><b>Você disse:</b> “${esc(r.texto)}”${r.info ? '<br>' + r.info : ''}<br><span class="muted">Confira e toque em Salvar.</span>${av.length ? '<ul>' + av.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : ''}<div class="vzok"><button type="button" class="pr" id="vzsalva">Salvar</button><button type="button" id="vzcorr">Corrigir</button><button type="button" id="vzfala">Falar de novo</button></div></div></div>`);
+  /* veio da voz: não abre o teclado; Salvar fica à vista */
+  const tira = () => { const a = document.activeElement; if (a && f.contains(a) && a.matches('input,textarea,select')) a.blur() };
+  tira(); setTimeout(tira, 90); setTimeout(tira, 250);
+  const sb = f.querySelector('#vzsalva'); if (sb) sb.onclick = () => f.requestSubmit();
+  const cb = f.querySelector('#vzcorr'); if (cb) cb.onclick = () => { const x = [...f.querySelectorAll('input:not([type=hidden]),textarea')].find(i => !i.closest('[hidden]') && i.offsetParent); if (x) { x.focus(); try { x.setSelectionRange(x.value.length, x.value.length) } catch (e) { } } };
+  const fb = f.querySelector('#vzfala'); if (fb) fb.onclick = () => { if (typeof closeM == 'function') closeM(1); setTimeout(() => { if (typeof abre == 'function') abre() }, 80) }
 }
 
 function roda(frase) {
@@ -740,7 +764,7 @@ function mostraPlaca(r) {
   document.getElementById('modal').innerHTML = `<div class="ov" onclick="if(event.target===this)closeM()"><div class="md">${h}</div></div>`
 }
 
-G.VZ = { interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa };
+G.VZ = { interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa, diz, vozPT };
 if (UI) { if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', monta); else monta();
   document.addEventListener('keydown', ev => { if (ev.key == 'Escape' && document.getElementById('vz') && document.getElementById('vz').innerHTML) fecha() }) }
 })(typeof window != 'undefined' ? window : globalThis);
