@@ -554,19 +554,19 @@ async function buscaPlaca(auto){const f=$('#modal form');if(!f||!f.elements.plac
  if(!okPl(p))return auto?0:toast('Digite uma placa válida (ex.: ABC1D23)');
  if(auto&&p===PLK)return;PLK=p;
  const dup=db.vehicles.find(v=>normPl(v.placa)==p&&v.id!=EV);if(dup)return pst('Placa já cadastrada para '+(cl(dup.cli).nome||'outro cliente')+'.');
- let d=(db.pcache||{})[p];
+ let d=(db.pcache||{})[p],r=null;
  if(!d){if(!SB)return pst('Sem conexão com o servidor. Preencha manualmente.');pst('Buscando dados da placa...');
-  let r;try{r=await SB.functions.invoke('consulta-placa',{body:{placa:p}})}catch(x){r={error:x}}
+  try{r=await SB.functions.invoke('consulta-placa',{body:{placa:p,oficina:typeof OF!='undefined'?OF:''}})}catch(x){r={error:x}}
   if(r.error){let m='';try{m=(await r.error.context.json()).error}catch(x){}
    return pst(r.error.context&&r.error.context.status==404?'Busca automática ainda não configurada. Preencha manualmente.':(m||'Não foi possível consultar agora. Preencha manualmente.'))}
   d=r.data&&r.data.veiculo;if(!d||!(d.marca||d.modelo))return pst('Placa não encontrada. Preencha manualmente.');
-  (db.pcache=db.pcache||{})[p]=d;save()}
+  if(!(r.data&&r.data.teste)){(db.pcache=db.pcache||{})[p]=d;save()}}
  if(!document.body.contains(f))return;
  const set=(k,x)=>{const el=f.elements[k];if(el&&x)el.value=x},mk=tcase(d.marca),md=tcase(d.modelo);
  const cc=+String(d.cilindrada||'').replace(',','.'),lit=cc?(cc>=100?cc/1000:cc).toFixed(1):'';
  set('modelo',md.toLowerCase().startsWith(mk.toLowerCase())?md:[mk,md].filter(Boolean).join(' '));
- set('ano',d.anoModelo||d.anoFabricacao);set('cor',tcase(d.cor));set('motor',[lit,tcase(d.combustivel)].filter(Boolean).join(' '));set('chassi',d.chassi);
- pst('Dados preenchidos. Confira e informe a quilometragem.')}
+ set('ano',d.anoModelo||d.anoFabricacao);set('cor',tcase(d.cor));set('motor',d.motor?tcase(d.motor)+(d.combustivel&&!/flex|gasol|alcool|diesel/i.test(d.motor)?' '+tcase(d.combustivel):''):[lit,tcase(d.combustivel)].filter(Boolean).join(' '));set('chassi',d.chassi);
+ pst((r&&r.data&&r.data.teste?'Modo teste da APIBrasil (carro de exemplo). ':'')+'Dados preenchidos'+(d.versao?' ('+tcase(d.versao)+')':'')+'. Confira e informe a quilometragem.')}
 /* leitura da placa pela foto (OCR roda no próprio aparelho) */
 const loadTess=()=>window.Tesseract?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>no(new Error('ocr'));document.head.appendChild(s)});
 function prepImg(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{try{
@@ -1863,7 +1863,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.28.1';
+const APP_VER='2.28.2';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

@@ -160,5 +160,7 @@ if(typeof cropOpen=='function'){const _co=cropOpen;G.cropOpen=cropOpen=function(
    if(A.ty){const rd=document.querySelector(`#modal input[name=plt][value="${A.ty}"]`);if(rd){rd.checked=true;plSet(A.ty)}}
    const h=document.querySelector('#modal .md p.muted');if(h)h.textContent='Achei a placa e marquei. Se a caixa não estiver certa, arraste os cantos. Depois toque em Ler placa.';cropDraw()}}}catch(x){}return r}}
 /* deixa o leitor carregando ao abrir a entrada do carro ou o cadastro do veículo */
+/* Entrada do carro: lugar para o aviso da busca de dados pela placa (APIBrasil) */
+if(typeof checkin=='function'){const _c=checkin;G.checkin=checkin=function(){const r=_c.apply(this,arguments);try{const pl=$('#cipl'),lb=pl&&pl.closest('label');if(lb&&!$('#pst'))lb.insertAdjacentHTML('afterend','<small id="pst" class="muted" style="display:block;margin:-6px 0 6px"></small><div id="pal" class="bar" style="margin:0 0 8px"></div>')}catch(x){}return r}}
 ['checkin','editVeh'].forEach(n=>{if(typeof window[n]=='function'){const o=window[n];G[n]=window[n]=function(){const r=o.apply(this,arguments);try{plAquece().catch(()=>{})}catch(x){}return r}}});
 })(window);
