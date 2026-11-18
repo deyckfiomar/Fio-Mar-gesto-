@@ -103,14 +103,16 @@ V.meus=function(){const n=eu(),A=db.orders.filter(o=>!FIM.includes(o.status)),M=
  (!n?`<div class="card" style="text-align:center"><p style="margin:0 0 10px">Escolha o seu nome para ver os carros que estão com você.</p><button class="pr" onclick="meusTroca()">Escolher meu nome</button></div>`:
  sech('Comigo',plural(M.length,'carro','carros'))+(M.sort(ord).map(o=>mcard(o,1)).join('')||`<p class="muted">Nenhum carro com ${e(n)} agora.${L.length?' Pegue um carro abaixo.':''}</p>`))+
  (L.length?sech('Sem mecânico',plural(L.length,'carro','carros'))+L.sort(ord).map(o=>mcard(o,0)).join(''):'')};
-G.patioExtraBtns=()=>`<button class="sm" onclick="go('meus')">${svgi('clients')} Meus carros</button>${typeof tvAbre=='function'?`<button class="sm" onclick="tvAbre()">${svgi('dash')} Modo TV</button>`:''}`;
+G.patioExtraBtns=()=>`<button class="sm" aria-label="Mais opções do pátio" onclick="patioMais()">⋯ Mais</button>`;
+G.patioMais=function(){const A=[['Todas as O.S.',"go('orders')",'orders'],['Meus carros (mecânico)',"go('meus')",'clients'],...(typeof tvAbre=='function'?[['Modo TV (tela cheia)','tvAbre()','dash']]:[])];
+ sheet('Pátio',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
 /* mecânico (não dono): o app abre em "Meus carros" */
 if(typeof render=='function'){const _rd=render;let ini='';G.render=render=function(){if(typeof SES!='undefined'&&SES&&typeof OF!='undefined'&&OF&&typeof PAPEL!='undefined'&&PAPEL&&typeof DONO=='function'){const k=OF+'|'+PAPEL;if(ini!=k){ini=k;if(!DONO()&&S.v=='dash')S.v='meus'}}return _rd.apply(this,arguments)}}
 
 /* ---------- 8) entrada do carro pela foto da placa ---------- */
 if(typeof checkin=='function'){const _ci=checkin;G.checkin=checkin=function(pre){const r=_ci.apply(this,arguments);
  const inp=$q('.pci input.fi[capture]'),lb=inp&&inp.closest('label');if(lb){lb.className='btn pr ciscan';lb.childNodes.forEach(n=>{if(n.nodeType==3)n.textContent=''});lb.insertAdjacentHTML('afterbegin','<span>📷 Tirar foto da placa</span>');
-  const bar=lb.closest('.bar'),pl=$q('#cipl'),plb=pl&&pl.closest('label');if(bar&&plb){bar.classList.add('ciscanb');plb.parentNode.insertBefore(bar,plb);const ou=document.createElement('small');ou.className='muted ciou';ou.textContent='ou digite a placa:';plb.parentNode.insertBefore(ou,plb)}}
+  const bar=lb.closest('.bar'),pl=$q('#cipl'),plb=pl&&pl.closest('label');if(bar&&plb){bar.classList.add('ciscanb');plb.parentNode.insertBefore(bar,plb);for(const n of plb.childNodes){if(n.nodeType==3&&/placa/i.test(n.textContent)){n.textContent='Ou digite a placa';break}}}}
  return r}}
 if(typeof ciAch=='function'){const _ca=ciAch;G.ciAch=ciAch=function(){const r=_ca.apply(this,arguments);const f=$q('#cifnd .pfnd');
  if(f&&!f.querySelector('.ciagora')&&!/Já tem a O.S./.test(f.textContent))f.insertAdjacentHTML('beforeend',`<button type="button" class="pr ciagora" onclick="ciSalva()">Abrir O.S. agora</button><small class="muted" style="display:block;margin-top:6px">Km, combustível e problema dá para pôr depois, na O.S.</small>`);return r}}
@@ -132,9 +134,29 @@ G.tvAbre=function(){if($q('#tv'))return;const t=document.createElement('div');t.
 G.tvFecha=function(){clearInterval(TVI);const t=$q('#tv');if(t)t.remove();document.body.classList.remove('tvon');try{document.fullscreenElement&&document.exitFullscreen()}catch(x){}try{TVW&&TVW.release();TVW=null}catch(x){}};
 addEventListener('keydown',ev=>{if(ev.key=='Escape'&&$q('#tv'))tvFecha()});
 
+/* ---------- 10) 2.28.3: menos poluição ---------- */
+/* filtros das listas no formato compacto (número grande + nome), igual ao Painel */
+if(typeof ftiles=='function'){G.ftiles=ftiles=function(L,cur,key){const n=L.length,cols=n<=4?n:3;
+ return`<div class="kts kq ktf" style="--n:${cols}" role="group">${L.map(([k,l,ic,sub,c])=>{const sb=String(sub==null?'':sub).replace(/<[^>]*>/g,'').trim(),m=/^(R\$\s?[\d.,]+|\d+)/.exec(sb),num=m?m[1]:'',resto=m?sb.slice(m[0].length).trim():sb,z=(num=='0'||/^R\$\s?0,00$/.test(num))&&cur!=k;
+  return`<button type="button" class="kt pft${cur==k?' on':''}${z?' zero':''}" style="--c:${c&&c!=KM?c:'#6B7280'}" aria-pressed="${cur==k}" onclick="setF('${key}','${k}')">${num?`<span class="num${num.length>5?' sm':''}">${num}</span>`:''}<span>${l}${!num&&resto?`<small class="ktsub">${e(resto)}</small>`:''}</span></button>`}).join('')}</div>`}}
+/* botão "+": sem repetir o que está em "Ir para" */
+if(typeof maisAcoes=='function'){G.maisAcoes=maisAcoes=function(){const bk=['dash','agenda','fin','patio','plus','busca',...[...document.querySelectorAll('#bnav a[onclick]')].map(x=>(/go\('(\w+)'/.exec(x.getAttribute('onclick'))||[])[1]).filter(Boolean)],IR=NAVX().filter(([k])=>!bk.includes(k)&&k!='out').sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));
+ const A=[['entrada','Entrada do carro','closeM();checkin()','big'],['quotes','Orçamento',"closeM();go('quotes');editQuote()"],['agenda','Agendar','closeM();editAg()'],['pedido','Pedido de peças','closeM();pdNovo()'],...(DONO()?[['fin','Despesa',"closeM();go('fin');editDesp()"]]:[])];
+ sheet('O que você quer fazer?',`<small class="psec">Novo</small><div class="pgrid">${A.map(([i,l,f,c])=>`<button type="button" class="${c||''}${c?' pr':''}" onclick="${f}">${svgi(i)}<span>${l}</span></button>`).join('')}</div>
+ <small class="psec">Ir para</small><div class="pgrid">${IR.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}</div>`)}}
+
+/* microfone dentro da barra de baixo ("Falar"): não fica mais por cima de botões e valores */
+function micNaBarra(){const b=$q('#bnav'),m=$q('#vzfab');if(!m)return;const vis=b&&b.children.length&&getComputedStyle(b).display!='none'&&b.style.visibility!='hidden';
+ document.body.classList.toggle('vznav',!!vis);if(!vis){['left','top','right','bottom'].forEach(k=>m.style.removeProperty(k));return}
+ let sl=b.querySelector('.vzslot');if(!sl){const pl=b.querySelector('a.pl');sl=document.createElement('a');sl.className='vzslot';sl.setAttribute('aria-hidden','true');sl.innerHTML='<i></i><span>Falar</span>';(pl&&pl.nextSibling)?b.insertBefore(sl,pl.nextSibling):b.appendChild(sl)}
+ const r=sl.querySelector('i').getBoundingClientRect(),w=m.offsetWidth||44,hh=m.offsetHeight||32;m.style.setProperty('left',Math.round(r.left+r.width/2-w/2)+'px','important');m.style.setProperty('top',Math.round(r.top+r.height/2-hh/2)+'px','important');m.style.setProperty('right','auto','important');m.style.setProperty('bottom','auto','important')}
+G.micNaBarra=micNaBarra;
+if(typeof render=='function'){const _r2=render;G.render=render=function(){const x=_r2.apply(this,arguments);try{requestAnimationFrame(micNaBarra)}catch(e){}return x}}
+addEventListener('resize',()=>setTimeout(micNaBarra,60));addEventListener('orientationchange',()=>setTimeout(micNaBarra,300));setTimeout(micNaBarra,500);setTimeout(micNaBarra,1500);
+
 /* ---------- 4) microfone ---------- */
 let ULT=0,RAF=0;
-addEventListener('scroll',()=>{if(RAF)return;RAF=requestAnimationFrame(()=>{RAF=0;const y=scrollY,m=$q('#vzfab');if(m){const fim=innerHeight+y>=document.documentElement.scrollHeight-40;m.classList.toggle('vzesc',y>ULT+4&&y>120&&!fim)}if(Math.abs(y-ULT)>4)ULT=y})},{passive:true});
+addEventListener('scroll',()=>{if(RAF)return;RAF=requestAnimationFrame(()=>{RAF=0;const y=scrollY,m=$q('#vzfab');if(m&&!document.body.classList.contains('vznav')){const fim=innerHeight+y>=document.documentElement.scrollHeight-40;m.classList.toggle('vzesc',y>ULT+4&&y>120&&!fim)}if(Math.abs(y-ULT)>4)ULT=y})},{passive:true});
 
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
@@ -188,6 +210,16 @@ body.tvon{overflow:hidden}#tv{position:fixed;inset:0;z-index:100;background:#0E0
 .tvz{color:#555;font-size:2vw;text-align:center}
 #tv footer{font-size:clamp(14px,1.5vw,26px);color:#C3C7CC;display:flex;gap:1.4vw;flex-wrap:wrap}#tv footer span{color:#fff}
 @media (orientation:portrait){#tv>main{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr)}#tv{padding:10px;gap:8px}#tv header{flex-wrap:wrap;gap:6px 12px;font-size:15px}#tv header span{display:none}}
+/* 2.28.3: filtros compactos e microfone na barra */
+.ktf .kt small.ktsub{display:block;font-size:11px;color:var(--mut);margin-top:2px}
+#bnav a.vzslot{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:#B2C0CB;font-size:11px;font-weight:500;pointer-events:none}
+#bnav a.vzslot i{display:block;width:40px;height:23px}
+body.vznav #vzfab{width:44px!important;height:32px!important;border-radius:10px!important;translate:none!important;opacity:1!important;z-index:18!important;box-shadow:none!important;background:transparent!important;border:0!important;color:var(--hi)!important}
+body.vznav #vzfab svg{width:24px!important;height:24px!important;stroke:var(--hi)!important}
+body.vznav #vzfab.on,body.vznav #vzfab.hold,body.vznav #vzfab.rec,body.vznav #vzfab.ouvindo,body.vznav #vzfab[aria-pressed="true"]{background:#C0392B!important;color:#fff!important}
+body.vznav #vzfab.on svg,body.vznav #vzfab.hold svg,body.vznav #vzfab.rec svg,body.vznav #vzfab.ouvindo svg,body.vznav #vzfab[aria-pressed="true"] svg{stroke:#fff!important}
+#bnav a.vzslot{color:var(--hi)!important}
+body.vznav #main{padding-bottom:84px}
 /* desfazer */
 #toast.tundo{gap:10px}.tundob{margin:0 0 0 auto;min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--hi);background:transparent;color:var(--hi);font-weight:800;white-space:nowrap}
 `;document.head.appendChild(css);
