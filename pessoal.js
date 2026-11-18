@@ -162,7 +162,7 @@ const _go=go;G.go=go=function(k,...r){const de=S.v;const x=_go(k,...r);if(k=='pe
 /* botão em Finanças */
 const _Vfin=V.fin;if(typeof _Vfin=='function')V.fin=function(){let h=_Vfin();if(!DONO())return h;const m=today().slice(0,7),gg=doMes(m,'r').tot,pp=doMes(m,'g').tot,tot=gg||pp,sal=gg-pp;
  const b=`<button type="button" class="psbt" onclick="go('pessoal')">${svgi('lock')}<span><b>Finanças pessoais</b><small>Só você vê · separado da oficina${tot?` · ${sal>=0?'sobrou':'faltou'} ${R(Math.abs(sal))} no mês`:''}</small></span><i>›</i></button>`;
- const i=h.indexOf('<div class="card fdia"');return i>=0?h.slice(0,i)+b+h.slice(i):h+b};
+ const j=h.indexOf('<!--fpess-->');if(j>=0)return h.slice(0,j)+b+h.slice(j);const i=h.indexOf('<div class="card fdia"');return i>=0?h.slice(0,i)+b+h.slice(i):h+b};
 /* nesta tela o microfone do assistente dá lugar ao microfone dos gastos */
 const _r=render;G.render=render=function(...a){const r=_r(...a);document.body.classList.toggle('pss',S.v=='pessoal');return r};
 

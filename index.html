@@ -779,7 +779,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  const ti=osTabInfo(o),c=cl(o.cli);
  return`<div class="osh" style="--c:${SC[o.status]||'#777'}"><div class="osh1"><button class="ib" aria-label="Voltar para as O.S." onclick="go('orders')">${svgi('osback')}</button><div class="osh-t"><small>Ordem de serviço</small><h1>Nº ${e(o.num)}</h1></div>${typeof stSheet=='function'?`<button type="button" class="ossel osbt" aria-label="Situação: ${o.status}. Toque para mudar" onclick="stSheet('${o.id}',1)">${stIco(o.status)}<span>${o.status}</span><i>▾</i></button>`:`<select class="ossel" aria-label="Situação da O.S." onchange="setSt(this.value)">${ST.map(s=>`<option ${o.status==s?'selected':''}>${s}</option>`).join('')}</select>`}</div>
  <div class="osh2"><div class="osvh" role="button" tabindex="0" onclick="osVeh('${o.id}')" title="Colocar ou editar o veículo"><b>${e(vlabel(vh(o.veh)))} <span class="osvhe">${!o.veh?'+ colocar':!vh(o.veh).placa?'+ placa':'editar'}</span></b><small>${e(c.nome||'Sem cliente')}${o.aberta?' · entrada '+D(o.aberta):''}</small></div><div class="osv"><small>Total</small><b>${R(oTot(o))}</b></div></div>
- <div class="osh3">${typeof osOrcBtn=='function'?osOrcBtn(o,1):''}<button class="wa sm" onclick="waOS()">WhatsApp</button>${typeof msgs=='function'?`<button class="sm" onclick="msgs('${o.cli}','${o.id}')">Mensagens</button>`:''}<button class="sm" onclick="genOS(od(S.id))">PDF da O.S.</button>${o.veh&&V.veiculo?`<button class="sm" onclick="go('veiculo','${o.veh}')">Histórico do carro</button>`:''}${(o.status=='Concluída'||(o.status=='Entregue'&&o.avisado))&&typeof avisaPronto=='function'?`<button class="sm${o.avisado?'':' pr'}" onclick="avisaPronto()">${o.avisado?'Avisado '+D(o.avisado):'Avisar que está pronto'}</button>`:''}${typeof osOrcBtn=='function'?'':(()=>{const qq=db.quotes.find(x=>x.os==o.id)||(o.qid&&db.quotes.find(x=>x.id==o.qid));return qq?`<button class="sm" onclick="editQuote('${qq.id}')">Orçamento Nº ${e(qq.n)}</button>`:''})()}<span class="sp"></span>${DONO()?'<button class="dg sm" onclick="confirmDel(this,delOS)">Excluir</button>':''}</div></div>
+ ${typeof osTopo=='function'?osTopo(o):`<div class="osh3">${typeof osOrcBtn=='function'?osOrcBtn(o,1):''}<button class="wa sm" onclick="waOS()">WhatsApp</button>${typeof msgs=='function'?`<button class="sm" onclick="msgs('${o.cli}','${o.id}')">Mensagens</button>`:''}<button class="sm" onclick="genOS(od(S.id))">PDF da O.S.</button>${o.veh&&V.veiculo?`<button class="sm" onclick="go('veiculo','${o.veh}')">Histórico do carro</button>`:''}${(o.status=='Concluída'||(o.status=='Entregue'&&o.avisado))&&typeof avisaPronto=='function'?`<button class="sm${o.avisado?'':' pr'}" onclick="avisaPronto()">${o.avisado?'Avisado '+D(o.avisado):'Avisar que está pronto'}</button>`:''}${typeof osOrcBtn=='function'?'':(()=>{const qq=db.quotes.find(x=>x.os==o.id)||(o.qid&&db.quotes.find(x=>x.id==o.qid));return qq?`<button class="sm" onclick="editQuote('${qq.id}')">Orçamento Nº ${e(qq.n)}</button>`:''})()}<span class="sp"></span>${DONO()?'<button class="dg sm" onclick="confirmDel(this,delOS)">Excluir</button>':''}</div>`}</div>
  <div class="ostabs" id="ostabs" role="tablist" aria-label="Seções da O.S.">${T.map(([k,l])=>`<button type="button" role="tab" aria-selected="${S.tab==k}" class="ost ${S.tab==k?'on':''}" onclick="osTab('${k}')">${svgi(OSICO[k])}<span class="l">${l}</span><span class="s" style="color:${ti[k][1]}">${e(ti[k][0])}</span></button>`).join('')}</div><div id="ospane">${b}</div>`}
 const OSICO={resumo:'osres',diag:'osdiag',check:'oscheck',laudo:'oslaudo',fotos:'osfotos',pag:'ospag',nf:'notas'},OSORD=['resumo','diag','check','laudo','fotos','pag','nf'];
 function osTabInfo(o){const st=n=>(o.ck[n]||{}).s,n0=CK.filter(n=>['OK','Atenção','Defeito'].includes(st(n))).length,def=CK.filter(n=>st(n)=='Defeito').length,L=lOf(o),lp=(L.rec||!o.problema?0:(L.rec=o.problema),lProg(o)),tot=oTot(o),rest=tot-paid(o),F=FC(),T=nfTotais(o);
@@ -1158,7 +1158,12 @@ function Vfin(){const P=periodo(),a=aggF(P.ms),b=aggF(P.prev),cm=(P.n<6?monthsBa
  kpi=(l,v,sub,c)=>`<div class="kpi" style="--c:${c}"><span>${l}</span><div class="num">${v}</div>${sub||''}</div>`,
  chip=([k,n])=>`<button class="sm ${P.f==k?'pr':''}" onclick="S.f.fp='${k}';render()">${n}</button>`,
  ls=a.os.slice().sort((x,y)=>(y.conc||'').localeCompare(x.conc||'')).slice(0,10);
- return head({ico:'fin',kick:'Gestão',title:'Finanças',c:PCOL.fin,right:`<button class="pr hb" onclick="editDesp()">+ Despesa</button>`,sub:hsub('Lucro líquido '+R(a.liq),`Faturou ${R(a.fat)} · despesas ${R(a.dsp)}`,'A receber',R(arec))})+(typeof finDia=='function'?finDia():'')+sech('Resultado do período','pelas O.S. concluídas')+seg(FPS,P.f,'fp')+`
+ /* 2.28.0: resumo Hoje/Semana/Mês no topo; o resto fica recolhido */
+ const ab=(k,t,sub,h,def)=>`<details class="fbox" ${S.f['fs_'+k]!=null?(S.f['fs_'+k]?'open':''):(def?'open':'')} ontoggle="S.f['fs_${k}']=this.open?1:0"><summary><b>${t}</b>${sub?`<small>${sub}</small>`:''}</summary><div class="fboxb">${h}</div></details>`;
+ if(S.f.fd&&S.f.fs_dia==null)S.f.fs_dia=1;
+ return head({ico:'fin',kick:'Gestão',title:'Finanças',c:PCOL.fin,right:`<button class="pr hb" onclick="editDesp()">+ Despesa</button>`})+(typeof finResumo=='function'?finResumo():'')+'<!--fpess-->'+
+ (typeof finDia=='function'?ab('dia','Dia a dia','lucro de cada dia, gráfico do mês',finDia()):'')+
+ ab('per','Relatório do período','faturamento, margens e gráficos pelas O.S. concluídas',seg(FPS,P.f,'fp')+`
  <div class="kpis">${kpi('Faturamento',R(a.fat),`<small class="muted">${a.n} O.S. concluída(s) · ticket ${R(a.n?a.fat/a.n:0)}</small><br>`+dl(a.fat,b.fat,1),'#2F6FB0')}
  ${kpi('Lucro bruto',R(a.bruto),`<small class="muted">Margem bruta ${mg(a.bruto,a.fat)}%</small><br>`+dl(a.bruto,b.bruto,1),'#F5B700')}
  ${kpi('Despesas',R(a.dsp),'<small class="muted">Custos fixos e variáveis</small><br>'+dl(a.dsp,b.dsp,0),'#B4472E')}
@@ -1170,8 +1175,8 @@ function Vfin(){const P=periodo(),a=aggF(P.ms),b=aggF(P.prev),cm=(P.n<6?monthsBa
  <div class="card"><b>Do faturamento ao lucro líquido</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Período selecionado. Lucro bruto = faturamento − custo de peças e terceiros. Lucro líquido = lucro bruto − despesas.</p>${chCascata(a)}</div>
  <div class="g2"><div class="card"><b>Rentabilidade por tipo</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Receita e lucro, antes do desconto</p>${chTipo(a)}</div>
  <div class="card"><b>Despesas por categoria</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Período selecionado</p>${chRosca(a.cats)}</div></div></details>
- `+sech('Lucro por O.S.',ls.length?plural(ls.length,'O.S.','O.S.'):'')+(ls.map(rowOS).join('')||'<p class="muted">Nenhuma O.S. concluída neste período. Ao concluir uma O.S., ela entra aqui com faturamento, custo e margem.</p>')+
- sech('Despesas cadastradas',DP().length?String(DP().length):'')+(DP().slice().sort((x,y)=>y.data.localeCompare(x.data)).map(rowDesp).join('')||'<p class="muted">Cadastre aluguel, energia, salários e outros custos para calcular o lucro líquido.</p>')}
+ `+sech('Lucro por O.S.',ls.length?plural(ls.length,'O.S.','O.S.'):'')+(ls.map(rowOS).join('')||'<p class="muted">Nenhuma O.S. concluída neste período. Ao concluir uma O.S., ela entra aqui com faturamento, custo e margem.</p>'))+
+ ab('dsp','Despesas cadastradas',DP().length?plural(DP().length,'despesa','despesas'):'nenhuma ainda',(DP().slice().sort((x,y)=>y.data.localeCompare(x.data)).map(rowDesp).join('')||'<p class="muted">Cadastre aluguel, energia, salários e outros custos para calcular o lucro líquido.</p>'),!DP().length)}
 
 /* ---------- Nota fiscal: NF-e (peças) e NFS-e (serviços) ---------- */
 /* Modo "sim": simula a autorização no próprio aparelho (sem valor fiscal), para testar o fluxo.
@@ -1660,8 +1665,8 @@ function Vdash(){const O=db.orders,m=today().slice(0,7),t0=today(),d7=new Date(D
  return head({ico:'dash',kick:new Date(t0+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}),title:'Painel da oficina',c:PCOL.dash,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Entrada do carro</button>`})+
  `<div class="kts kq" style="--n:${DONO()&&entPend().length?5:4}">${K('orders',sts('Em andamento'),'Em andamento',"go('orders',0,0,{st:'Em andamento'})",KA)}${K('vehicles',open.length,'No pátio',"go('patio')",KB)}${K('stock',sts('Aguardando peças'),'Aguard. peças',"go('orders',0,0,{st:'Aguardando peças'})",KR)}${K('quotes',db.quotes.filter(q=>q.status=='Aguardando').length,'Orçamentos',"go('quotes',0,0,{qs:'Aguardando'})",'#8E5BD0')}${DONO()&&entPend().length?K('entradas',entPend().length,'Compras a lançar',"go('entradas')",KA):''}</div>
  <div class="kts km">${K('ospag',R(rec),'A receber',"go(V.receber?'receber':'orders',0,0,V.receber?{}:{st:'receber'})",KA)}${DONO()&&typeof finHoje=='function'?(l=>K('fin',R(l),l<0?'Prejuízo de hoje':'Lucro de hoje',"go('fin',0,0,{fd:'"+t0+"'})",l<0?KR:KG))(finHoje()):''}</div>`+(typeof dashExtra=='function'?dashExtra():'')+(typeof fazerHTML=='function'?fazerHTML():'')+(typeof retDash=='function'?retDash():'')+
- sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):'')+(AT.map(agRow).join('')||(ATok?'':empty('clock','Nenhum horário marcado para hoje.',`<button onclick="editAg()">+ Novo agendamento</button>`)))+(ATok?`<p class="agok" onclick="go('agenda')">✓ ${plural(ATok,'atendido hoje','atendidos hoje')}${AT.length?'':' · nenhum pendente'} · <u>ver na agenda</u></p>`:'')+
- (typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))}
+ (AT.length||ATok?sech('Agenda de hoje',AT.length?plural(AT.length,'horário','horários'):''):'')+(AT.map(agRow).join('')||(ATok?'':`<div class="agvz">${svgi('clock')}<span><b>Agenda de hoje:</b> nenhum horário</span><button type="button" class="sm" onclick="editAg()">+ Agendar</button></div>`))+(ATok?`<p class="agok" onclick="go('agenda')">✓ ${plural(ATok,'atendido hoje','atendidos hoje')}${AT.length?'':' · nenhum pendente'} · <u>ver na agenda</u></p>`:'')+
+ (typeof prontosDash=='function'?prontosDash():typeof patioDash=='function'?patioDash():sech('Carros no pátio',open.length?plural(open.length,'carro','carros'):'')+(lista(open.slice().reverse(),osCard)||empty('vehicles','Nenhum carro em serviço. Crie um orçamento ou uma O.S. para começar.')))}
 function bkpCard(){return(DONO()?'':'<!--')+`<div class="card" style="margin-top:18px"><b>Cópia de segurança</b><p class="muted" style="margin:4px 0 10px;font-size:13px">Os dados ficam na nuvem, mas o plano grátis do Supabase não guarda cópias. Faça um backup toda semana e guarde no Google Drive. O completo leva também as fotos. ${bkpData()?'Último backup: <b>'+D(bkpData())+'</b>.':'<b>Nenhum backup feito ainda.</b>'}</p><div class="bar" style="margin:0">${typeof bkpFull=='function'?'<button class="pr" onclick="bkpFull()">Backup completo (com fotos)</button><button onclick="backup()">Só os dados</button>':'<button onclick="backup()">Baixar backup</button>'}<button onclick="restore()">Restaurar de um arquivo</button></div></div>`+(DONO()?'':'-->')}
 
 /* ---------- Ordens de serviço ---------- */
@@ -1669,7 +1674,7 @@ const osFim=o=>['Concluída','Entregue'].includes(o.status),osDeve=o=>oTot(o)-pa
 const osF=(o,k)=>!k?true:k=='abertas'?!osFim(o):k=='receber'?osDeve(o):o.status==k;
 function osCard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),nfs=nfCount(o.id),ni=o.items.length;
  return lcard({c:SC[o.status],n:'O.S. '+e(o.num),pill:pill(o.status),v:R(tot),t:typeof vtit=='function'?vtit(v):e(vlabel(v)),m:`${e(c.nome||'Sem cliente')} · entrada ${D(o.aberta)}${o.mec?' · '+e(o.mec):''}`,
-  f:[mb(ni?plural(ni,'item','itens'):'Sem itens'),tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):'A receber',KA)):'',nfs?mb(plural(nfs,'nota emitida','notas emitidas'),KG):'',typeof osAtalhos=='function'?osAtalhos(o):''].join(''),on:`go('order','${o.id}')`})}
+  f:[typeof osDiasMb=='function'?osDiasMb(o):'',mb(ni?plural(ni,'item','itens'):'Sem itens'),tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):'A receber',KA)):'',nfs?mb(plural(nfs,'nota emitida','notas emitidas'),KG):'',typeof osAtalhos=='function'?osAtalhos(o):''].join(''),on:`go('order','${o.id}')`})}
 function Vorders(){const f=S.f,st=f.st||'',q=nrm(f.q||'').trim(),O=db.orders.filter(o=>(!f.cli||o.cli==f.cli)&&(!f.vei||o.veh==f.vei));
  const n=k=>O.filter(o=>osF(o,k)).length,rec=O.filter(osDeve).reduce((a,o)=>a+oTot(o)-paid(o),0),np=n('abertas'),na=n('Aguardando peças'),nc=n('Concluída');
  const tl=[['','Todas','osres',plural(n(''),'O.S.','O.S.')],['abertas','No pátio','vehicles',plural(np,'carro','carros'),np?KB:KM],['Aguardando peças','Aguard. peças','stock',String(na),na?KR:KM],
@@ -1678,7 +1683,7 @@ function Vorders(){const f=S.f,st=f.st||'',q=nrm(f.q||'').trim(),O=db.orders.fil
  const lbl={'':'Todas as O.S.',abertas:'No pátio',receber:'A receber',Concluída:'Concluídas',Entregue:'Entregues'}[st]||st,who=f.cli?cl(f.cli).nome:f.vei?vlabel(vh(f.vei)):'',pat=['abertas','Aberta','Em andamento'].includes(st);
  return head({ico:'orders',kick:'Atendimento',title:'Ordens de serviço',c:PCOL.orders,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Nova O.S.</button>`,acts:V.patio?`<button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`:''})+
  (who?`<div class="fbar">${svgi('osres')}<span>Histórico de <b>${e(who)}</b></span><button class="sm" onclick="go('orders')">Ver todas</button></div>`:'')+
- ftiles(tl,pat?'abertas':st,'st')+(pat?seg([['abertas','Todos no pátio'],['Aberta','Abertas'],['Em andamento','Em andamento']],st,'st'):'')+
+ (typeof ktiles=='function'?ktiles(tl,pat?'abertas':st,'st'):ftiles(tl,pat?'abertas':st,'st'))+(pat?seg([['abertas','Todos no pátio'],['Aberta','Abertas'],['Em andamento','Em andamento']],st,'st'):'')+
  srch('Buscar por número, cliente ou placa',f.q)+sech(`${e(lbl)} <span class="muted">(${L.length})</span>`,L.length?R(L.reduce((a,o)=>a+oTot(o),0)):'')+
  (lista(L.slice().reverse(),osCard)||empty('orders',q?'Nenhuma O.S. encontrada para esta busca.':'Nenhuma O.S. neste filtro.',st||q?'':`<button class="pr" onclick="newOS()">+ Nova O.S.</button>`))}
 
@@ -1858,7 +1863,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.27.2';
+const APP_VER='2.28.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
@@ -1878,5 +1883,6 @@ boot();
 <script src="ia.js"></script>
 <script src="nav.js"></script>
 <script src="puxar.js"></script>
+<script src="oficina.js"></script>
 </body>
 </html>
