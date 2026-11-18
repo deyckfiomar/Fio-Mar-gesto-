@@ -191,6 +191,14 @@ body:has(.qbar) #vzfab{transform:translateY(-70px)}
 /* painel curto */
 .kts{display:flex!important;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity;scrollbar-width:none}.kts::-webkit-scrollbar{display:none}
 .kts .kt{flex:none;min-width:112px;max-width:160px;padding:8px 11px!important;scroll-snap-align:start}.kts .kt svg{display:none}.kts .kt .num{font-size:22px!important}.kts .kt .num.sm{font-size:19px!important}
+/* 2.27.1: Painel com todos os números à vista (sem rolar de lado) */
+.kts.kq,.kts.km{display:grid!important;overflow:visible;padding-bottom:0;gap:6px;margin-bottom:6px}
+.kts.kq{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}.kts.km{grid-template-columns:repeat(auto-fit,minmax(0,1fr));margin-bottom:12px}
+.kq .kt,.km .kt{min-width:0!important;max-width:none!important;border-top-width:3px}
+.kq .kt{align-items:center;text-align:center;justify-content:flex-start;padding:9px 4px 10px!important;font-size:12px!important;line-height:1.15!important;gap:2px}
+.kq .kt .num{font-size:26px!important;color:var(--ink)}.kq .kt.zero{opacity:.55}.kq .kt.zero .num{color:var(--mut)}
+.km .kt{flex-direction:column-reverse!important;align-items:flex-start;padding:8px 12px 10px!important;font-size:12.5px!important}
+.km .kt .num,.km .kt .num.sm{font-size:21px!important;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .dshx{margin:2px 0 4px}.dshx button{margin:0}.dshx svg,.rcb svg{width:16px;height:16px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2}
 /* abas da O.S. em uma linha */
 #ostabs{display:flex!important;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}#ostabs::-webkit-scrollbar{display:none}
