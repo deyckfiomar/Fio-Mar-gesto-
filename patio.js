@@ -183,11 +183,11 @@ const busca=o=>{const v=vh(o.veh),c=cl(o.cli);return nrm([o.num,v.placa,(v.placa
 function Vpatio(){const T=naPatio(),f=S.f.pf||'',mc=S.f.pm||'',m=modo(),mecs=[...new Set(T.map(o=>o.mec).filter(Boolean))].sort();
  let O=T.filter(FIL[f]||FIL['']);if(mc)O=O.filter(o=>mc=='-'?!o.mec:o.mec==mc);
  const hoje=db.orders.filter(o=>o.status=='Entregue'&&o.stAt==today()),rec=T.reduce((a,o)=>a+Math.max(0,oTot(o)-paid(o)),0);
- const K=(k,ic,num,l,col)=>`<button type="button" class="kt pft${f==k?' on':''}" style="--c:${col}" aria-pressed="${f==k}" onclick="patioF('${k}')">${svgi(ic)}<span class="num">${num}</span><span>${l}</span></button>`;
+ const K=(k,ic,num,l,col)=>`<button type="button" class="kt pft${f==k?' on':''}${+num===0&&f!=k?' zero':''}" style="--c:${col}" aria-pressed="${f==k}" onclick="patioF('${k}')">${svgi(ic)}<span class="num">${num}</span><span>${l}</span></button>`;
  const bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
  return head({ico:'patio',kick:'Gerenciamento',title:'Pátio',c:PCOL.orders,right:`<button class="pr hb" onclick="checkin()">+ Entrada do carro</button>`,
   acts:`<div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><span class="sp"></span><button class="sm" onclick="go('orders')">${svgi('orders')} Todas as O.S.</button>`})+
- `<div class="kts pfts">${K('','vehicles',T.length,'No pátio',KB)}${K('atras','clock',T.filter(atras).length,'Atrasados',KR)}${K('pronto','stok',T.filter(FIL.pronto).length,'Prontos p/ entregar',KG)}${K('semmec','stwr',T.filter(FIL.semmec).length,'Sem mecânico',KA)}</div>`+
+ `<div class="kts kq pfts" style="--n:4">${K('','vehicles',T.length,'No pátio',KB)}${K('atras','clock',T.filter(atras).length,'Atrasados',KR)}${K('pronto','stok',T.filter(FIL.pronto).length,'Prontos p/ entregar',KG)}${K('semmec','stwr',T.filter(FIL.semmec).length,'Sem mecânico',KA)}</div>`+
  `<div class="pfb"><label class="pfq">${svgi('busca')}<input type="search" placeholder="Placa, modelo, cliente ou O.S." aria-label="Buscar no pátio" value="${e(S.f.pq||'')}" oninput="patioQ(this.value)"></label>
   ${mecs.length||T.some(o=>!o.mec)?`<div class="pfm" role="group" aria-label="Mecânico"><button type="button" class="${mc?'':'on'}" onclick="patioM('')">Todos</button>${mecs.map(x=>`<button type="button" class="${mc==x?'on':''}" data-m="${e(x)}" onclick="patioM(this.dataset.m)">${e(x)}</button>`).join('')}${T.some(o=>!o.mec)?`<button type="button" class="${mc=='-'?'on':''}" onclick="patioM('-')">Sem mecânico</button>`:''}</div>`:''}</div>`+
  (rec>0.005?`<p class="muted pfr">A receber dos carros no pátio: <b>${R(rec)}</b></p>`:'')+
