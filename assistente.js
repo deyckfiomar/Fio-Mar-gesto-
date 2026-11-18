@@ -800,7 +800,7 @@ function mostraPlaca(r) {
 
 /* exemplo do painel: só vale um toque de verdade (não o toque que abriu o painel) */
 function exemplo(b) { const z = document.getElementById('vz'); if (z && Date.now() - (+z.dataset.t || 0) < 700) return; roda(b.textContent) }
-G.VZ = { exemplo, interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa, diz, vozPT };
+G.VZ = { botaoSegurar, exemplo, interpreta, numWords, achaPlaca, canon, roda, fecha, abre, executa, mostraPlaca, pronto, pausa, diz, vozPT };
 if (UI) { if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', monta); else monta();
   document.addEventListener('keydown', ev => { if (ev.key == 'Escape' && document.getElementById('vz') && document.getElementById('vz').innerHTML) fecha() }) }
 })(typeof window != 'undefined' ? window : globalThis);

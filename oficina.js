@@ -99,7 +99,7 @@ function mcard(o,meu){const v=vh(o.veh),c=cl(o.cli),id=o.id,ni=o.items.length;
  <div class="mcb">${bt}</div></div>`}
 V.meus=function(){const n=eu(),A=db.orders.filter(o=>!FIM.includes(o.status)),M=n?A.filter(o=>String(o.mec||'').trim().toLowerCase()==n.toLowerCase()):[],L=A.filter(o=>!String(o.mec||'').trim());
  const ord=(a,b)=>(a.aberta||'').localeCompare(b.aberta||'');
- return head({ico:'patio',kick:n?'Mecânico: '+e(n):'Mecânico',title:'Meus carros',c:'#2F6FB0',right:`<button class="hb" onclick="meusTroca()">${n?'Trocar nome':'Quem é você?'}</button>`,acts:`<button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`})+
+ return head({ico:'patio',kick:n?'Mecânico: '+e(n):'Mecânico',title:'Meus carros',c:'#2F6FB0',right:`<button class="hb" onclick="meusTroca()">${n?'Trocar nome':'Quem é você?'}</button>`,acts:`<span class="vzhw"></span><button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`})+
  (!n?`<div class="card" style="text-align:center"><p style="margin:0 0 10px">Escolha o seu nome para ver os carros que estão com você.</p><button class="pr" onclick="meusTroca()">Escolher meu nome</button></div>`:
  sech('Comigo',plural(M.length,'carro','carros'))+(M.sort(ord).map(o=>mcard(o,1)).join('')||`<p class="muted">Nenhum carro com ${e(n)} agora.${L.length?' Pegue um carro abaixo.':''}</p>`))+
  (L.length?sech('Sem mecânico',plural(L.length,'carro','carros'))+L.sort(ord).map(o=>mcard(o,0)).join(''):'')};
@@ -146,11 +146,11 @@ if(typeof maisAcoes=='function'){G.maisAcoes=maisAcoes=function(){const bk=['das
  <small class="psec">Ir para</small><div class="pgrid">${IR.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}</div>`)}}
 
 /* microfone dentro da barra de baixo ("Falar"): não fica mais por cima de botões e valores */
-function micNaBarra(){const b=$q('#bnav'),m=$q('#vzfab');if(!m)return;const vis=b&&b.children.length&&getComputedStyle(b).display!='none'&&b.style.visibility!='hidden';
- document.body.classList.toggle('vznav',!!vis);if(!vis){['left','top','right','bottom'].forEach(k=>m.style.removeProperty(k));return}
- let sl=b.querySelector('.vzslot');if(!sl){const pl=b.querySelector('a.pl');sl=document.createElement('a');sl.className='vzslot';sl.setAttribute('aria-hidden','true');sl.innerHTML='<i></i><span>Falar</span>';(pl&&pl.nextSibling)?b.insertBefore(sl,pl.nextSibling):b.appendChild(sl)}
- const r=sl.querySelector('i').getBoundingClientRect(),w=m.offsetWidth||44,hh=m.offsetHeight||32;m.style.setProperty('left',Math.round(r.left+r.width/2-w/2)+'px','important');m.style.setProperty('top',Math.round(r.top+r.height/2-hh/2)+'px','important');m.style.setProperty('right','auto','important');m.style.setProperty('bottom','auto','important')}
+function micNaBarra(){document.body.classList.remove('vznav');const w=$q('.vzhw');if(!w||w.firstChild||!(G.VZ&&VZ.botaoSegurar))return;
+ const b=document.createElement('button');b.type='button';b.className='vzhb';b.setAttribute('aria-label','Assistente de voz: toque para abrir, segure para falar');b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Falar</span>';w.appendChild(b);VZ.botaoSegurar(b)}
 G.micNaBarra=micNaBarra;
+/* o microfone fica só no Painel, na linha do "Fechamento do dia" (para o mecânico, a linha só tem o microfone) */
+{const _dx=G.dashExtra;G.dashExtra=function(){const h=typeof _dx=='function'?_dx():'';return h&&h.includes('class="bar dshx"')?h.replace('<div class="bar dshx">','<div class="bar dshx"><span class="vzhw"></span>'):'<div class="bar dshx"><span class="vzhw"></span></div>'}}
 if(typeof render=='function'){const _r2=render;G.render=render=function(){const x=_r2.apply(this,arguments);try{requestAnimationFrame(micNaBarra)}catch(e){}return x}}
 addEventListener('resize',()=>setTimeout(micNaBarra,60));addEventListener('orientationchange',()=>setTimeout(micNaBarra,300));setTimeout(micNaBarra,500);setTimeout(micNaBarra,1500);
 
@@ -212,15 +212,14 @@ body.tvon{overflow:hidden}#tv{position:fixed;inset:0;z-index:100;background:#0E0
 @media (orientation:portrait){#tv>main{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr)}#tv{padding:10px;gap:8px}#tv header{flex-wrap:wrap;gap:6px 12px;font-size:15px}#tv header span{display:none}}
 /* 2.28.3: filtros compactos e microfone na barra */
 .ktf .kt small.ktsub{display:block;font-size:11px;color:var(--mut);margin-top:2px}
-#bnav a.vzslot{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:#B2C0CB;font-size:11px;font-weight:500;pointer-events:none}
-#bnav a.vzslot i{display:block;width:40px;height:23px}
-body.vznav #vzfab{width:44px!important;height:32px!important;border-radius:10px!important;translate:none!important;opacity:1!important;z-index:18!important;box-shadow:none!important;background:transparent!important;border:0!important;color:var(--hi)!important}
-body.vznav #vzfab svg{width:24px!important;height:24px!important;stroke:var(--hi)!important}
-body.vznav #vzfab.on,body.vznav #vzfab.hold,body.vznav #vzfab.rec,body.vznav #vzfab.ouvindo,body.vznav #vzfab[aria-pressed="true"]{background:#C0392B!important;color:#fff!important}
-body.vznav #vzfab.on svg,body.vznav #vzfab.hold svg,body.vznav #vzfab.rec svg,body.vznav #vzfab.ouvindo svg,body.vznav #vzfab[aria-pressed="true"] svg{stroke:#fff!important}
-#bnav a.vzslot{color:var(--hi)!important}
-body.vznav #main{padding-bottom:84px}
 /* desfazer */
 #toast.tundo{gap:10px}.tundob{margin:0 0 0 auto;min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--hi);background:transparent;color:var(--hi);font-weight:800;white-space:nowrap}
 `;document.head.appendChild(css);
 })(window);
+
+(function(){const st=document.createElement('style');st.textContent=`#vzfab#vzfab,#vz.hold~#vzfab#vzfab{display:none!important}
+.vzhw{display:inline-flex}.vzhw:empty{display:none}.dshx{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vzhb{height:38px;gap:6px;padding:0 14px!important;font-weight:600;font-size:15px;border-radius:10px;border:1px solid var(--line,#3a3d42);background:transparent;color:var(--hi);display:inline-flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.vzhb svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.vzhb:active,.vzhb.cancel{transform:scale(.94)}.vzhb.cancel{background:#B4472E;color:#fff}
+body:has(#vz.hold) .vzhb{background:#C0392B;color:#fff;border-color:#C0392B}`;document.head.appendChild(st)})();
