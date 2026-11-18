@@ -224,7 +224,8 @@ function pegaForma(t) {
   if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?parcelado\b/)) return { forma: 'Parcelado' };
   if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?pix\b/)) return { forma: 'PIX' };
   if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?(?:dinheiro|especie|cash)\b/)) return { forma: 'Dinheiro' };
-  if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?(?:cartao(?: de)?(?: credito| debito)?|credito|debito|maquininha)\b/)) return { forma: 'Cartão' };
+  if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?(?:cartao(?: de)? debito|debito)\b/)) return { forma: 'Débito' };
+  if (t.take(/\b(?:no |na |em |via |pelo |pela |de )?(?:cartao(?: de)?(?: credito)?|credito|maquininha)\b/)) return { forma: 'Crédito' };
   if (t.take(/\b(?:no |na |em |via |pelo |pela |de |por )?(?:transferencia|ted|doc|deposito)\b/)) return { forma: 'Transferência' };
   return {}
 }
@@ -403,7 +404,11 @@ function interpreta(frase) {
     if (hora == 'INV') { hora = ''; R.avisos.push('Hora inválida: escolha a hora') }
     else if (!hora) {
       /* sem hora: usa o primeiro horário livre do dia (à tarde, 08:00 de hoje já passou) */
-      const lv = typeof agHorasLivres == 'function' ? agHorasLivres(data || hoje()) : [];
+      let lv = typeof agHorasLivres == 'function' ? agHorasLivres(data || hoje()) : [];
+      /* sem dia e sem hora, e hoje já não tem horário: vai para o próximo dia com horário livre */
+      if (!lv.length && !data && typeof agHorasLivres == 'function') {
+        for (let i = 1; i <= 14 && !lv.length; i++) { const d = new Date(hoje() + 'T12:00'); d.setDate(d.getDate() + i); const ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); lv = agHorasLivres(ds); if (lv.length) { data = ds; R.avisos.push('Hoje não tem mais horário livre: ficou para ' + (i == 1 ? 'amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }))) } }
+      }
       if (lv.length) { hora = lv[0]; R.avisos.push('Hora não informada: ficou ' + hora + ', o primeiro horário livre') }
       else R.avisos.push(typeof agHorasLivres == 'function' ? 'Hora não informada e sem horário livre nesse dia: escolha a hora' : 'Hora não informada: confira');
     }

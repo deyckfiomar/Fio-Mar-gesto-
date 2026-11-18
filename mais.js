@@ -22,24 +22,50 @@ const nome1=c=>String(c&&c.nome||'').trim().split(/\s+/)[0]||'';
 const copia=t=>{try{navigator.clipboard.writeText(t).then(()=>toast('Copiado'),()=>toast('Não consegui copiar'))}catch(x){toast('Não consegui copiar')}};
 
 /* =============== 1) Receber =============== */
-let RC=null;const FPR=['PIX','Dinheiro','Cartão','Parcelado','Transferência'];
+let RC=null;const FPR=['PIX','Dinheiro','Débito','Crédito','Parcelado','Transferência'];
+/* ---- taxa da maquininha (2.27.0): a O.S. fica paga com o valor cheio; a taxa vira despesa "Taxa de cartão" no dia do pagamento ---- */
+const TXC={deb:'txDeb',cred:'txCred',p6:'txP6',p12:'txP12'},TXN={deb:'Débito',cred:'Crédito à vista',p6:'Crédito parcelado 2x a 6x',p12:'Crédito parcelado 7x a 12x'};
+G.ehCartao=f=>/^(Débito|Crédito|Parcelado|Cartão)$/.test(f||'');
+G.txKey=(f,parc)=>{parc=parseInt(parc)||1;if(f=='Débito')return'deb';if(f=='Crédito'||f=='Cartão')return parc>1?(parc<=6?'p6':'p12'):'cred';if(f=='Parcelado')return parc<=6?'p6':'p12';return''};
+G.txPct=k=>{const v=(db.cfg||{})[TXC[k]];return v==null||v===''||isNaN(+v)?null:+v};
+const r2=v=>Math.round(v*100)/100,pctS=v=>String(+(+v).toFixed(2)).replace('.',',');
+const temParc=f=>f=='Crédito'||f=='Parcelado';
 G.recebe=function(id,pre){const o=od(id||S.id);if(!o||!o.id)return;const rest=resto(o);if(rest<=0.005)return toast('A O.S. '+o.num+' já está paga');
- RC={id:o.id,forma:(pre&&pre.forma)||'PIX'};const c=cl(o.cli),v=pre&&pre.valor!=null?+pre.valor:rest;
- sheet('Receber · O.S. '+e(o.num),`<form id="rcf" onsubmit="event.preventDefault();recebeOk()">
+ let fm=(pre&&pre.forma)||'PIX';if(fm=='Cartão')fm='Crédito';RC={id:o.id,forma:fm,txEd:0};const c=cl(o.cli),v=pre&&pre.valor!=null?+pre.valor:rest,pc=(pre&&pre.parc)||(fm=='Parcelado'?2:1);
+ sheet('Receber · O.S. '+e(o.num),`<form id="rcf" onsubmit="event.preventDefault();recebeOk()" oninput="recebeTx()">
  <p class="muted" style="margin:-4px 0 10px">${e(c.nome||'Sem cliente')}${o.veh?' · '+e(vlabel(vh(o.veh))):''} · falta <b style="color:var(--ink)">${R(rest)}</b></p>
  <label>Valor recebido (R$)<input name="valor" inputmode="decimal" data-num="1" autocomplete="off" value="${nShow(v)}"></label>
  <div class="rcq">${rest>0?`<button type="button" class="agc" onclick="recebeV(${rest})">Tudo · ${R(rest)}</button><button type="button" class="agc" onclick="recebeV(${Math.round(rest*50)/100})">Metade · ${R(Math.round(rest*50)/100)}</button>`:''}</div>
  <div class="lb">Forma de pagamento<div class="rcfp">${FPR.map(f=>`<button type="button" class="rcf${RC.forma==f?' on':''}" data-f="${f}" aria-pressed="${RC.forma==f}" onclick="recebeF('${f}')">${f=='PIX'?'Pix':f}</button>`).join('')}</div></div>
  <input type="hidden" name="forma" value="${RC.forma}">
- <label id="rcparc" ${/Cart|Parc/.test(RC.forma)?'':'hidden'}>Parcelas<input name="parc" inputmode="numeric" value="${(pre&&pre.parc)||1}"></label>
+ <label id="rcparc" ${temParc(RC.forma)?'':'hidden'}>Parcelas<input name="parc" inputmode="numeric" value="${pc}"></label>
+ <div id="rctx" class="rctx" ${ehCartao(RC.forma)?'':'hidden'}><label><span id="rctxl">Taxa da maquininha</span><input name="txp" autocomplete="off" oninput="recebeTxEd()"></label><div id="rctxr" class="rctxr"></div></div>
  <label>Data<input type="date" name="data" data-cru="1" value="${(pre&&pre.data)||today()}" max="${today()}"></label>
- <div class="bar" style="margin:12px 0 0"><button class="pr">Registrar pagamento</button>${typeof pixCobra=='function'?`<button type="button" onclick="closeM();pixCobra('${o.id}')">Cobrar com Pix</button>`:''}</div></form>`)};
+ <div class="bar" style="margin:12px 0 0"><button class="pr">Registrar pagamento</button>${typeof pixCobra=='function'?`<button type="button" onclick="closeM();pixCobra('${o.id}')">Cobrar com Pix</button>`:''}</div></form>`);recebeTx(1)};
+G.recebeTxEd=()=>{if(RC)RC.txEd=1};
+/* mostra a taxa e quanto a oficina recebe de verdade */
+G.recebeTx=function(troca){const f=$q('#rcf');if(!f||!RC)return;const fm=f.forma.value,cart=ehCartao(fm),box=$q('#rctx');if(box)box.hidden=!cart;if(!cart)return;
+ const k=txKey(fm,f.parc.value),cfg=txPct(k);if(troca||!RC.txEd){f.txp.value=cfg!=null?pctS(cfg):'';RC.txEd=0}
+ $q('#rctxl').textContent='Taxa da maquininha · '+TXN[k];
+ const v=nBR(f.valor.value)||0,p=nBR(f.txp.value),t=isFinite(p)&&p>0?r2(v*p/100):0,r=$q('#rctxr');
+ r.innerHTML=!f.txp.value.trim()&&cfg==null?`<span class="muted">Sem taxa guardada para ${TXN[k].toLowerCase()}. Digite a % da sua maquininha: ela fica guardada para as próximas vezes.</span>`
+  :p>=30?'<span style="color:var(--rd,#B4472E)">Taxa muito alta. Confira a %.</span>'
+  :`Taxa <b>− ${R(t)}</b> · você recebe <b class="rctxv">${R(v-t)}</b>${cfg!=null&&RC.txEd&&Math.abs(p-cfg)>0.001?`<br><small class="muted">Só neste pagamento. A taxa guardada é ${pctS(cfg)}%.</small>`:''}`};
 G.recebeV=v=>{const i=$q('#rcf [name=valor]');if(i){i.value=nShow(v);i.dispatchEvent(new Event('input',{bubbles:true}))}};
-G.recebeF=f=>{if(!RC)return;RC.forma=f;document.querySelectorAll('.rcf').forEach(b=>{const on=b.dataset.f==f;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});$q('#rcf [name=forma]').value=f;$q('#rcparc').hidden=!/Cart|Parc/.test(f)};
+G.recebeF=f=>{if(!RC)return;const ant=RC.forma;RC.forma=f;document.querySelectorAll('.rcf').forEach(b=>{const on=b.dataset.f==f;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});$q('#rcf [name=forma]').value=f;$q('#rcparc').hidden=!temParc(f);
+ const pc=$q('#rcf [name=parc]');if(f=='Parcelado'&&(parseInt(pc.value)||1)<2)pc.value=2;if(f=='Crédito'&&ant=='Parcelado')pc.value=1;recebeTx(1)};
 G.recebeOk=function(){const f=$q('#rcf'),o=RC&&od(RC.id);if(!f||!o)return;const v=nBR(f.valor.value)||0,rest=oTot(o)-paid(o);
  if(!(v>0))return toast('Informe um valor maior que zero');if(v>rest+0.005)return toast('Valor maior que o restante da O.S. ('+R(Math.max(0,rest))+')');
- o.pags.push({id:uid(),forma:f.forma.value,valor:Math.round(v*100)/100,parc:String(Math.max(1,parseInt(f.parc.value)||1)),data:f.data.value||today()});save();closeM();render(1);
- const fal=resto(o);toast('Recebido '+R(v)+' da O.S. '+o.num+(fal>0.005?' · falta '+R(fal):' · O.S. paga'))};
+ const fm=f.forma.value,parc=Math.max(1,parseInt(f.parc.value)||1),pg={id:uid(),forma:fm=='Crédito'&&parc>1?'Parcelado':fm,valor:r2(v),parc:String(temParc(fm)?parc:1),data:f.data.value||today()};let msg='';
+ if(ehCartao(fm)){const p=nBR(f.txp.value);if(f.txp.value.trim()&&!(isFinite(p)&&p>=0&&p<30))return toast('Taxa inválida. Digite a % da maquininha, por exemplo 3,19');
+  if(p>0){pg.txp=+p.toFixed(2);pg.taxa=r2(v*p/100);const k=txKey(fm,parc);if(txPct(k)==null){db.cfg=db.cfg||{};db.cfg[TXC[k]]=pg.txp;msg=' · taxa de '+pctS(pg.txp)+'% guardada'}}}
+ o.pags.push(pg);save();closeM();render(1);
+ const fal=resto(o);toast('Recebido '+R(v)+(pg.taxa?' (fica '+R(v-pg.taxa)+')':'')+' da O.S. '+o.num+(fal>0.005?' · falta '+R(fal):' · O.S. paga')+msg)};
+/* configurar as taxas (Configurações) */
+G.editTaxas=function(){const T={};Object.keys(TXC).forEach(k=>{const v=txPct(k);T[TXC[k]]=v==null?'':pctS(v)});
+ modal('Taxas da maquininha',[['txDeb','Débito (%)'],['txCred','Crédito à vista (%)'],['txP6','Crédito parcelado 2x a 6x (%)'],['txP12','Crédito parcelado 7x a 12x (%)']],T,o=>{
+  const N={};for(const k of Object.keys(TXC)){const c=TXC[k],x=String(o[c]==null?'':o[c]).replace('%','').trim();if(!x){N[c]='';continue}const v=nBR(x);if(!(isFinite(v)&&v>=0&&v<30)){toast('Taxa inválida em '+TXN[k]);return}N[c]=+v.toFixed(2)}
+  db.cfg=db.cfg||{};Object.assign(db.cfg,N);save();render();toast('Taxas guardadas')})};
 G.addPag=addPag=function(pre){recebe(S.id,pre)};
 
 /* =============== 2) Arrastar o cartão para avançar a situação =============== */
@@ -117,18 +143,19 @@ G.retDash=function(){const lim=addD(today(),7),L=RT().filter(r=>!r.feito&&r.data
 const _setSt2=setSt;G.setSt=setSt=function(v){const o=od(S.id),antes=o&&o.status;_setSt2(v);if(o&&v=='Entregue'&&antes!='Entregue')setTimeout(()=>{if(!$q('#modal .ov'))retPergunta(o)},700)};
 
 /* =============== 12) Fechamento do dia =============== */
-function fechaDados(d){const pg=[],porF={};let rec=0;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.data==d){const v=+p.valor||0;rec+=v;porF[p.forma||'Outros']=(porF[p.forma||'Outros']||0)+v;pg.push({o,p})}}));
+function fechaDados(d){const pg=[],porF={};let rec=0,tx=0;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.data==d){const v=+p.valor||0;rec+=v;tx+=+p.taxa||0;porF[p.forma||'Outros']=(porF[p.forma||'Outros']||0)+v;pg.push({o,p})}}));
  const conc=db.orders.filter(o=>osFim(o)&&String(o.conc||'').slice(0,10)==d),fat=conc.reduce((a,o)=>a+oTot(o),0),arec=conc.reduce((a,o)=>a+resto(o),0),pat=db.orders.filter(o=>!osFim(o)),
   dsp=(db.desp||[]).filter(x=>x.rec!='1'&&x.data==d),tdsp=dsp.reduce((a,x)=>a+(+x.valor||0),0),ent=db.orders.filter(o=>o.aberta==d).length,am=AG().filter(a=>a.data==addD(d,1)&&a.status!='Cancelado').length;
- return{rec,porF,pg,conc,fat,arec,pat,dsp,tdsp,ent,am,liq:DONO()&&typeof finDiaDados=='function'&&d.slice(0,7)?((finDiaDados(d)||{}).liq):null}}
+ return{rec,tx,porF,pg,conc,fat,arec,pat,dsp,tdsp,ent,am,liq:DONO()&&typeof finDiaDados=='function'&&d.slice(0,7)?((finDiaDados(d)||{}).liq):null}}
 function fechaTxt(d){const X=fechaDados(d),L=[`*Fechamento do dia ${D(d)}* · ${empNome()}`,'',`*Recebido: ${R(X.rec)}*`];
  Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).forEach(([f,v])=>L.push(`• ${f=='PIX'?'Pix':f}: ${R(v)}`));
+ if(X.tx>0)L.push(`Taxas de cartão: − ${R(X.tx)} (ficou ${R(X.rec-X.tx)})`);
  L.push('',`Carros que entraram: ${X.ent}`,`O.S. concluídas: ${X.conc.length} (${R(X.fat)})`);if(X.arec>0.005)L.push(`Ficou a receber de hoje: ${R(X.arec)}`);
  if(X.tdsp>0)L.push(`Despesas do dia: ${R(X.tdsp)}`);if(X.liq!=null)L.push(`*Lucro do dia: ${R(X.liq)}*`);
  L.push('',`Carros no pátio: ${X.pat.length}`);X.pat.slice(0,12).forEach(o=>L.push(`• ${vlabel(vh(o.veh))} · ${o.status}`));if(X.am)L.push('',`Agenda de amanhã: ${plural(X.am,'horário','horários')}`);return L.join('\n')}
 G.fechaDia=function(d){d=d||today();const X=fechaDados(d),ln=(a,b,c)=>`<div class="fcl"><span>${a}</span><b${c?` style="color:${c}"`:''}>${b}</b></div>`;G.FCD=d;
  sheet('Fechamento do dia',`<p class="muted" style="margin:-4px 0 10px">${new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p>
- <div class="fcb"><div class="fct"><small>Recebido hoje</small><b>${R(X.rec)}</b></div>${Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).map(([f,v])=>ln(f=='PIX'?'Pix':f,R(v))).join('')||'<small class="muted">Nenhum pagamento hoje.</small>'}</div>
+ <div class="fcb"><div class="fct"><small>Recebido hoje</small><b>${R(X.rec)}</b></div>${Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).map(([f,v])=>ln(f=='PIX'?'Pix':f,R(v))).join('')||'<small class="muted">Nenhum pagamento hoje.</small>'}${X.tx>0?ln('Taxas de cartão','− '+R(X.tx),'#B4472E')+ln('Ficou para a oficina',R(X.rec-X.tx),'#2E8B57'):''}</div>
  <div class="fcb">${ln('Carros que entraram',X.ent)}${ln('O.S. concluídas',X.conc.length+' · '+R(X.fat))}${X.arec>0.005?ln('Ficou a receber de hoje',R(X.arec),'#C98200'):''}${X.tdsp>0?ln('Despesas do dia',R(X.tdsp),'#B4472E'):''}${X.liq!=null?ln('Lucro do dia',R(X.liq),X.liq<0?'#B4472E':'#2E8B57'):''}</div>
  <div class="fcb">${ln('Carros que ficam no pátio',X.pat.length)}${X.pat.slice(0,8).map(o=>`<small class="fcp">${e(vlabel(vh(o.veh)))} · ${e(o.status)}</small>`).join('')}${X.am?ln('Agenda de amanhã',plural(X.am,'horário','horários')):''}</div>
  <div class="bar" style="margin:12px 0 0"><button type="button" class="wa" onclick="wa((db.cfg||{}).tel1||'',fechaTxtG())">Mandar no meu WhatsApp</button><button type="button" onclick="fechaCopia()">Copiar</button>${X.arec>0.005&&V.receber?`<button type="button" onclick="closeM();go('receber')">Ver a receber</button>`:''}</div>`)};
@@ -151,7 +178,8 @@ G.editHorario=function(){const H=typeof agHor=='function'?agHor():{i:8,f:17,sab:
  modal('Horário da oficina',[['i','Abre às','select',hs(5,12)],['f','Fecha às (segunda a sexta)','select',hs(12,23)],['sab','Sábado até','select',['Fechado',...hs(10,20)]],['dom','Domingo até','select',['Fechado',...hs(10,20)]]],
   {i:pad(H.i)+':00',f:pad(H.f)+':00',sab:H.sab?pad(H.sab)+':00':'Fechado',dom:H.dom?pad(H.dom)+':00':'Fechado'},o=>{db.cfg=db.cfg||{};db.cfg.agIni=n(o.i);db.cfg.agFim=n(o.f);db.cfg.agSab=n(o.sab);db.cfg.agDom=n(o.dom);save();render()})};
 G.cfgExtra=function(){if(typeof cfgSec!='function')return'';const H=typeof agHor=='function'?agHor():null;
- return(H?cfgSec('hor','Horário da oficina',`<div class="card"><p style="margin:0 0 8px">Segunda a sexta: <b>${pad(H.i)}:00 às ${pad(H.f)}:00</b><br>Sábado: <b>${H.sab?'até '+pad(H.sab)+':00':'fechado'}</b> · Domingo: <b>${H.dom?'até '+pad(H.dom)+':00':'fechado'}</b></p><p class="muted" style="font-size:13px;margin:0 0 10px">A agenda só oferece horários livres dentro deste horário.</p>${DONO()?'<button class="sm pr" style="margin:0" onclick="editHorario()">Alterar horário</button>':''}</div>`):'')+
+ const TX=Object.keys(TXC).map(k=>[TXN[k],txPct(k)]);
+ return(DONO()?cfgSec('tax','Taxas da maquininha',`<div class="card"><p style="margin:0 0 8px">${TX.map(([n,v])=>`${n}: <b>${v==null?'—':pctS(v)+'%'}</b>`).join('<br>')}</p><p class="muted" style="font-size:13px;margin:0 0 10px">No Receber, o cartão já desconta a taxa e mostra quanto fica para a oficina. A taxa entra nas Finanças como despesa “Taxa de cartão”.</p><button class="sm pr" style="margin:0" onclick="editTaxas()">Alterar taxas</button></div>`):'')+(H?cfgSec('hor','Horário da oficina',`<div class="card"><p style="margin:0 0 8px">Segunda a sexta: <b>${pad(H.i)}:00 às ${pad(H.f)}:00</b><br>Sábado: <b>${H.sab?'até '+pad(H.sab)+':00':'fechado'}</b> · Domingo: <b>${H.dom?'até '+pad(H.dom)+':00':'fechado'}</b></p><p class="muted" style="font-size:13px;margin:0 0 10px">A agenda só oferece horários livres dentro deste horário.</p>${DONO()?'<button class="sm pr" style="margin:0" onclick="editHorario()">Alterar horário</button>':''}</div>`):'')+
  cfgSec('msg','Mensagens do WhatsApp',`<div class="card"><p class="muted" style="font-size:13px;margin:0 0 10px">${MSG0.map(x=>x[1]).join(' · ')}. Aparecem no botão "Mensagens" da O.S. e do cliente.</p>${DONO()?'<button class="sm pr" style="margin:0" onclick="msgsEdit()">Editar os textos</button>':''}</div>`)};
 
 /* =============== 5) abas da O.S. em uma linha: mantém a aba atual à vista =============== */
@@ -171,6 +199,7 @@ body:has(.qbar) #vzfab{transform:translateY(-70px)}
 .rcb{background:color-mix(in srgb,#2E8B57 20%,transparent)!important;color:#3fb06f!important;border-color:color-mix(in srgb,#2E8B57 60%,transparent)!important}
 .rcq{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
 .rcfp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.rctx{margin:10px 0 2px;padding:10px 12px 12px;border:1px solid var(--ln);border-radius:12px;background:color-mix(in srgb,var(--hi) 6%,transparent)}.rctx label{margin:0}.rctxr{font-size:14px;margin-top:8px;line-height:1.45}.rctxv{color:#2E8B57;font-size:16px}
 .rcf{margin:0;min-height:48px;border-radius:12px;font-weight:700;border:1px solid var(--ln);background:transparent;color:var(--ink)}.rcf.on{background:var(--hi);border-color:var(--hi);color:#1a1a1a}
 /* arrastar */
 .lc[data-o]{touch-action:pan-y;transition:transform .18s}.lc.swon{transition:none;position:relative}

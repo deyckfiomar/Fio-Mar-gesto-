@@ -16,14 +16,14 @@ G.finModo=()=>{try{return localStorage.getItem('fm_finmodo')=='conc'?'conc':'cai
 G.finModoSet=v=>{try{localStorage.setItem('fm_finmodo',v)}catch(x){}render()};
 /* todos os dias de um mês, já somados */
 function mesDias(m){const cx=finModo()=='caixa';const n=dim(m),fx=fixoDia(m),L=[];
- for(let i=1;i<=n;i++)L.push({d:m+'-'+String(i).padStart(2,'0'),os:[],fat:0,custo:0,av:0,avL:[],fx,rec:0,pg:[],conc:[],fatc:0});
+ for(let i=1;i<=n;i++)L.push({d:m+'-'+String(i).padStart(2,'0'),os:[],fat:0,custo:0,av:0,avL:[],fx,rec:0,pg:[],conc:[],fatc:0,tx:0});
  const at=d=>{d=String(d||'');return d.slice(0,7)==m?L[+d.slice(8,10)-1]:null};
  db.orders.forEach(o=>{const tot=oTot(o),cst=cOS(o);if(done(o)){const x=at(ocDia(o));if(x){x.conc.push(o);x.fatc+=tot;if(!cx){x.os.push(o);x.fat+=tot;x.custo+=cst}}}
-  (o.pags||[]).forEach(p=>{const x=at(p.data);if(!x)return;const v=+p.valor||0,c=tot>0?cst*Math.min(1,v/tot):0;x.rec+=v;x.pg.push({o,p,c});
+  (o.pags||[]).forEach(p=>{const x=at(p.data);if(!x)return;const v=+p.valor||0,c=tot>0?cst*Math.min(1,v/tot):0;x.rec+=v;x.tx+=+p.taxa||0;x.pg.push({o,p,c});
    /* pelo recebimento: cada pagamento traz a parte dele do custo da O.S. */
    if(cx){x.fat+=v;x.custo+=c;if(!x.os.includes(o))x.os.push(o)}})});
  DP().forEach(d=>{if(d.rec!='1'){const x=at(d.data);if(x){x.av+=+d.valor||0;x.avL.push(d)}}});
- L.forEach(x=>{x.bruto=x.fat-x.custo;x.dsp=x.av+x.fx;x.liq=x.bruto-x.dsp;x.mov=x.os.length||x.avL.length||x.pg.length});return L}
+ L.forEach(x=>{x.bruto=x.fat-x.custo;x.dsp=x.av+x.fx+x.tx;x.liq=x.bruto-x.dsp;x.mov=x.os.length||x.avL.length||x.pg.length});return L}
 G.finDiaDados=d=>mesDias(d.slice(0,7))[+d.slice(8,10)-1];
 G.finHoje=()=>{const x=finDiaDados(today());return x?x.liq:0};
 
@@ -53,11 +53,11 @@ G.finDia=function(){const hoje=today();let d=S.f.fd||hoje;if(!/^\d{4}-\d{2}-\d{2
   <label class="fdt"><b>${nome?nome+' · ':''}${e(dt)}</b><small>Lucro por dia · toque para escolher a data</small><input type="date" data-cru="1" value="${d}" max="${hoje}" onchange="if(this.value)setF('fd',this.value)"></label>
   <button type="button" class="fdn" aria-label="Dia seguinte" ${d>=hoje?'disabled':''} onclick="setF('fd','${addD(d,1)}')">›</button></div>
  <div class="fdl" style="--c:${x.liq>=0?'#2E8B57':'#B4472E'}"><span>${x.liq>=0?'Lucro líquido do dia':'Prejuízo do dia'}</span><b>${R(x.liq)}</b>
-  <small class="fdct">${cx?`Recebeu ${R(x.fat)}`:`Faturou ${R(x.fat)}`}${x.custo?` − custo de peças e terceiros ${R(x.custo)}`:''}${x.av?` − despesas do dia ${R(x.av)}`:''}${x.fx>0?` − custo fixo do dia ${R(x.fx)}`:''}</small>
+  <small class="fdct">${cx?`Recebeu ${R(x.fat)}`:`Faturou ${R(x.fat)}`}${x.custo?` − custo de peças e terceiros ${R(x.custo)}`:''}${x.av?` − despesas do dia ${R(x.av)}`:''}${x.tx?` − taxas de cartão ${R(x.tx)}`:''}${x.fx>0?` − custo fixo do dia ${R(x.fx)}`:''}</small>
   ${!x.fat&&x.fx>0?`<small>${cx?'Nenhum pagamento recebido neste dia':'Nenhuma O.S. concluída neste dia'}: o valor negativo é só o custo fixo (despesas de todo mês ÷ ${dim(m)} dias).</small>`:''}${cx&&arec>0?`<small>Concluído neste dia e ainda a receber: <b>${R(arec)}</b>. Entra no lucro do dia em que o cliente pagar.</small>`:''}${!cx&&x.rec&&!x.fat?`<small>Recebeu ${R(x.rec)} de O.S. concluída em outro dia: esse lucro está contado no dia da conclusão.</small>`:''}</div>
  <div class="fdmo"><small>Contar o lucro no dia</small><div class="seg" role="group"><button type="button" class="${cx?'on':''}" aria-pressed="${cx}" onclick="finModoSet('caixa')">em que recebi</button><button type="button" class="${cx?'':'on'}" aria-pressed="${!cx}" onclick="finModoSet('conc')">em que concluí a O.S.</button></div></div>
  <div class="kpis fdk">${kpi(cx?'Recebeu':'Faturou',R(x.fat),cx?(x.pg.length?plural(x.pg.length,'pagamento','pagamentos'):'nenhum pagamento'):(x.os.length?plural(x.os.length,'O.S. concluída','O.S. concluídas'):''),`#2F6FB0`)}${kpi('Lucro bruto',R(x.bruto),x.fat?'margem '+mg+'%':(cx?'recebido':'faturado')+' − custo das peças','#F5B700')}
-  ${kpi('Despesas',R(x.dsp),x.dsp?`do dia ${R(x.av)} · fixas ${R(x.fx)}`:'nenhuma','#B4472E')}${cx?kpi('O.S. concluídas',R(x.fatc),x.conc.length?plural(x.conc.length,'O.S.','O.S.')+(arec>0?' · falta receber '+R(arec):''):'nenhuma','#17A2B8'):kpi('Recebido',R(x.rec),x.pg.length?plural(x.pg.length,'pagamento','pagamentos'):'nenhum pagamento','#17A2B8')}</div>
+  ${kpi('Despesas',R(x.dsp),x.dsp?`do dia ${R(x.av)} · fixas ${R(x.fx)}${x.tx?' · cartão '+R(x.tx):''}`:'nenhuma','#B4472E')}${cx?kpi('O.S. concluídas',R(x.fatc),x.conc.length?plural(x.conc.length,'O.S.','O.S.')+(arec>0?' · falta receber '+R(arec):''):'nenhuma','#17A2B8'):kpi('Recebido',R(x.rec),x.pg.length?plural(x.pg.length,'pagamento','pagamentos'):'nenhum pagamento','#17A2B8')}</div>
  <div class="seg fds" role="group">${METS().map(([k,,t])=>`<button type="button" class="${met==k?'on':''}" aria-pressed="${met==k}" onclick="setF('fm','${k}')">${t}</button>`).join('')}</div>
  ${grafico(L,d,met,hoje)}
  <p class="fdr"><b>${ML(m)}${m==hoje.slice(0,7)?' até hoje':''}:</b> lucro líquido <b style="color:${liqM>=0?'#2E8B57':'#B4472E'}">${R(liqM)}</b> · ${cx?'recebeu '+R(T('rec'))+' · concluiu '+R(T('fatc'))+' em O.S':'faturou '+R(T('fat'))+' · recebeu '+R(T('rec'))}.<br>
@@ -65,7 +65,7 @@ G.finDia=function(){const hoje=today();let d=S.f.fd||hoje;if(!/^\d{4}-\d{2}-\d{2
   ${x.fx>0?`<br>Custo fixo: <b>${R(x.fx)} por dia</b>. É o lucro bruto que a oficina precisa fazer por dia para empatar.`:'<br><span class="muted">Cadastre as despesas de todo mês (aluguel, energia, salários) para ver o custo fixo por dia.</span>'}</p>
  <details class="fdd" ${S.f.fdx?'open':''} ontoggle="S.f.fdx=this.open?1:0"><summary>Detalhes do dia ${D(d).slice(0,5)}</summary>
   ${x.conc.length?'<h3>O.S. concluídas</h3>'+x.conc.map(rowOS).join(''):''}
-  ${x.pg.length?'<h3>Pagamentos recebidos</h3>'+x.pg.map(({o,p,c})=>`<div class="row" onclick="go('order','${o.id}','pag')"><div>O.S. ${e(o.num)} · ${e(cl(o.cli).nome||'')}<small>${e(p.forma||'')}${p.forma=='Parcelado'?' em '+p.parc+'x':''}</small></div><div class="r"><b>${R(p.valor)}</b>${c?`<small>custo ${R(c)}</small>`:''}</div></div>`).join(''):''}
+  ${x.pg.length?'<h3>Pagamentos recebidos</h3>'+x.pg.map(({o,p,c})=>`<div class="row" onclick="go('order','${o.id}','pag')"><div>O.S. ${e(o.num)} · ${e(cl(o.cli).nome||'')}<small>${e(p.forma||'')}${p.forma=='Parcelado'?' em '+p.parc+'x':''}${+p.taxa>0?' · taxa '+R(p.taxa):''}</small></div><div class="r"><b>${R(p.valor)}</b>${c?`<small>custo ${R(c)}</small>`:''}</div></div>`).join(''):''}
   ${x.avL.length?'<h3>Despesas do dia</h3>'+x.avL.map(rowDesp).join(''):''}
   ${x.mov?'':'<p class="muted" style="margin:8px 0">Sem movimento neste dia.</p>'}
   <div class="bar" style="margin:10px 0 0"><button type="button" class="sm" onclick="editDesp(null,{data:'${d}'})">+ Despesa neste dia</button></div></details>

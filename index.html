@@ -238,7 +238,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const CK=['Lataria','Pneus','Estepe','Óleo','Água/arrefecimento','Bateria','Faróis','Lanternas','Limpadores','Freios','Suspensão','Interior','Quilometragem'];
 const FT=['Foto do veículo','Foto do defeito','Peças danificadas','Foto do scanner','Foto do osciloscópio','Antes do reparo','Depois do reparo'];
 const ST=['Aberta','Em andamento','Aguardando peças','Concluída','Entregue'];
-const FP=['Dinheiro','PIX','Cartão','Transferência','Parcelado'];
+const FP=['Dinheiro','PIX','Débito','Crédito','Transferência','Parcelado'];
 const SC={Aberta:'#2F6FB0','Em andamento':'#C98200','Aguardando peças':'#B4472E','Concluída':'#2E8B57',Entregue:'#5B6B79',Rascunho:'#5B6B79',Agendado:'#C98200',Confirmado:'#2F6FB0','Concluído':'#2E8B57',Cancelado:'#B4472E',Aguardando:'#C98200',Aprovado:'#2E8B57',Recusado:'#B4472E'};
 const STI={Aberta:'stin','Em andamento':'stwr','Aguardando peças':'sthg','Concluída':'stok',Entregue:'stkey',Rascunho:'stpen',Agendado:'clock',Confirmado:'stok','Concluído':'stok',Cancelado:'stx',Aguardando:'clock',Aprovado:'stok',Recusado:'stx'};
 const stIco=s=>STI[s]&&ICO[STI[s]]?`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[STI[s]]}</svg>`:'';
@@ -775,7 +775,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  if(S.tab=='nf')b=Vnf(o);
  if(['resumo','nf','pag'].includes(S.tab))b=nfAviso(o)+b;
  if(S.tab=='pag'){const rest=oTot(o)-paid(o);b=`<div class="card"><table><tr><td>Total</td><td class="n">${R(oTot(o))}</td></tr><tr><td>Valor pago</td><td class="n">${R(paid(o))}</td></tr><tr><td><b>Valor restante</b></td><td class="n"><b>${R(rest)}</b></td></tr></table>
- <div class="bar" style="margin-top:10px"><button class="pr" onclick="addPag()">Registrar pagamento</button>${typeof pixCobra=='function'&&rest>0.004?`<button class="pix" onclick="pixCobra('${o.id}')">${svgi('pix')} Cobrar com Pix</button>`:''}${o.pags.length?`<button onclick="go('recibo','${o.id}')">Gerar recibo</button>`:''}</div></div>`+o.pags.map((p,i)=>`<div class="row" style="cursor:default"><div>${e(p.forma)}${p.forma=='Parcelado'?' em '+p.parc+'x':''}<small>${D(p.data)}</small></div><div class="r"><b>${R(p.valor)}</b>${DONO()?'':'<!--'}<button class="sm" aria-label="Excluir pagamento" onclick="confirmDel(this,()=>{od(S.id).pags.splice(${i},1);save();render()})">×</button>${DONO()?'':'-->'}</div></div>`).join('')}
+ <div class="bar" style="margin-top:10px"><button class="pr" onclick="addPag()">Registrar pagamento</button>${typeof pixCobra=='function'&&rest>0.004?`<button class="pix" onclick="pixCobra('${o.id}')">${svgi('pix')} Cobrar com Pix</button>`:''}${o.pags.length?`<button onclick="go('recibo','${o.id}')">Gerar recibo</button>`:''}</div></div>`+o.pags.map((p,i)=>`<div class="row" style="cursor:default"><div>${e(p.forma)}${p.forma=='Parcelado'?' em '+p.parc+'x':''}<small>${D(p.data)}${DONO()&&+p.taxa>0?` · taxa ${String(p.txp).replace('.',',')}% − ${R(p.taxa)} · ficou ${R(p.valor-p.taxa)}`:''}</small></div><div class="r"><b>${R(p.valor)}</b>${DONO()?'':'<!--'}<button class="sm" aria-label="Excluir pagamento" onclick="confirmDel(this,()=>{od(S.id).pags.splice(${i},1);save();render()})">×</button>${DONO()?'':'-->'}</div></div>`).join('')}
  const ti=osTabInfo(o),c=cl(o.cli);
  return`<div class="osh" style="--c:${SC[o.status]||'#777'}"><div class="osh1"><button class="ib" aria-label="Voltar para as O.S." onclick="go('orders')">${svgi('osback')}</button><div class="osh-t"><small>Ordem de serviço</small><h1>Nº ${e(o.num)}</h1></div>${typeof stSheet=='function'?`<button type="button" class="ossel osbt" aria-label="Situação: ${o.status}. Toque para mudar" onclick="stSheet('${o.id}',1)">${stIco(o.status)}<span>${o.status}</span><i>▾</i></button>`:`<select class="ossel" aria-label="Situação da O.S." onchange="setSt(this.value)">${ST.map(s=>`<option ${o.status==s?'selected':''}>${s}</option>`).join('')}</select>`}</div>
  <div class="osh2"><div class="osvh" role="button" tabindex="0" onclick="osVeh('${o.id}')" title="Colocar ou editar o veículo"><b>${e(vlabel(vh(o.veh)))} <span class="osvhe">${!o.veh?'+ colocar':!vh(o.veh).placa?'+ placa':'editar'}</span></b><small>${e(c.nome||'Sem cliente')}${o.aberta?' · entrada '+D(o.aberta):''}</small></div><div class="osv"><small>Total</small><b>${R(oTot(o))}</b></div></div>
@@ -1110,10 +1110,11 @@ const ocMes=o=>ym(o.conc||(o.pags.length?o.pags[o.pags.length-1].data:o.aberta))
 const despMes=m=>DP().filter(x=>{const a=ym(x.data),f=x.fim?ym(x.fim):'';return x.rec=='1'?(m>=a&&(!f||m<=f)):a==m});
 function fin(m){const os=db.orders.filter(o=>done(o)&&ocMes(o)==m);let serv=0,pec=0,cPec=0,cOut=0,desc=0,sc=0;
  os.forEach(o=>{desc+=+o.desc||0;o.items.forEach(i=>{const v=(+i.q||0)*(+i.v||0),c=(+i.q||0)*cItem(i);if(i.t=='Peça'){pec+=v;cPec+=c;if(!c)sc++}else{serv+=v;cOut+=c}})});
- const dl=despMes(m),dsp=dl.reduce((a,x)=>a+(+x.valor||0),0),fat=serv+pec-desc,bruto=fat-cPec-cOut,rec=db.orders.reduce((a,o)=>a+o.pags.reduce((b,p)=>b+(ym(p.data)==m?+p.valor||0:0),0),0);
- return{m,os,n:os.length,serv,pec,desc,fat,cPec,cOut,custo:cPec+cOut,bruto,dsp,dl,liq:bruto-dsp,rec,sc}}
+ const dl=despMes(m),dsp=dl.reduce((a,x)=>a+(+x.valor||0),0),fat=serv+pec-desc,bruto=fat-cPec-cOut,rec=db.orders.reduce((a,o)=>a+o.pags.reduce((b,p)=>b+(ym(p.data)==m?+p.valor||0:0),0),0),
+  tx=db.orders.reduce((a,o)=>a+o.pags.reduce((b,p)=>b+(ym(p.data)==m?+p.taxa||0:0),0),0);/* taxa da maquininha: despesa no mês do pagamento */
+ return{m,os,n:os.length,serv,pec,desc,fat,cPec,cOut,custo:cPec+cOut,bruto,dsp:dsp+tx,dl,tx,liq:bruto-dsp-tx,rec,sc}}
 const aggF=ms=>{const r={n:0,serv:0,pec:0,desc:0,fat:0,cPec:0,cOut:0,custo:0,bruto:0,dsp:0,liq:0,rec:0,sc:0,os:[],cats:{}};
- ms.forEach(m=>{const x=fin(m);['n','serv','pec','desc','fat','cPec','cOut','custo','bruto','dsp','liq','rec','sc'].forEach(k=>r[k]+=x[k]);r.os.push(...x.os);x.dl.forEach(d=>{const c=d.cat||'Outros';r.cats[c]=(r.cats[c]||0)+(+d.valor||0)})});return r};
+ ms.forEach(m=>{const x=fin(m);['n','serv','pec','desc','fat','cPec','cOut','custo','bruto','dsp','liq','rec','sc'].forEach(k=>r[k]+=x[k]);r.os.push(...x.os);x.dl.forEach(d=>{const c=d.cat||'Outros';r.cats[c]=(r.cats[c]||0)+(+d.valor||0)});if(x.tx>0)r.cats['Taxa de cartão']=(r.cats['Taxa de cartão']||0)+x.tx});return r};
 const FPS=[['m0','Este mês'],['m1','Mês passado'],['m3','3 meses'],['m12','12 meses'],['ano','Ano']];
 function periodo(){const f=S.f.fp||'m0',now=today().slice(0,7);let end=now,n=1;
  if(f=='m1')end=monthsBack(now,2)[0];else if(f=='m3')n=3;else if(f=='m12')n=12;else if(f=='ano')n=+now.slice(5,7);
@@ -1210,7 +1211,7 @@ function rateio(o){const it=(o.items||[]).map(i=>({...i,tot:r2((+i.q||0)*(+i.v||
 const isPeca=i=>i.t=='Peça';
 function nfTotais(o){const it=rateio(o),P=it.filter(isPeca),S1=it.filter(i=>!isPeca(i)),T=L=>r2(L.reduce((a,i)=>a+i.tot-i.dsc,0));return{pecas:T(P),serv:T(S1),nP:P.filter(i=>i.tot>0).length,nS:S1.filter(i=>i.tot>0).length}}
 const ctx0=()=>({cfg:db.cfg||{},F:FC(),cli:cl,veh:vh,prod:prod});
-const pagCod=f=>({Dinheiro:'01',PIX:'17',Cartão:'03',Transferência:'18',Parcelado:'03'}[f]||'');
+const pagCod=f=>({Dinheiro:'01',PIX:'17',Cartão:'03',Crédito:'03',Débito:'04',Transferência:'18',Parcelado:'03'}[f]||'');
 
 /* ---- montagem do documento no formato da Focus NFe ---- */
 function nfePayload(o,dt,C){C=C||ctx0();const c=C.cfg,F=C.F,cli=C.cli(o.cli),v=C.veh(o.veh),it=rateio(o).filter(i=>isPeca(i)&&i.tot>0);
@@ -1857,7 +1858,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.26.2';
+const APP_VER='2.27.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

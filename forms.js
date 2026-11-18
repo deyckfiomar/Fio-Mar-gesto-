@@ -33,6 +33,8 @@ function melhora(inp,form){if(inp.dataset.fx)return;inp.dataset.fx=1;
  if(n=='placa'||n=='cipl'||/^placa\b/i.test(L)){
   const w=wrap(inp,'fplaca','<span class="fpb"><i class="fpf"></i><b>BRASIL</b><i class="fpq"></i></span>');inp.setAttribute('maxlength','8');inp.setAttribute('autocapitalize','characters');inp.setAttribute('spellcheck','false');inp.setAttribute('autocomplete','off');
   if(!inp.placeholder)inp.placeholder='ABC1D23';inp.addEventListener('blur',()=>{inp.value=inp.value.toUpperCase().replace(/[^A-Z0-9]/g,'')});return}
+ /* porcentagem (taxa da maquininha) */
+ if(n=='txp'||/^tx(deb|cred|p6|p12)$/.test(n)){wrap(inp,'fsuf','<span class="fun">%</span>',1);inp.setAttribute('inputmode','decimal');if(!inp.placeholder)inp.placeholder='0,00';return}
  /* dinheiro */
  if(/\(R\$|^(valor|pre[çc]o|custo)\b/i.test(L)||['preco','custo','valor'].includes(n)){
   const custo=n=='custo'||/^custo/i.test(L)||/despesa|conta|compra/.test(tit);
