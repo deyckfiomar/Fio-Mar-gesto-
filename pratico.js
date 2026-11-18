@@ -120,6 +120,7 @@ G.ciAch=function(){const p=normPl(($q('#cipl')||{}).value||''),f=$q('#cifnd'),nv
   f.innerHTML=`<div class="pfnd"><b>${e(vlabel(v))}</b> ${chip('Já cadastrado','#1E9E55')}<small class="muted" style="display:block">${e(c.nome||'Sem cliente')}${c.tel?' · '+e(c.tel):''}${v.km?' · último km '+e(v.km):''}</small>${a?`<p style="margin:8px 0 0;color:#C98200"><b>Já tem a O.S. ${e(a.num)} aberta.</b> <button type="button" class="sm" onclick="closeM();go('order','${a.id}')">Abrir essa O.S.</button></p>`:''}</div>`;
   const km=$q('#cikm');if(km&&!km.value&&v.km)km.placeholder='Último: '+v.km}
  else{f.innerHTML=p.length>=5?`<p class="muted" style="margin:-4px 0 8px">Carro novo: preencha os dados abaixo.</p>`:'';nv.style.display=p.length>=5||CI.semPlaca?'':'none';if(p.length>=7&&typeof buscaPlaca=='function'){clearTimeout(CI.t);CI.t=setTimeout(()=>{try{buscaPlaca(true)}catch(x){}},700)}}};
+G.ciEstado=()=>CI;/* usado pelo leitor de placa (placa.js) para voltar à entrada sem perder nada */
 G.ciScan=function(f){if(!f||typeof scanPlaca!='function')return;Promise.resolve(scanPlaca(f)).then(()=>ciAch()).catch(()=>{})};
 G.ciSug=function(v){const b=$q('#cisug');CI.cli=null;const q=nrm(v).trim();if(!b)return;if(q.length<2){b.innerHTML='';return}
  const L=db.clients.filter(c=>nrm(c.nome).includes(q)).slice(0,4);b.innerHTML=L.map(c=>`<button type="button" onclick="ciCli('${c.id}')"><b>${e(c.nome)}</b> <small class="muted">${e(c.tel||'')} · já cadastrado</small></button>`).join('')};
