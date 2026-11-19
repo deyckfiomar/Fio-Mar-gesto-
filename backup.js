@@ -14,8 +14,11 @@ function marca(){try{localStorage.setItem('fm_bkp',today())}catch(x){}db.cfg=db.
 const atraso=()=>{const d=bkpData();return d?Math.round((new Date(today()+'T12:00')-new Date(d+'T12:00'))/864e5):null};
 
 /* ---------- lembrete em "O que fazer agora" ---------- */
+/* 2.31.0: fica no fim da lista e, dispensado, só volta depois de 7 dias */
+const ADK='fm_bkpadia';G.bkpAdia=function(){try{localStorage.setItem(ADK,today())}catch(x){}render(1)};
 G.bkpAviso=function(){if(!DONO()||typeof SEMDADOS!='undefined'&&SEMDADOS)return null;const n=atraso();if(n!=null&&n<DIAS)return null;
- return[0,n==null?'Fazer o primeiro backup':'Backup atrasado: último há '+n+' dias',n==null?'Os dados ficam só na nuvem. Guarde uma cópia no Google Drive.':'Último backup em '+D(bkpData())+'. O ideal é um por semana.',`<button class="sm pr" onclick="bkpFull()">Fazer backup</button>`]};
+ let ad='';try{ad=localStorage.getItem(ADK)||''}catch(x){}if(ad&&Math.round((new Date(today()+'T12:00')-new Date(ad+'T12:00'))/864e5)<7)return null;
+ return[9,n==null?'Fazer o primeiro backup':'Backup atrasado: último há '+n+' dias',n==null?'Os dados ficam só na nuvem. Guarde uma cópia no Google Drive.':'Último backup em '+D(bkpData())+'. O ideal é um por semana.',`<button class="sm" onclick="bkpFull()">Fazer backup</button><button class="sm" aria-label="Lembrar daqui a uma semana" onclick="bkpAdia()">×</button>`]};
 
 /* ---------- backup só dos dados (.json) ---------- */
 const _backup=backup;G.backup=backup=function(){const r=_backup();marca();return r};

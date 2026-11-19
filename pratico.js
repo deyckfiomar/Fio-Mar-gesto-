@@ -159,7 +159,7 @@ G.lembraOk=function(vid){const v=vh(vid);if(!v||!v.id)return;v.lemb=today();save
 
 /* ---------- 5) o que fazer agora ---------- */
 function fazer(){const F=[],h=today();
- db.orders.filter(o=>o.status=='Concluída'&&!o.avisado).forEach(o=>F.push([1,'Carro pronto: avisar o cliente',`${e(vlabel(vh(o.veh)))} · ${e(cl(o.cli).nome||'')} · O.S. ${e(o.num)}`,`<button class="wa sm" onclick="avisaPronto('${o.id}')">Avisar</button>`]));
+ if(typeof prontosDash!='function')db.orders.filter(o=>o.status=='Concluída'&&!o.avisado).forEach(o=>F.push([1,'Carro pronto: avisar o cliente',`${e(vlabel(vh(o.veh)))} · ${e(cl(o.cli).nome||'')} · O.S. ${e(o.num)}`,`<button class="wa sm" onclick="avisaPronto('${o.id}')">Avisar</button>`]));
  db.quotes.filter(q=>q.status=='Aguardando'&&(!q.env||dias(q.env,h)>=2)).forEach(q=>F.push([2,'Orçamento sem resposta'+(q.env?' há '+dias(q.env,h)+' dias':''),`Nº ${e(q.n)} · ${e(cl(q.cli).nome||'')} · ${R(sum(q.items,q.desc))}`,`<button class="sm" onclick="cobraOrc('${q.id}')">Perguntar</button>`]));
  db.orders.filter(o=>o.status=='Aguardando peças'&&dias(o.stAt||o.aberta,h)>=3).forEach(o=>F.push([3,'Aguardando peças há '+dias(o.stAt||o.aberta,h)+' dias',`${e(vlabel(vh(o.veh)))} · O.S. ${e(o.num)}`,`<button class="sm" onclick="go('order','${o.id}')">Abrir</button>`]));
  db.orders.filter(o=>o.status=='Entregue'&&oTot(o)-paid(o)>0.005).forEach(o=>F.push([4,'A receber: '+R(oTot(o)-paid(o)),`${e(cl(o.cli).nome||'')} · O.S. ${e(o.num)} · entregue ${D(o.conc||o.aberta)}`,`<button class="sm" onclick="cobraOS('${o.id}')">Cobrar</button>`]));

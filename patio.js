@@ -160,16 +160,16 @@ function kcard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),n=d
  return`<div class="kc" data-o="${o.id}" role="button" tabindex="0" aria-label="O.S. ${e(o.num)}, ${e(vlabel(v))}. Toque para mudar a situação" onclick="stSheet('${o.id}')" onkeydown="if(event.key=='Enter')stSheet('${o.id}')">
  <div class="kc1">${plc(v)}<small>O.S. ${e(o.num)}</small><span class="sp"></span>${mb(par?'peça há '+par+(par==1?' dia':' dias'):tempo(o),(par>=3||n>=7)&&o.status!='Concluída'?KR:'')}</div>
  <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}</small><button type="button" class="kmec${o.mec?'':' z'}" onclick="event.stopPropagation();patioMec('${o.id}')">${svgi('stwr')} ${o.mec?e(o.mec):'Escolher mecânico'}</button>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
- <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):mb('Sem itens')}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
+ <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):''}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
  <div class="kca">${av}${b}${rest>0.005&&typeof recebe=='function'?`<button type="button" class="rcb" onclick="event.stopPropagation();recebe('${o.id}')">Receber</button>`:''}</div></div>`}
 /* pátio no Painel: quadro (cartões) ou lista, escolha guardada no aparelho */
-const PK='fm_patio',modo=()=>{try{return localStorage.getItem(PK)=='lista'?'lista':'quadro'}catch(x){return'quadro'}};
+const PK='fm_patio',modo=()=>{let m=null;try{m=localStorage.getItem(PK)}catch(x){}if(m=='lista'||m=='quadro')return m;return innerWidth<760?'lista':'quadro'};
 G.patioModo=function(m){try{localStorage.setItem(PK,m)}catch(x){}KBX=0;render(1)};
 const naPatio=()=>db.orders.filter(o=>COLS.includes(o.status));
 const porSt=(O,s)=>O.filter(o=>o.status==s).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
 function quadro(O){return`<div class="kbs" role="tablist" aria-label="Situações">${COLS.map((s,i)=>{const n=porSt(O,s).length;return`<button type="button" role="tab" class="${i?'':'on'}${n?'':' z'}" style="--c:${SC[s]}" onclick="kbVai(${i})">${stIco(s)}<span>${s}</span><b>${n}</b></button>`}).join('')}</div>
  <div class="kb" onscroll="kbX(this)">${COLS.map(s=>{const L=porSt(O,s);return`<section class="kbc${L.length?'':' vz'}" style="--c:${SC[s]}" aria-label="${s}"><div class="kbh">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(kcard).join('')||'<div class="kbv">Nenhum carro aqui</div>'}</section>`}).join('')}</div>`}
-function listaP(O){return (O.length?'<small class="muted swdica">Arraste o cartão para a esquerda para avançar a situação.</small>':'')+COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div>${L.map(o=>osCard(o).replace('<div class="lc','<div data-o="'+o.id+'" class="lc')).join('')}`:''}).join('')}
+function listaP(O){return COLS.map(s=>{const L=porSt(O,s);return L.length?`<div class="plh" style="--c:${SC[s]}">${stIco(s)}<span>${s}</span><i>${L.length}</i></div><div class="plst">${L.map(kcard).join('')}</div>`:''}).join('')}
 G.patioDash=function(){const O=naPatio(),m=modo(),bt=(k,l,ic)=>`<button type="button" class="${m==k?'on':''}" aria-pressed="${m==k}" onclick="patioModo('${k}')">${svgi(ic)}<span>${l}</span></button>`;
  return`<div id="patio" class="sech pth"><h2>Carros no pátio${O.length?` <span class="muted">(${O.length})</span>`:''}</h2><div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><button type="button" class="sm" style="margin:0" onclick="go('patio')">Abrir o pátio</button></div>`+
  (O.length?(m=='lista'?listaP(O):quadro(O)):empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))};
@@ -189,7 +189,7 @@ function Vpatio(){const T=naPatio(),f=S.f.pf||'',mc=S.f.pm||'',m=modo(),mecs=[..
   acts:`<div class="pvt" role="group" aria-label="Mostrar como">${bt('quadro','Quadro','patio')}${bt('lista','Lista','lista')}</div><span class="sp"></span>${typeof patioExtraBtns=='function'?patioExtraBtns():`<button class="sm" onclick="go('orders')">${svgi('orders')} Todas as O.S.</button>`}`})+
  `<div class="kts kq pfts" style="--n:4">${K('','vehicles',T.length,'No pátio',KB)}${K('atras','clock',T.filter(atras).length,'Atrasados',KR)}${K('pronto','stok',T.filter(FIL.pronto).length,'Prontos p/ entregar',KG)}${K('semmec','stwr',T.filter(FIL.semmec).length,'Sem mecânico',KA)}</div>`+
  `<div class="pfb"><label class="pfq">${svgi('busca')}<input type="search" placeholder="Placa, modelo, cliente ou O.S." aria-label="Buscar no pátio" value="${e(S.f.pq||'')}" oninput="patioQ(this.value)"></label>
-  ${mecs.length||T.some(o=>!o.mec)?`<div class="pfm" role="group" aria-label="Mecânico"><button type="button" class="${mc?'':'on'}" onclick="patioM('')">Todos</button>${mecs.map(x=>`<button type="button" class="${mc==x?'on':''}" data-m="${e(x)}" onclick="patioM(this.dataset.m)">${e(x)}</button>`).join('')}${T.some(o=>!o.mec)?`<button type="button" class="${mc=='-'?'on':''}" onclick="patioM('-')">Sem mecânico</button>`:''}</div>`:''}</div>`+
+  ${mc?`<div class="pfm" role="group" aria-label="Mecânico"><button type="button" class="on" onclick="patioM('')">${svgi('stwr')} ${mc=='-'?'Sem mecânico':e(mc)} ✕</button></div>`:''}</div>`+
  (rec>0.005?`<p class="muted pfr">A receber dos carros no pátio: <b>${R(rec)}</b></p>`:'')+
  (O.length?(m=='lista'?listaP(O):quadro(O)):T.length?`<div class="card muted" style="text-align:center">Nenhum carro com esse filtro. <button class="sm" onclick="patioLimpa()">Limpar filtros</button></div>`:empty('vehicles','Nenhum carro no pátio agora.',`<button class="pr" onclick="checkin()">+ Entrada do carro</button>`))+
  `<p class="muted pfn" id="pfn" hidden>Nenhum carro com essa busca.</p>`+
@@ -199,7 +199,7 @@ G.patioF=k=>{S.f.pf=S.f.pf==k?'':k;KBX=0;render(1)};G.patioM=k=>{S.f.pm=k;KBX=0;
 /* busca no pátio: esconde os cartões que não batem, sem redesenhar a tela (o teclado não fecha) */
 G.patioQ=function(q){S.f.pq=q;aplicaQ()};
 function aplicaQ(){if(S.v!='patio')return;const q=nrm(S.f.pq||'').trim(),W=q.split(/\s+/).filter(Boolean);let vis=0;
- document.querySelectorAll('.kb .kc[data-o], .plh ~ .lc[data-o]').forEach(el=>{const o=od(el.dataset.o),ok=!W.length||(o&&W.every(w=>busca(o).includes(w)));el.hidden=!ok;if(ok)vis++});
+ document.querySelectorAll('.kb .kc[data-o], .plst .kc[data-o], .plh ~ .lc[data-o]').forEach(el=>{const o=od(el.dataset.o),ok=!W.length||(o&&W.every(w=>busca(o).includes(w)));el.hidden=!ok;if(ok)vis++});
  document.querySelectorAll('.kbc').forEach(c=>{const n=c.querySelectorAll('.kc[data-o]:not([hidden])').length;const i=c.querySelector('.kbh i');if(i)i.textContent=n});
  const pn=document.getElementById('pfn');if(pn)pn.hidden=!(W.length&&!vis)}
 /* mecânico do carro: tocar no nome no cartão */

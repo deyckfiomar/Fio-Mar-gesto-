@@ -71,7 +71,7 @@ G.addPag=addPag=function(pre){recebe(S.id,pre)};
 /* =============== 2) Arrastar o cartão para avançar a situação =============== */
 const PROX={Aberta:'Em andamento','Em andamento':'Concluída','Aguardando peças':'Em andamento','Concluída':'Entregue'};
 let SW=null,SWBLOCK=0;
-document.addEventListener('touchstart',ev=>{const c=ev.target.closest&&ev.target.closest('.lc[data-o]');if(!c||ev.touches.length!=1||ev.target.closest('button,a,input,select'))return;
+document.addEventListener('touchstart',ev=>{const c=ev.target.closest&&ev.target.closest('.lc[data-o],.plst .kc[data-o]');if(!c||ev.touches.length!=1||ev.target.closest('button,a,input,select'))return;
  const o=od(c.dataset.o),nx=o&&PROX[o.status];if(!nx)return;SW={c,id:o.id,nx,x:ev.touches[0].clientX,y:ev.touches[0].clientY,on:false,dx:0}},{passive:true});
 document.addEventListener('touchmove',ev=>{if(!SW)return;const dx=ev.touches[0].clientX-SW.x,dy=ev.touches[0].clientY-SW.y;
  if(!SW.on){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){SW=null;return}if(dx<-14&&Math.abs(dx)>Math.abs(dy)*1.5){SW.on=true;SW.c.classList.add('swon');SW.c.dataset.sw='→ '+SW.nx}else return}
@@ -79,7 +79,7 @@ document.addEventListener('touchmove',ev=>{if(!SW)return;const dx=ev.touches[0].
 const swFim=()=>{if(!SW)return;const s=SW;SW=null;if(!s.on)return;s.c.style.transform='';s.c.classList.remove('swon','swgo');delete s.c.dataset.sw;SWBLOCK=Date.now();
  if(s.dx<-90&&typeof stMuda=='function'){stMuda(s.id,s.nx);if(['Concluída','Entregue'].includes(s.nx))toast('O.S. '+od(s.id).num+': '+s.nx)}};
 document.addEventListener('touchend',swFim);document.addEventListener('touchcancel',swFim);
-document.addEventListener('click',ev=>{if(Date.now()-SWBLOCK<350&&ev.target.closest&&ev.target.closest('.lc[data-o]')){ev.stopPropagation();ev.preventDefault()}},true);
+document.addEventListener('click',ev=>{if(Date.now()-SWBLOCK<350&&ev.target.closest&&ev.target.closest('.lc[data-o],.plst .kc[data-o]')){ev.stopPropagation();ev.preventDefault()}},true);
 
 /* =============== 3) Serviços favoritos =============== */
 let FAV=[],FAVK='';
@@ -210,8 +210,8 @@ body:has(.qbar) #vzfab{transform:translateY(-70px)}
 .rctx{margin:10px 0 2px;padding:10px 12px 12px;border:1px solid var(--ln);border-radius:12px;background:color-mix(in srgb,var(--hi) 6%,transparent)}.rctx label{margin:0}.rctxr{font-size:14px;margin-top:8px;line-height:1.45}.rctxv{color:#2E8B57;font-size:16px}
 .rcf{margin:0;min-height:48px;border-radius:12px;font-weight:700;border:1px solid var(--ln);background:transparent;color:var(--ink)}.rcf.on{background:var(--hi);border-color:var(--hi);color:#1a1a1a}
 /* arrastar */
-.lc[data-o]{touch-action:pan-y;transition:transform .18s}.lc.swon{transition:none;position:relative}
-.lc.swon::after{content:attr(data-sw);position:absolute;left:100%;top:0;bottom:0;width:150px;display:flex;align-items:center;padding-left:12px;font-weight:700;color:var(--mut);white-space:nowrap}.lc.swgo::after{color:#2E8B57}
+.lc[data-o],.plst .kc[data-o]{touch-action:pan-y;transition:transform .18s}.lc.swon,.kc.swon{transition:none;position:relative}
+.lc.swon::after,.kc.swon::after{content:attr(data-sw);position:absolute;left:100%;top:0;bottom:0;width:150px;display:flex;align-items:center;padding-left:12px;font-weight:700;color:var(--mut);white-space:nowrap}.lc.swgo::after,.kc.swgo::after{color:#2E8B57}
 .swdica{display:block;margin:0 0 6px;font-size:12.5px}@media (hover:hover) and (pointer:fine){.swdica{display:none}}
 /* favoritos */
 .favs{margin:10px 0 0;padding-top:8px;border-top:1px dashed var(--ln)}.favs>small{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:6px}

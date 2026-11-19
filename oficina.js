@@ -9,7 +9,8 @@
    8. Entrada do carro pela foto da placa.
    9. Modo TV do pátio.
   10. (2.29.0) Mecânicos da equipe ligados às O.S.
-  11. (2.30.0) Agenda, pátio, O.S. e orçamento ligados. */
+  11. (2.30.0) Agenda, pátio, O.S. e orçamento ligados.
+  12. (2.31.0) Mais prático, rápido e menos poluído (17 sugestões). */
 (function(G){
 const $q=s=>document.querySelector(s),$=$q;
 const sheet=(tit,body)=>{$('#modal').innerHTML=`<div class="ov psh-ov" onclick="if(event.target===this)closeM()"><div class="md psh" role="dialog" aria-modal="true" aria-label="${e(tit)}"><div class="psh-h"><h2>${tit}</h2><button type="button" class="ib" aria-label="Fechar" onclick="closeM()">×</button></div>${body}</div></div>`};
@@ -213,7 +214,8 @@ function osDoAgCria(a){let o=osOk(a.os&&od(a.os));if(o)return o;const sv=SV().fi
  o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:a.cli,veh:a.veh||'',ag:a.id,problema:[a.svc,a.obs].filter(Boolean).join(' - '),mec:'',status:'Aberta',items:sv?[{iid:uid(),t:'Serviço',d:sv.nome,det:'',q:1,v:+sv.preco||0,...(sv.ctrib?{ctrib:sv.ctrib}:{})}]:[],desc:0,ck:{},laudo:{data:today()},fotos:[],pags:[],horas:'',pecas:'',aberta:today()};
  db.orders.push(o);a.os=o.id;return o}
 /* o que acontece quando o agendamento muda de situação */
-G.agLiga=function(a,st){if(!a||!a.id)return;
+G.agLiga=function(a,st,forca){if(!a||!a.id)return;
+ if(st=='Confirmado'&&!forca&&a.data>today()&&!osOk(a.os&&od(a.os))){save();render(1);toast('Confirmado. No dia '+D(a.data)+', o carro aparece no pátio com o botão “Chegou”.');return}
  if(st=='Confirmado'){const tinha=osOk(a.os&&od(a.os)),o=osDoAgCria(a),tq=qDaOS(o),q=qDaOSCria(o);save();render(1);
   toast(tinha&&tq?'Agendamento confirmado':'Confirmado: O.S. '+o.num+' no pátio'+(q?' e orçamento Nº '+q.n:'')+(a.veh?'':'. Coloque o veículo na O.S.'));return}
  if(st=='Concluído'){const o=osOk(a.os&&od(a.os));if(o&&!OSFIM.includes(o.status)){stMuda(o.id,'Concluída');toast('Agendamento e O.S. '+o.num+' concluídos')}}};
@@ -241,6 +243,38 @@ if(typeof editAg=='function'){const _ea=editAg;G.editAg=editAg=function(id){cons
  if(f&&!f.dataset.liga){f.dataset.liga=1;f.addEventListener('submit',()=>setTimeout(()=>{const a=id?ag(id):(AG().length>n0?AG()[AG().length-1]:null);
   if(a&&a.id&&a.status!=antes&&['Confirmado','Concluído'].includes(a.status))desfazivel(()=>agLiga(a,a.status))},0))}return r}}
 
+/* ---------- 12) 2.31.0: mais prático, rápido e menos poluído ---------- */
+/* 17) "Chegou": agendamentos de hoje sem O.S. aparecem no topo do pátio */
+const chegam=()=>(typeof AG=='function'?aOrd(AG()):[]).filter(a=>a.data==today()&&['Agendado','Confirmado'].includes(a.status)&&!osOk(a.os&&od(a.os)));
+G.agChegou=function(id){const a=ag(id);if(!a||!a.id)return;desfazivel(()=>{a.status='Confirmado';agLiga(a,'Confirmado',1)})};
+function chegamHTML(){const L=chegam();if(!L.length)return'';
+ return`<div class="card chg"><b>${svgi('agenda')} Chegam hoje <i>${L.length}</i></b>${L.map(a=>{const v=a.veh?vh(a.veh):{},c=cl(a.cli);return`<div class="chgl"><span class="chgh">${e(a.hora||'')}</span><span class="chgt"><b>${e(v.modelo||'Sem veículo')}${v.placa?' · '+e(v.placa):''}</b><small>${e(c.nome||'')}${a.svc?' · '+e(a.svc):''}</small></span><button type="button" class="sm pr" onclick="agChegou('${a.id}')">Chegou</button></div>`}).join('')}</div>`}
+if(typeof V!='undefined'&&V.patio){const _vp=V.patio;V.patio=function(){const h=_vp.apply(this,arguments),c=chegamHTML();if(!c)return h;const k='<div class="kts kq pfts"',i=h.indexOf(k);return i<0?c+h:h.slice(0,i)+c+h.slice(i)}}
+/* 5) mecânicos no ⋯ Mais do pátio */
+G.patioMais=function(){const P=db.orders.filter(o=>['Aberta','Em andamento','Aguardando peças','Concluída'].includes(o.status)),M=[...new Set(P.map(o=>String(o.mec||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+ const A=[['Todas as O.S.',"go('orders',0,0,{st:''})",'orders'],['Meus carros (mecânico)',"go('meus')",'clients'],...(typeof tvAbre=='function'?[['Modo TV (tela cheia)','tvAbre()','dash']]:[])];
+ sheet('Pátio',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`+
+  (M.length?`<small class="psec">Ver só os carros de</small><div class="osml">${M.map(n=>`<button type="button" data-m="${e(n)}" onclick="closeM();go('patio');patioM(this.dataset.m)">${svgi('stwr')}<span>${e(n)} <small class="muted">${P.filter(o=>mecIgual(o.mec,n)).length}</small></span></button>`).join('')}</div>`:''))};
+/* 11) cada lista lembra o último filtro (enquanto o app está aberto) */
+const MF={},LV=['patio','orders','agenda','quotes','clients','vehicles','stock','fin','notas','entradas','peds'];
+{const _g=go;G.go=go=function(v,id,tab,f,...r){try{if(LV.includes(S.v))MF[S.v]=JSON.parse(JSON.stringify(S.f||{}));if(f==null&&LV.includes(v)&&MF[v])f=JSON.parse(JSON.stringify(MF[v]))}catch(x){}return _g(v,id,tab,f,...r)}}
+/* 9) busca: placa completa leva direto à O.S. aberta (ou à entrada do carro); Enter abre */
+if(typeof buscaR=='function'){const _br=buscaR;G.buscaR=buscaR=function(v){const r=_br.apply(this,arguments),box=$q('#pbr'),qp=normPl(v);if(!box||qp.length<7)return r;
+ const ve=db.vehicles.find(x=>normPl(x.placa)==qp),OV=ve?db.orders.filter(x=>x.veh==ve.id&&x.status!='Entregue').reverse():[],o=OV.find(x=>x.status!='Concluída')||OV[0];
+ const b=o?`<button type="button" class="pr pbtop" onclick="closeM();go('order','${o.id}')"><span><b>Abrir O.S. ${e(o.num)}</b><small>${e(vlabel(ve))} · ${e(o.status)}</small></span></button>`:`<button type="button" class="pr pbtop" onclick="closeM();checkin({placa:'${e(qp)}'})"><span><b>Entrada do carro</b><small>${ve?e(vlabel(ve))+' · sem O.S. aberta':'Placa '+e(qp)+' · carro novo'}</small></span></button>`;
+ box.insertAdjacentHTML('afterbegin',b);return r}}
+if(typeof buscaG=='function'){const _bg=buscaG;G.buscaG=buscaG=function(){const r=_bg.apply(this,arguments),i=$q('#pbq');if(i)i.addEventListener('keydown',ev=>{if(ev.key=='Enter'){const b=$q('#pbr .pbtop')||$q('#pbr button');if(b){ev.preventDefault();b.click()}}});return r}}
+/* 12) receber: já vem com o que falta e a forma usada na última vez */
+const UFK='fm_ultforma';
+const ultForma=()=>{let f='';try{f=localStorage.getItem(UFK)||''}catch(x){}if(f)return f;let best=null;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.forma&&(!best||String(p.data||'')>=String(best.data||'')))best=p}));return best?best.forma:''};
+if(typeof recebe=='function'){const _rc=recebe;G.recebe=recebe=function(id,pre){if(!pre||!pre.forma){const f=ultForma();if(f)pre={...(pre||{}),forma:f}}return _rc(id,pre)}}
+if(typeof recebeOk=='function'){const _ro=recebeOk;G.recebeOk=recebeOk=function(){const f=$q('#rcf [name=forma]');if(f&&f.value){try{localStorage.setItem(UFK,f.value)}catch(x){}}return _ro.apply(this,arguments)}}
+/* 15) versão só no menu Mais */
+if(typeof maisAcoes=='function'){const _ma=maisAcoes;G.maisAcoes=maisAcoes=function(){const r=_ma.apply(this,arguments),m=$q('#modal .psh');if(m&&typeof APP_VER!='undefined')m.insertAdjacentHTML('beforeend',`<p class="mver">Fio-Mar Gestor · versão ${e(APP_VER)}</p>`);return r}}
+/* 1) barra do Fio-Mar some ao rolar para baixo e volta ao rolar para cima */
+{let ly=0;addEventListener('scroll',()=>{const y=scrollY,b=document.body;if(document.querySelector('#modal .ov')){ly=y;return}
+ if(y>ly+6&&y>90)b.classList.add('navoff');else if(y<ly-6||y<40)b.classList.remove('navoff');ly=y},{passive:true})}
+
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
 #main{padding-bottom:96px}
@@ -257,6 +291,20 @@ const css=document.createElement('style');css.textContent=`
 .fbox[open]>summary::after{transform:translateY(-50%) rotate(180deg)}.fbox>summary b{display:block;font-size:16px}.fbox>summary small{color:var(--mut);font-size:13px}
 .fboxb{padding:0 10px 10px}.fboxb>.card:first-child{margin-top:0}
 /* O.S. */
+/* 2.31.0 */
+@media (max-width:760px){
+ .pgh{padding:8px 12px;margin-bottom:10px;border-top-width:3px}.pgh .pic{display:none}
+ .pgh .osh1{gap:8px}.pgh .osh-t small{font-size:9.5px}.pgh .osh-t h1{font-size:22px!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+ .pgh .hb{min-height:40px;padding:6px 12px;font-size:15px;margin:0}.pgh .osh1+.osh3{margin-top:8px}
+ nav{transition:transform .2s}body.navoff nav{transform:translateY(-110%)}
+}
+#ver{display:none}.mver{margin:14px 0 0;text-align:center;color:var(--mut);font-size:12px}
+.dsh3 .kt{padding:10px 8px}.dshl{margin:-2px 0 12px;font-size:14px;color:var(--mut)}.dshl a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}.dshl i{font-style:normal;margin:0 6px}
+.plst{display:grid;gap:10px;margin-bottom:12px}.plst .kc{margin:0}
+.chg{border-left:5px solid var(--hi)}.chg>b{display:flex;align-items:center;gap:8px}.chg>b svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.chg>b i{font-style:normal;margin-left:auto;color:var(--mut)}
+.chgl{display:flex;align-items:center;gap:10px;padding:10px 0 0;margin-top:10px;border-top:1px solid var(--ln)}.chgh{font:800 17px/1 'Barlow Condensed','Barlow',sans-serif;min-width:46px}.chgt{flex:1;min-width:0}.chgt small{display:block;color:var(--mut)}.chgl button{margin:0;min-height:44px}
+.pbtop{width:100%;margin:0 0 10px;min-height:56px;text-align:left;display:flex}#pbr .pbtop small{display:block;font-weight:600;color:#3B2E00!important;opacity:1}
+button.wa:not(.osgo){background:transparent;color:#22A85C;border-color:#22A85C}
 .oslgs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 0}.oslg{margin:0;display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;border-radius:10px;font-size:14px;text-align:left}.oslg svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--hi)}.oslg small{display:block;color:var(--mut);font-size:12px}
 .osnx{display:flex;gap:8px;align-items:stretch;flex-wrap:nowrap}.osnx .osgo{flex:1;min-height:50px;margin:0;font-size:16.5px;font-weight:800;border-radius:12px}
 .osnx .osic{margin:0;min-width:50px;min-height:50px;border-radius:12px}.osnx .osic[aria-label="Mais ações"]{font-size:22px;line-height:1}
