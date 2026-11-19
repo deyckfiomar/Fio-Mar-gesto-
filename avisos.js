@@ -36,10 +36,10 @@ G.avAbre=async function(){if(!DONO())return;const ant=AV;AV=await estado();if(an
  if(AV=='on')return sheet('Avisos no celular',`<p style="margin:0 0 10px"><span class="p" style="--c:${KG}">${svgi('sino')} Ligados neste aparelho</span></p>`+txt+`<p class="muted" style="font-size:13px">Vale só para este aparelho. Para avisar também em outro celular, ligue lá também.</p><div class="bar" style="margin:12px 0 0"><button type="button" onclick="avDesliga()">Desligar</button><span class="sp"></span><button type="button" class="pr" onclick="avTeste()">Mandar um teste</button></div>`);
  sheet('Avisos no celular',txt+`<p class="muted" style="font-size:13px">O celular vai pedir permissão para mostrar notificações: toque em <b>Permitir</b>.</p><div class="bar" style="margin:12px 0 0"><button type="button" onclick="closeM()">Agora não</button><span class="sp"></span><button type="button" class="pr" onclick="avLiga()">Ligar os avisos</button></div>`)};
 
-/* botão na Agenda (só o dono) */
+/* Agenda (só o dono): avisos no menu ⋯; pontinho amarelo no ⋯ enquanto estiverem desligados */
+G.agAvItem=()=>{if(!DONO())return[];const on=AV=='on';return[[on?'Avisos no celular · ligados':'Ligar avisos no celular','avAbre()',AV=='neg'?'sinox':'sino']]};
 const _ag=V.agenda;V.agenda=function(){const h=_ag();if(!DONO())return h;if(AV=='?')atualiza();
- const on=AV=='on',bt=`<button class="sm${on?'':' pr'}" onclick="avAbre()">${svgi(on?'sino':AV=='neg'?'sinox':'sino')} ${on?'Avisos ligados':'Ligar avisos no celular'}</button>`;
- return h.replace(`<button class="sm" onclick="go('agsvc')">`,bt+`<button class="sm" onclick="go('agsvc')">`)};
+ return AV=='on'?h:h.replace('class="hb agmb"','class="hb agmb dot"')};
 
 /* toque na notificação: abre o agendamento */
 function abreAg(id){if(!id)return;const a=AG().find(x=>x.id==id);go('agenda',0,0,{ag:a&&a.data<today()?'ant':a&&a.data==today()?'hoje':'prox'});if(a)setTimeout(()=>{try{editAg(id)}catch(x){}},50)}

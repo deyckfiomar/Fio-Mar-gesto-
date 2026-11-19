@@ -104,8 +104,11 @@ V.meus=function(){const n=eu(),A=db.orders.filter(o=>!FIM.includes(o.status)),M=
  sech('Comigo',plural(M.length,'carro','carros'))+(M.sort(ord).map(o=>mcard(o,1)).join('')||`<p class="muted">Nenhum carro com ${e(n)} agora.${L.length?' Pegue um carro abaixo.':''}</p>`))+
  (L.length?sech('Sem mecânico',plural(L.length,'carro','carros'))+L.sort(ord).map(o=>mcard(o,0)).join(''):'')};
 G.patioExtraBtns=()=>`<button class="sm" aria-label="Mais opções do pátio" onclick="patioMais()">⋯ Mais</button>`;
-G.patioMais=function(){const A=[['Todas as O.S.',"go('orders')",'orders'],['Meus carros (mecânico)',"go('meus')",'clients'],...(typeof tvAbre=='function'?[['Modo TV (tela cheia)','tvAbre()','dash']]:[])];
+G.patioMais=function(){const A=[['Todas as O.S.',"go('orders',0,0,{st:''})",'orders'],['Meus carros (mecânico)',"go('meus')",'clients'],...(typeof tvAbre=='function'?[['Modo TV (tela cheia)','tvAbre()','dash']]:[])];
  sheet('Pátio',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
+/* 2.28.5: menu ⋯ da Agenda (avisos no celular e serviços da agenda) */
+G.agMais=function(){const A=[...(typeof agAvItem=='function'?agAvItem():[]),['Serviços da agenda ('+SV().length+')',"go('agsvc')",'agenda']];
+ sheet('Agenda',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
 /* mecânico (não dono): o app abre em "Meus carros" */
 if(typeof render=='function'){const _rd=render;let ini='';G.render=render=function(){if(typeof SES!='undefined'&&SES&&typeof OF!='undefined'&&OF&&typeof PAPEL!='undefined'&&PAPEL&&typeof DONO=='function'){const k=OF+'|'+PAPEL;if(ini!=k){ini=k;if(!DONO()&&S.v=='dash')S.v='meus'}}return _rd.apply(this,arguments)}}
 

@@ -138,6 +138,7 @@ main{padding:14px 14px 28px}:root{padding-bottom:0}
 .pic{background:color-mix(in srgb,var(--c) 18%,var(--sf));border:1px solid color-mix(in srgb,var(--c) 45%,var(--ln));color:var(--ink);cursor:default}
 .pic svg{width:21px!important;height:21px!important;stroke-width:1.9!important}
 .hb{flex:none;white-space:nowrap;padding:9px 14px;border-radius:9px;margin:0}
+.agmb{font-size:20px;line-height:1;padding:8px 12px;margin-right:6px;position:relative}.agmb.dot::after{content:'';position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--hi);box-shadow:0 0 0 2px var(--sf)}
 .osh2>div:only-child{flex:1}
 .ftabs{grid-template-columns:repeat(var(--n),1fr)}.ftabs .ost{padding:9px 4px 8px}.ftabs .ost svg{width:20px;height:20px}
 .seg{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--sf);border:1px solid var(--ln);border-radius:10px;margin:-4px 0 12px;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
@@ -762,7 +763,7 @@ function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Re
  let b='';
  if(S.tab=='resumo'){const ok=x=>String(x||'').trim(),rs=[ok(o.mec)&&e(o.mec),ok(o.km)&&e(o.km)+' km',ok(o.comb)&&'tanque '+e(o.comb)].filter(Boolean).join(' · ');
  b=`${ok(o.problema)?`<div class="card osprob"><small>Problema relatado</small><p>${e(o.problema)}</p></div>`:''}<div class="card"><b>Serviços e peças</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
- ${typeof favHTML=='function'?favHTML('os'):''}<div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}<span class="sp"></span><span class="tot">${R(oTot(o))}</span></div></div>
+ ${typeof favHTML=='function'?favHTML('os'):''}<div class="bar" style="margin-top:10px"><button onclick="addItem(od(S.id))">Adicionar item</button><button onclick="kits('os')">Kit / serviço pronto</button><button onclick="addStock(od(S.id),1)">Peça do estoque</button>${typeof pdDaOS=='function'?'<button onclick="pdDaOS(S.id)">Pedir peça</button>':''}</div></div>
  <details class="card osent" ${!ok(o.problema)&&!ok(o.km)?'open':''}><summary><b>Entrada do carro</b><small>${rs||'mecânico, km, combustível, avarias'}</small></summary><div class="g2"><label>Mecânico responsável<input value="${e(o.mec)}" onchange="U('mec',this.value)"></label><label>Horas de mão de obra<input value="${e(o.horas)}" onchange="U('horas',this.value)"></label></div>
  <div class="g2"><label>Km na entrada<input inputmode="numeric" value="${e(o.km||'')}" onchange="U('km',this.value)"></label>${typeof fuelG=='function'?`<div class="lb">Combustível${fuelG(o.comb||'','os')}</div>`:`<label>Combustível<select onchange="U('comb',this.value)">${['','Reserva','1/4','1/2','3/4','Cheio'].map(x=>`<option value="${x}" ${(o.comb||'')==x?'selected':''}>${x||'—'}</option>`).join('')}</select></label>`}</div>
  <label>Avarias na entrada (riscos, amassados)<input value="${e(o.avarias||'')}" onchange="U('avarias',this.value)"></label>
@@ -1675,14 +1676,14 @@ const osF=(o,k)=>!k?true:k=='abertas'?!osFim(o):k=='receber'?osDeve(o):o.status=
 function osCard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),nfs=nfCount(o.id),ni=o.items.length;
  return lcard({c:SC[o.status],n:'O.S. '+e(o.num),pill:pill(o.status),v:R(tot),t:typeof vtit=='function'?vtit(v):e(vlabel(v)),m:`${e(c.nome||'Sem cliente')} · entrada ${D(o.aberta)}${o.mec?' · '+e(o.mec):''}`,
   f:[typeof osDiasMb=='function'?osDiasMb(o):'',mb(ni?plural(ni,'item','itens'):'Sem itens'),tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):'A receber',KA)):'',nfs?mb(plural(nfs,'nota emitida','notas emitidas'),KG):'',typeof osAtalhos=='function'?osAtalhos(o):''].join(''),on:`go('order','${o.id}')`})}
-function Vorders(){const f=S.f,st=f.st||'',q=nrm(f.q||'').trim(),O=db.orders.filter(o=>(!f.cli||o.cli==f.cli)&&(!f.vei||o.veh==f.vei));
+function Vorders(){const f=S.f,q=nrm(f.q||'').trim(),st=f.st!=null?f.st:q||f.cli||f.vei?'':'abertas',O=db.orders.filter(o=>(!f.cli||o.cli==f.cli)&&(!f.vei||o.veh==f.vei));
  const n=k=>O.filter(o=>osF(o,k)).length,rec=O.filter(osDeve).reduce((a,o)=>a+oTot(o)-paid(o),0),np=n('abertas'),na=n('Aguardando peças'),nc=n('Concluída');
  const tl=[['','Todas','osres',plural(n(''),'O.S.','O.S.')],['abertas','No pátio','vehicles',plural(np,'carro','carros'),np?KB:KM],['Aguardando peças','Aguard. peças','stock',String(na),na?KR:KM],
   ['Concluída','Concluídas','oscheck',nc?nc+' p/ entregar':'0',nc?KG:KM],['Entregue','Entregues','orders',String(n('Entregue'))],['receber','A receber','ospag',R(rec),rec>0?KA:KM]];
  let L=O.filter(o=>osF(o,st));if(q)L=L.filter(o=>nrm([o.num,cl(o.cli).nome,vh(o.veh).placa,vh(o.veh).modelo].join(' ')).includes(q));
  const lbl={'':'Todas as O.S.',abertas:'No pátio',receber:'A receber',Concluída:'Concluídas',Entregue:'Entregues'}[st]||st,who=f.cli?cl(f.cli).nome:f.vei?vlabel(vh(f.vei)):'',pat=['abertas','Aberta','Em andamento'].includes(st);
  return head({ico:'orders',kick:'Atendimento',title:'Ordens de serviço',c:PCOL.orders,right:`<button class="pr hb" onclick="typeof checkin=='function'?checkin():newOS()">+ Nova O.S.</button>`,acts:V.patio?`<button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`:''})+
- (who?`<div class="fbar">${svgi('osres')}<span>Histórico de <b>${e(who)}</b></span><button class="sm" onclick="go('orders')">Ver todas</button></div>`:'')+
+ (who?`<div class="fbar">${svgi('osres')}<span>Histórico de <b>${e(who)}</b></span><button class="sm" onclick="go('orders',0,0,{st:''})">Ver todas</button></div>`:'')+
  (typeof ktiles=='function'?ktiles(tl,pat?'abertas':st,'st'):ftiles(tl,pat?'abertas':st,'st'))+(pat?seg([['abertas','Todos no pátio'],['Aberta','Abertas'],['Em andamento','Em andamento']],st,'st'):'')+
  srch('Buscar por número, cliente ou placa',f.q)+sech(`${e(lbl)} <span class="muted">(${L.length})</span>`,L.length?R(L.reduce((a,o)=>a+oTot(o),0)):'')+
  (lista(L.slice().reverse(),osCard)||empty('orders',q?'Nenhuma O.S. encontrada para esta busca.':'Nenhuma O.S. neste filtro.',st||q?'':`<button class="pr" onclick="newOS()">+ Nova O.S.</button>`))}
@@ -1735,7 +1736,7 @@ function Vagenda(){const f=S.f.ag||'prox',t=today(),dsel=S.f.agd||'',A=AG().filt
  let l=aOrd(AG()).filter(a=>dsel?a.data==dsel:f=='hoje'?a.data==t:f=='ant'?a.data<t:a.data>=t);if(f=='ant'&&!dsel)l.reverse();
  const days={};l.forEach(a=>(days[a.data]=days[a.data]||[]).push(a));
  const tl=[['hoje','Hoje','clock',plural(nh,'horário','horários'),nh?KB:KM],['prox','Próximos','agenda',String(np),np?KB:KM],['ant','Anteriores','osres',String(na)]];
- return head({ico:'agenda',kick:'Atendimento',title:'Agenda',c:PCOL.agenda,right:`<button class="pr hb" onclick="editAg()">+ Agendar</button>`,acts:`<button class="sm" onclick="go('agsvc')">Serviços da agenda (${SV().length})</button>`})+ftiles(tl,dsel?'':f,'ag')+(typeof agStrip=='function'&&f!='ant'?agStrip(dsel||(f=='hoje'?t:'')):'')+(typeof agLivres=='function'&&(dsel||f=='hoje')?agLivres(dsel||t):'')+
+ return head({ico:'agenda',kick:'Atendimento',title:'Agenda',c:PCOL.agenda,right:`<button class="hb agmb" aria-label="Mais opções da agenda" onclick="agMais()">⋯</button><button class="pr hb" onclick="editAg()">+ Agendar</button>`})+ftiles(tl,dsel?'':f,'ag')+(typeof agStrip=='function'&&f!='ant'?agStrip(dsel||(f=='hoje'?t:'')):'')+(typeof agLivres=='function'&&(dsel||f=='hoje')?agLivres(dsel||t):'')+
  (Object.entries(days).map(([d,x])=>sech(`<span>${e(((s)=>s.charAt(0).toUpperCase()+s.slice(1))(String(dayLbl(d))))}</span>`,plural(x.length,'horário','horários'))+x.map(agRow).join('')).join('')||
   empty('agenda',dsel?'Nenhum horário marcado em '+dayLbl(dsel)+'.':'Nenhum horário neste filtro.',`<button class="pr" onclick="editAg(null${dsel?`,{data:'${dsel}'}`:''})">+ Novo agendamento</button>`))}
 function Vagsvc(){return head({back:"go('agenda')",kick:'Agenda',title:'Serviços',c:PCOL.agenda,right:`<button class="pr hb" onclick="editSvc()">+ Novo</button>`})+
@@ -1863,7 +1864,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.28.4';
+const APP_VER='2.28.5';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
