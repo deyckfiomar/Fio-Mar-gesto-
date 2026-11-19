@@ -203,7 +203,7 @@ function aplicaQ(){if(S.v!='patio')return;const q=nrm(S.f.pq||'').trim(),W=q.spl
  document.querySelectorAll('.kbc').forEach(c=>{const n=c.querySelectorAll('.kc[data-o]:not([hidden])').length;const i=c.querySelector('.kbh i');if(i)i.textContent=n});
  const pn=document.getElementById('pfn');if(pn)pn.hidden=!(W.length&&!vis)}
 /* mecânico do carro: tocar no nome no cartão */
-G.patioMec=function(oid){const o=od(oid);if(!o)return;const nomes=[...new Set(db.orders.map(x=>x.mec).filter(Boolean))].slice(-12);
+G.patioMec=function(oid){const o=od(oid);if(!o)return;const nomes=typeof mecLista=='function'?mecLista().map(x=>x.n).slice(0,14):[...new Set(db.orders.map(x=>x.mec).filter(Boolean))].slice(-12);
  sheet('Mecânico',`Mecânico da O.S. ${e(o.num)}`,`<div class="stg">${nomes.map(n=>`<button type="button" class="${o.mec==n?'on':''}" style="--c:${KB}" data-m="${e(n)}" onclick="patioMecOk('${oid}',this.dataset.m)">${svgi('stwr')}<span>${e(n)}</span>${o.mec==n?'<i>atual</i>':''}</button>`).join('')}</div>
  <form class="pfmn" onsubmit="event.preventDefault();patioMecOk('${oid}',this.n.value)"><input name="n" placeholder="Outro nome" autocomplete="off"><button class="pr">Salvar</button></form>${o.mec?`<button type="button" class="sm" style="margin-top:8px" onclick="patioMecOk('${oid}','')">Tirar o mecânico</button>`:''}`)};
 G.patioMecOk=function(oid,n){const o=od(oid);if(!o)return;o.mec=String(n||'').trim();save();closeM();render(1);toast(o.mec?'O.S. '+o.num+': '+o.mec:'Mecânico retirado')};

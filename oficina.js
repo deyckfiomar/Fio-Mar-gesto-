@@ -7,7 +7,8 @@
    6. Painel: "Prontos para entregar" e agenda vazia numa linha.
    7. Meus carros (mecânico).
    8. Entrada do carro pela foto da placa.
-   9. Modo TV do pátio. */
+   9. Modo TV do pátio.
+  10. (2.29.0) Mecânicos da equipe ligados às O.S. */
 (function(G){
 const $q=s=>document.querySelector(s),$=$q;
 const sheet=(tit,body)=>{$('#modal').innerHTML=`<div class="ov psh-ov" onclick="if(event.target===this)closeM()"><div class="md psh" role="dialog" aria-modal="true" aria-label="${e(tit)}"><div class="psh-h"><h2>${tit}</h2><button type="button" class="ib" aria-label="Fechar" onclick="closeM()">×</button></div>${body}</div></div>`};
@@ -85,11 +86,20 @@ G.prontosDash=function(){const P=db.orders.filter(o=>o.status=='Concluída').sor
   return`<div class="prr" role="button" tabindex="0" onclick="go('order','${o.id}')"><div class="prt"><b>${typeof vtit=='function'?vtit(v):e(vlabel(v))}</b><small>${e(c.nome||'Sem cliente')} · ${rest>0.005?'falta '+R(rest):'pago'}${o.avisado?' · avisado':''}${n>=2?` · <span style="color:${n>=5?KR:KA}">pronto há ${n} dias</span>`:''}</small></div>${bt}</div>`}).join('')}</div>`};
 
 /* ---------- 7) Meus carros (mecânico) ---------- */
-const EUK='fm_eu',eu=()=>{try{return localStorage.getItem(EUK)||''}catch(x){return''}};
+const EUK='fm_eu',NR=x=>(typeof nrm=='function'?nrm(x):String(x==null?'':x).toLowerCase()).replace(/\s+/g,' ').trim();
+/* 2.29.0: o mecânico que entra com a própria conta já é reconhecido pelo nome cadastrado na Equipe */
+const contaNome=()=>{try{return(typeof DONO=='function'&&!DONO()&&typeof OFS!='undefined'&&OFS&&OFS.mnome)||''}catch(x){return''}};
+const eu=()=>{const c=contaNome();if(c)return c;try{return localStorage.getItem(EUK)||''}catch(x){return''}};
+G.mecIgual=(a,b)=>!!NR(a)&&NR(a)==NR(b);
 G.meuNome=function(n){try{localStorage.setItem(EUK,n)}catch(x){}render(1)};
-const mecNomes=()=>{const s=new Set();db.orders.forEach(o=>{if(o.mec&&String(o.mec).trim())s.add(String(o.mec).trim())});return[...s].sort((a,b)=>a.localeCompare(b,'pt-BR'))};
+const eqNomes=()=>{const q=db.cfg&&Array.isArray(db.cfg.equipe)?db.cfg.equipe:[];return q.map(x=>String(x&&x.n||'').trim()).filter(Boolean)};
+/* nomes para escolher o mecânico: primeiro a equipe (contas), depois os outros nomes já usados nas O.S. */
+G.mecLista=function(){const E=eqNomes(),R=E.map(n=>({n,eq:1})),vis=new Set(E.map(NR));
+ db.orders.forEach(o=>{const n=String(o.mec||'').trim(),k=NR(n);if(n&&!vis.has(k)){vis.add(k);R.push({n,eq:0})}});
+ R.sort((a,b)=>(b.eq-a.eq)||a.n.localeCompare(b.n,'pt-BR'));return R};
+const mecNomes=()=>mecLista().map(x=>x.n);
 G.meusPega=function(id){const o=od(id),n=eu();if(!o||!n)return;desfazivel(()=>{o.mec=n;save();render(1)},'Carro '+vlabel(vh(o.veh))+' ficou com '+n)};
-G.meusTroca=function(){const L=mecNomes();sheet('Quem é você?',`<p class="muted" style="margin:-4px 0 10px">Escolha o seu nome. Fica guardado neste celular.</p><div class="meusn">${L.map(n=>`<button type="button" class="${eu()==n?'pr':''}" onclick="closeM();meuNome('${e(n).replace(/'/g,"\\'")}')">${e(n)}</button>`).join('')}</div>
+G.meusTroca=function(){const L=mecNomes();sheet('Quem é você?',`<p class="muted" style="margin:-4px 0 10px">Escolha o seu nome. Fica guardado neste celular.</p><div class="meusn">${L.map(n=>`<button type="button" class="${mecIgual(eu(),n)?'pr':''}" onclick="closeM();meuNome('${e(n).replace(/'/g,"\\'")}')">${e(n)}</button>`).join('')}</div>
  <form onsubmit="event.preventDefault();const v=this.n.value.trim();if(v){closeM();meuNome(v)}" style="margin-top:12px"><label>Outro nome<input name="n" autocomplete="off" placeholder="Seu nome como aparece na O.S."></label><button class="pr" style="width:100%">Usar este nome</button></form>`)};
 function mcard(o,meu){const v=vh(o.veh),c=cl(o.cli),id=o.id,ni=o.items.length;
  const B={Aberta:[['Começar',`stMuda('${id}','Em andamento')`,'pr']],'Em andamento':[['Terminei',`stMuda('${id}','Concluída')`,'pr'],['Falta peça',`stMuda('${id}','Aguardando peças')`,'']],'Aguardando peças':[['Peça chegou',`stMuda('${id}','Em andamento')`,'pr']]}[o.status]||[];
@@ -97,9 +107,10 @@ function mcard(o,meu){const v=vh(o.veh),c=cl(o.cli),id=o.id,ni=o.items.length;
  return`<div class="card mcard" style="--c:${SC[o.status]||'#777'}" role="button" tabindex="0" onclick="go('order','${id}')"><div class="mc1">${typeof plc=='function'?plc(v):''}<b>${e(v.modelo||'Sem veículo')}</b><span class="sp"></span>${osDiasMb(o)}</div>
  <small class="mcs">${e(c.nome||'Sem cliente')} · O.S. ${e(o.num)} · ${pill(o.status)}</small>${o.problema?`<p class="mcp">${e(o.problema)}</p>`:''}<small class="mcs">${ni?plural(ni,'item','itens')+': '+o.items.slice(0,3).map(i=>e(i.d)).join(', ')+(ni>3?'…':''):'Sem serviços lançados'}</small>
  <div class="mcb">${bt}</div></div>`}
-V.meus=function(){const n=eu(),A=db.orders.filter(o=>!FIM.includes(o.status)),M=n?A.filter(o=>String(o.mec||'').trim().toLowerCase()==n.toLowerCase()):[],L=A.filter(o=>!String(o.mec||'').trim());
+V.meus=function(){const n=eu(),A=db.orders.filter(o=>!FIM.includes(o.status)),M=n?A.filter(o=>mecIgual(o.mec,n)):[],L=A.filter(o=>!String(o.mec||'').trim());
  const ord=(a,b)=>(a.aberta||'').localeCompare(b.aberta||'');
- return head({ico:'patio',kick:n?'Mecânico: '+e(n):'Mecânico',title:'Meus carros',c:'#2F6FB0',right:`<button class="hb" onclick="meusTroca()">${n?'Trocar nome':'Quem é você?'}</button>`,acts:`<span class="vzhw"></span><button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`})+
+ const cn=contaNome();
+ return head({ico:'patio',kick:n?'Mecânico: '+e(n):'Mecânico',title:'Meus carros',c:'#2F6FB0',right:cn?'':`<button class="hb" onclick="meusTroca()">${n?'Trocar nome':'Quem é você?'}</button>`,acts:`<span class="vzhw"></span><button class="sm" onclick="go('patio')">${svgi('patio')} Ver o pátio</button>`})+
  (!n?`<div class="card" style="text-align:center"><p style="margin:0 0 10px">Escolha o seu nome para ver os carros que estão com você.</p><button class="pr" onclick="meusTroca()">Escolher meu nome</button></div>`:
  sech('Comigo',plural(M.length,'carro','carros'))+(M.sort(ord).map(o=>mcard(o,1)).join('')||`<p class="muted">Nenhum carro com ${e(n)} agora.${L.length?' Pegue um carro abaixo.':''}</p>`))+
  (L.length?sech('Sem mecânico',plural(L.length,'carro','carros'))+L.sort(ord).map(o=>mcard(o,0)).join(''):'')};
@@ -110,7 +121,7 @@ G.patioMais=function(){const A=[['Todas as O.S.',"go('orders',0,0,{st:''})",'ord
 G.agMais=function(){const A=[...(typeof agAvItem=='function'?agAvItem():[]),['Serviços da agenda ('+SV().length+')',"go('agsvc')",'agenda']];
  sheet('Agenda',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
 /* mecânico (não dono): o app abre em "Meus carros" */
-if(typeof render=='function'){const _rd=render;let ini='';G.render=render=function(){if(typeof SES!='undefined'&&SES&&typeof OF!='undefined'&&OF&&typeof PAPEL!='undefined'&&PAPEL&&typeof DONO=='function'){const k=OF+'|'+PAPEL;if(ini!=k){ini=k;if(!DONO()&&S.v=='dash')S.v='meus'}}return _rd.apply(this,arguments)}}
+if(typeof render=='function'){const _rd=render;let ini='';G.render=render=function(){if(typeof SES!='undefined'&&SES&&typeof OF!='undefined'&&OF&&typeof PAPEL!='undefined'&&PAPEL&&typeof DONO=='function'){const k=OF+'|'+PAPEL;if(ini!=k){ini=k;if(!DONO()&&S.v=='dash')S.v='meus';if(DONO())setTimeout(()=>{typeof eqBusca=='function'&&eqBusca()},6000)}}return _rd.apply(this,arguments)}}
 
 /* ---------- 8) entrada do carro pela foto da placa ---------- */
 if(typeof checkin=='function'){const _ci=checkin;G.checkin=checkin=function(pre){const r=_ci.apply(this,arguments);
@@ -161,6 +172,29 @@ addEventListener('resize',()=>setTimeout(micNaBarra,60));addEventListener('orien
 let ULT=0,RAF=0;
 addEventListener('scroll',()=>{if(RAF)return;RAF=requestAnimationFrame(()=>{RAF=0;const y=scrollY,m=$q('#vzfab');if(m&&!document.body.classList.contains('vznav')){const fim=innerHeight+y>=document.documentElement.scrollHeight-40;m.classList.toggle('vzesc',y>ULT+4&&y>120&&!fim)}if(Math.abs(y-ULT)>4)ULT=y})},{passive:true});
 
+/* ---------- 10) 2.29.0: mecânicos da equipe ligados às O.S. ----------
+   - O dono guarda os nomes da Equipe (só nomes, sem e-mail) em db.cfg.equipe; só o dono pode mudar o cfg.
+   - O mecânico que entra com a conta dele cai direto nos carros dele (nome da conta = nome na O.S.).
+   - Na Equipe, o dono vê os carros de cada um e junta nomes antigos das O.S. ao nome da conta ("Zé" → "José"). */
+G.eqSync=function(L){if(typeof DONO!='function'||!DONO()||(typeof SEMDADOS!='undefined'&&SEMDADOS))return;
+ const nv=(L||[]).map(x=>({n:String(x.nome||'').trim(),p:x.papel=='dono'?'dono':'colab'})).filter(x=>x.n).sort((a,b)=>a.n.localeCompare(b.n,'pt-BR'));
+ const at=db.cfg&&Array.isArray(db.cfg.equipe)?db.cfg.equipe:[];if(JSON.stringify(at)==JSON.stringify(nv))return;
+ db.cfg=db.cfg||{};db.cfg.equipe=nv;save()};
+/* o dono busca a equipe uma vez por entrada, para os nomes ficarem em dia nos celulares dos mecânicos */
+let eqK='';G.eqBusca=async function(){try{if(typeof SB=='undefined'||!SB||!OF||!DONO()||SEMDADOS||eqK==OF)return;if(typeof RS!='undefined'&&RS.s&&RS.s.v==null)return;eqK=OF;
+ const{data,error}=await SB.from('oficina_membros').select('papel,nome').eq('oficina_id',OF);if(!error&&data)eqSync(data)}catch(x){}};
+const abertasDe=n=>db.orders.filter(o=>!FIM.includes(o.status)&&mecIgual(o.mec,n));
+G.eqExtra=function(L){const nomes=(L||[]).map(x=>String(x.nome||'').trim()).filter(Boolean);
+ const semM=db.orders.filter(o=>!FIM.includes(o.status)&&!String(o.mec||'').trim()).length;
+ const cont={},nom={};db.orders.forEach(o=>{const n=String(o.mec||'').trim(),k=NR(n);if(n&&!nomes.some(m=>mecIgual(m,n))){cont[k]=(cont[k]||0)+1;if(!nom[k])nom[k]=n}});
+ const sol=Object.keys(cont).sort((a,b)=>cont[b]-cont[a]||nom[a].localeCompare(nom[b],'pt-BR'));
+ const lin=nomes.map(n=>{const k=abertasDe(n).length;return`<div class="eqln"><b>${e(n)}</b><span class="sp"></span><span class="muted">${k?plural(k,'carro','carros')+' em serviço':'nenhum carro agora'}</span></div>`}).join('');
+ return`<div class="card eqc"><b>Carros com cada um</b><p class="muted" style="margin:4px 0 8px;font-size:13px">O nome cadastrado aqui é o nome que aparece na O.S. Quem entra com a própria conta vê os seus carros em “Meus carros”.</p>${lin}${semM?`<div class="eqln"><b>Sem mecânico</b><span class="sp"></span><span class="muted">${plural(semM,'carro','carros')}</span></div>`:''}</div>`+
+ (sol.length&&nomes.length?`<div class="card eqc"><b>Nomes nas O.S. que não são da equipe</b><p class="muted" style="margin:4px 0 8px;font-size:13px">Se for a mesma pessoa com outro nome, junte ao nome da conta. As O.S. passam a mostrar o nome da equipe.</p>`+
+  sol.map(k=>`<div class="eqj"><div><b>${e(nom[k])}</b><small class="muted">${cont[k]} O.S.</small></div><select aria-label="Juntar ${e(nom[k])} a"><option value="">Quem é?</option>${nomes.map(m=>`<option value="${e(m)}">${e(m)}</option>`).join('')}</select><button type="button" class="sm pr" data-n="${e(nom[k])}" onclick="eqJunta(this.dataset.n,this.previousElementSibling.value)">Juntar</button></div>`).join('')+`</div>`:'')};
+G.eqJunta=function(velho,novo){if(!novo)return toast('Escolha o nome da equipe');const O=db.orders.filter(o=>mecIgual(o.mec,velho));if(!O.length)return;
+ desfazivel(()=>{O.forEach(o=>{o.mec=novo;if(o.laudo&&mecIgual(o.laudo.tec,velho))o.laudo.tec=novo});save();render(1)},(O.length==1?'1 O.S. passou':O.length+' O.S. passaram')+' para '+novo)};
+
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
 #main{padding-bottom:96px}
@@ -196,6 +230,8 @@ const css=document.createElement('style');css.textContent=`
 .mcard{border-left:5px solid var(--c);cursor:pointer}.mc1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mc1 b{font-size:18px}
 .mcs{display:block;color:var(--mut);margin-top:6px}.mcp{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:14.5px}
 .mcb{display:flex;gap:8px;margin-top:12px}.mcb button{flex:1;margin:0;min-height:54px;font-size:17px;font-weight:800;border-radius:12px}
+.eqln{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line,#8883)}.eqc p+.eqln{border-top:0}
+.eqj{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line,#8883)}.eqj small{display:block}.eqj select,.eqj button{margin:0}
 .meusn{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meusn button{margin:0;min-height:52px;font-size:16px;font-weight:700}
 /* entrada pela placa */
 .ciscanb{margin:0 0 6px!important}.ciscan{width:100%;min-height:56px;justify-content:center;font-size:17px!important;font-weight:800;display:flex!important;align-items:center}
