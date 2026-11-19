@@ -8,7 +8,8 @@
    7. Meus carros (mecânico).
    8. Entrada do carro pela foto da placa.
    9. Modo TV do pátio.
-  10. (2.29.0) Mecânicos da equipe ligados às O.S. */
+  10. (2.29.0) Mecânicos da equipe ligados às O.S.
+  11. (2.30.0) Agenda, pátio, O.S. e orçamento ligados. */
 (function(G){
 const $q=s=>document.querySelector(s),$=$q;
 const sheet=(tit,body)=>{$('#modal').innerHTML=`<div class="ov psh-ov" onclick="if(event.target===this)closeM()"><div class="md psh" role="dialog" aria-modal="true" aria-label="${e(tit)}"><div class="psh-h"><h2>${tit}</h2><button type="button" class="ib" aria-label="Fechar" onclick="closeM()">×</button></div>${body}</div></div>`};
@@ -195,6 +196,51 @@ G.eqExtra=function(L){const nomes=(L||[]).map(x=>String(x.nome||'').trim()).filt
 G.eqJunta=function(velho,novo){if(!novo)return toast('Escolha o nome da equipe');const O=db.orders.filter(o=>mecIgual(o.mec,velho));if(!O.length)return;
  desfazivel(()=>{O.forEach(o=>{o.mec=novo;if(o.laudo&&mecIgual(o.laudo.tec,velho))o.laudo.tec=novo});save();render(1)},(O.length==1?'1 O.S. passou':O.length+' O.S. passaram')+' para '+novo)};
 
+/* ---------- 11) 2.30.0: agenda → pátio → O.S. → orçamento, todos ligados ----------
+   - Confirmar o agendamento já abre a O.S. (entra no pátio) e o orçamento ligado a ela.
+   - "Gerar O.S." na agenda também já cria o orçamento.
+   - Concluir em qualquer lugar (agenda, pátio, O.S., Meus carros) conclui os outros.
+   - Voltar a O.S. para "em serviço" desfaz a conclusão automática do agendamento e do orçamento.
+   - Só acontece em ações feitas neste aparelho (nunca na sincronização), para não criar O.S. em dobro. */
+const OSFIM=['Concluída','Entregue'],osOk=o=>o&&o.id?o:null;
+const agsDaOS=o=>(typeof AG=='function'?AG():[]).filter(a=>a.os==o.id);
+const qDaOS=o=>db.quotes.filter(q=>(q.os==o.id||q.id==o.qid)&&q.status!='Recusado').sort((a,b)=>(+b.n||0)-(+a.n||0))[0];
+const qcp=i=>{const c=JSON.parse(JSON.stringify(i));delete c.baixa;return c};
+function qDaOSCria(o){if(!o||!o.cli||qDaOS(o))return qDaOS(o)||null;o.items=o.items||[];o.items.forEach(i=>{if(!i.iid)i.iid=uid()});
+ const q={id:uid(),n:db.qseq++,cli:o.cli,veh:o.veh||'',items:o.items.map(qcp),desc:+o.desc||0,prazo:'',obs:o.problema||'',status:'Rascunho',os:o.id,daos:o.id,osk:o.items.map(qKey),data:today(),fotos:[]};
+ db.quotes.push(q);return q}
+function osDoAgCria(a){let o=osOk(a.os&&od(a.os));if(o)return o;const sv=SV().find(s=>s.nome==a.svc);
+ o={id:uid(),num:String(db.seq++).padStart(4,'0'),cli:a.cli,veh:a.veh||'',ag:a.id,problema:[a.svc,a.obs].filter(Boolean).join(' - '),mec:'',status:'Aberta',items:sv?[{iid:uid(),t:'Serviço',d:sv.nome,det:'',q:1,v:+sv.preco||0,...(sv.ctrib?{ctrib:sv.ctrib}:{})}]:[],desc:0,ck:{},laudo:{data:today()},fotos:[],pags:[],horas:'',pecas:'',aberta:today()};
+ db.orders.push(o);a.os=o.id;return o}
+/* o que acontece quando o agendamento muda de situação */
+G.agLiga=function(a,st){if(!a||!a.id)return;
+ if(st=='Confirmado'){const tinha=osOk(a.os&&od(a.os)),o=osDoAgCria(a),tq=qDaOS(o),q=qDaOSCria(o);save();render(1);
+  toast(tinha&&tq?'Agendamento confirmado':'Confirmado: O.S. '+o.num+' no pátio'+(q?' e orçamento Nº '+q.n:'')+(a.veh?'':'. Coloque o veículo na O.S.'));return}
+ if(st=='Concluído'){const o=osOk(a.os&&od(a.os));if(o&&!OSFIM.includes(o.status)){stMuda(o.id,'Concluída');toast('Agendamento e O.S. '+o.num+' concluídos')}}};
+/* o que acontece quando a O.S. muda de situação (pátio, O.S., Meus carros, agenda) */
+function osLiga(o,antes,v){let mud=0;const fimA=OSFIM.includes(antes),fimV=OSFIM.includes(v);
+ if(fimV&&!fimA){agsDaOS(o).forEach(a=>{if(!['Concluído','Cancelado'].includes(a.status)){a.status='Concluído';a.lig=1;mud=1}});
+  const q=qDaOS(o);if(q&&q.status!='Aprovado'){q.items=(o.items||[]).map(qcp);q.desc=+o.desc||0;q.osk=(o.items||[]).map(qKey);q.status='Aprovado';q.aprov={nome:'Concluído junto com a O.S. '+o.num,data:today()};q.lig=1;mud=1}}
+ if(fimA&&!fimV){agsDaOS(o).forEach(a=>{if(a.lig&&a.status=='Concluído'){a.status='Confirmado';delete a.lig;mud=1}});
+  db.quotes.forEach(q=>{if(q.lig&&(q.os==o.id||q.id==o.qid)&&q.status=='Aprovado'){q.status='Rascunho';delete q.aprov;delete q.lig;mud=1}})}
+ if(mud){save();render(1)}}
+if(typeof setSt=='function'){const _ss=setSt;G.setSt=setSt=function(v){const o=od(S.id),antes=o&&o.status;const r=_ss.apply(this,arguments);if(o&&o.id&&antes!=v)osLiga(o,antes,v);return r}}
+if(typeof setAg=='function'){const _sa=setAg;G.setAg=setAg=function(id,st){const a=ag(id);if(!a||!a.id||a.status==st||!['Confirmado','Concluído'].includes(st))return _sa(id,st);
+ return desfazivel(()=>{_sa(id,st);agLiga(a,st)})}}
+if(typeof agOS=='function'){const _ao=agOS;G.agOS=agOS=function(id){const a=ag(id),tinha=a&&a.os&&od(a.os);const r=_ao.apply(this,arguments);
+ const o=a&&!tinha&&osOk(a.os&&od(a.os));if(o){o.ag=a.id;if(!['Confirmado','Concluído','Cancelado'].includes(a.status))a.status='Confirmado';const q=qDaOSCria(o);save();render(1);if(q)toast('O.S. '+o.num+' aberta, com o orçamento Nº '+q.n)}return r}}
+/* na O.S.: atalhos para o agendamento e o orçamento ligados */
+const SEMN=['dom','seg','ter','qua','qui','sex','sáb'];
+if(typeof G.osTopo=='function'){const _ot=G.osTopo;G.osTopo=function(o){const h=_ot.apply(this,arguments);if(!o||!o.id)return h;
+ const A=agsDaOS(o),q=qDaOS(o);if(!A.length&&!q)return h;
+ const ch=A.map(a=>{const d=new Date((a.data||today())+'T12:00');return`<button type="button" class="oslg" onclick="editAg('${a.id}')">${svgi('agenda')}<span>Agenda ${SEMN[d.getDay()]} ${String(a.data||'').slice(8,10)}/${String(a.data||'').slice(5,7)} ${e(a.hora||'')}<small>${e(a.status)}</small></span></button>`}).join('')+
+  (q?`<button type="button" class="oslg" onclick="osOrc('${o.id}')">${svgi('quotes')}<span>Orçamento Nº ${e(q.n)}<small>${e(q.status)}</small></span></button>`:'');
+ return h+`<div class="oslgs" aria-label="Ligado a esta O.S.">${ch}</div>`}}
+/* salvar o agendamento pelo formulário com "Confirmado" ou "Concluído" faz o mesmo que os botões */
+if(typeof editAg=='function'){const _ea=editAg;G.editAg=editAg=function(id){const antes=id?ag(id).status:null,n0=AG().length;const r=_ea.apply(this,arguments);const f=$q('#modal form');
+ if(f&&!f.dataset.liga){f.dataset.liga=1;f.addEventListener('submit',()=>setTimeout(()=>{const a=id?ag(id):(AG().length>n0?AG()[AG().length-1]:null);
+  if(a&&a.id&&a.status!=antes&&['Confirmado','Concluído'].includes(a.status))desfazivel(()=>agLiga(a,a.status))},0))}return r}}
+
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
 #main{padding-bottom:96px}
@@ -211,6 +257,7 @@ const css=document.createElement('style');css.textContent=`
 .fbox[open]>summary::after{transform:translateY(-50%) rotate(180deg)}.fbox>summary b{display:block;font-size:16px}.fbox>summary small{color:var(--mut);font-size:13px}
 .fboxb{padding:0 10px 10px}.fboxb>.card:first-child{margin-top:0}
 /* O.S. */
+.oslgs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 0}.oslg{margin:0;display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;border-radius:10px;font-size:14px;text-align:left}.oslg svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--hi)}.oslg small{display:block;color:var(--mut);font-size:12px}
 .osnx{display:flex;gap:8px;align-items:stretch;flex-wrap:nowrap}.osnx .osgo{flex:1;min-height:50px;margin:0;font-size:16.5px;font-weight:800;border-radius:12px}
 .osnx .osic{margin:0;min-width:50px;min-height:50px;border-radius:12px}.osnx .osic[aria-label="Mais ações"]{font-size:22px;line-height:1}
 .osnx .osok{flex:1;display:flex;align-items:center;padding:0 12px;min-height:50px;border-radius:12px;color:#3FBF7F;font-weight:700;border:1px dashed color-mix(in srgb,#2E8B57 60%,transparent)}
