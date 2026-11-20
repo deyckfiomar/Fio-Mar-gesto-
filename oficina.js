@@ -69,8 +69,7 @@ G.osMais=function(id){const o=od(id);if(!o)return;const rest=oTot(o)-paid(o),ob=
   ['PDF da O.S.','genOS(od(S.id))','oslaudo'],
   ['Histórico do carro',o.veh&&V.veiculo?`go('veiculo','${o.veh}')`:'','vehicles'],
   [o.avisado?'Avisar de novo que está pronto':'Avisar que está pronto',['Concluída','Entregue'].includes(o.status)&&typeof avisaPronto=='function'?`avisaPronto('${o.id}')`:'','oscheck'],
-  ['Receber pagamento',rest>0.005&&typeof recebe=='function'?`recebe('${o.id}')`:'','ospag'],
-  ['Mudar a situação',typeof stSheet=='function'?`stSheet('${o.id}',1)`:'','orders']].filter(a=>a[1]);
+  /* 2.32.0: Receber e Mudar a situação saíram daqui (já estão no topo da O.S. e na aba Pagamento) */].filter(a=>a[1]);
  sheet('O.S. '+e(o.num),`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${typeof svgi=='function'?svgi(ic):''}<span>${e(t)}</span></button>`).join('')}</div>
  ${DONO()?`<button type="button" class="dg osdel" onclick="closeM();desfazivel(()=>delOS(),'O.S. ${e(o.num)} excluída')">Excluir esta O.S.</button>`:''}`)};
 
@@ -275,6 +274,64 @@ if(typeof maisAcoes=='function'){const _ma=maisAcoes;G.maisAcoes=maisAcoes=funct
 {let ly=0;addEventListener('scroll',()=>{const y=scrollY,b=document.body;if(document.querySelector('#modal .ov')){ly=y;return}
  if(y>ly+6&&y>90)b.classList.add('navoff');else if(y<ly-6||y<40)b.classList.remove('navoff');ly=y},{passive:true})}
 
+/* ---------- 13) 2.32.0: segurança e menos poluição ---------- */
+/* 1) topo: só a marca e o Buscar (Tema e Sair foram para o Mais) */
+if(typeof navHtml=='function'){const _nh=navHtml;G.navHtml=navHtml=function(){return _nh.apply(this,arguments).replace(/<button[^>]*class="nbtn ptema"[^>]*>[\s\S]*?<\/button>/,'').replace(/<button[^>]*aria-label="Sair"[^>]*>[\s\S]*?<\/button>/,'')}}
+if(typeof maisAcoes=='function'){const _ma2=maisAcoes;G.maisAcoes=maisAcoes=function(){const r=_ma2.apply(this,arguments),m=$q('#modal .psh');if(m){const f=`<div class="mfoot"><button type="button" onclick="temaTroca()">${svgi('tema')}<span>Tema</span></button><button type="button" onclick="sairSheet()">${svgi('out')}<span>Sair</span></button></div>`,v=m.querySelector('.mver');v?v.insertAdjacentHTML('beforebegin',f):m.insertAdjacentHTML('beforeend',f)}return r}}
+ICO.tema=ICO.tema||'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>';
+G.sairSheet=function(){sheet('Sair',`<div class="osml"><button type="button" onclick="closeM();doOut()">${svgi('out')}<span>Sair deste aparelho</span></button><button type="button" onclick="sairTodos(this)">${svgi('out')}<span>Sair de todos os aparelhos<small class="muted">Use se perder o celular. Os outros saem em até 1 hora.</small></span></button></div>`)};
+G.sairTodos=function(b){if(b&&!b.dataset.ok){b.dataset.ok=1;b.classList.add('dg');b.querySelector('span').firstChild.textContent='Toque de novo para sair de todos';return}
+ closeM();(async()=>{try{if(typeof DIRTY!='undefined'&&DIRTY)await push()}catch(x){}try{await SB.auth.signOut({scope:'global'})}catch(x){}await doOut();toast('Você saiu de todos os aparelhos')})()};
+/* 6) Menu: Notas e Entradas saem da lista (Entradas fica no Estoque; Notas fiscais nas Finanças) */
+try{for(const k of ['notas','entradas']){const i=NAV.findIndex(x=>x[0]==k);if(i>=0)NAV.splice(i,1)}}catch(x){}
+if(V.fin){const _vf=V.fin;V.fin=function(){const h=_vf.apply(this,arguments);return DONO()?h+`<button type="button" class="card flink" onclick="go('notas')">${svgi('notas')}<span><b>Notas fiscais</b><small>NF-e e NFS-e emitidas e configuração</small></span><i>›</i></button>`:h}}
+/* 7) Estoque: leitor de código dentro da busca; entradas no ⋯ */
+if(V.stock){const _vs=V.stock;V.stock=function(){let h=_vs.apply(this,arguments);
+ h=h.replace(/<div class="bcsr">[\s\S]*?<\/button><\/div>/,'').replace(`<button class="sm" onclick="go('entradas')">Entrada por nota fiscal</button>`,'')
+  .replace(/(<div class="osh3">[\s\S]*?)(<\/div><\/div>)/,`$1<span class="sp"></span><button class="sm" aria-label="Mais opções do estoque" onclick="estMais()">⋯ Mais</button>$2`)
+  .replace(/(<div class="srch">[\s\S]*?<input[^>]*placeholder="Buscar peça por nome ou código"[^>]*>)/,`$1<button type="button" class="srbc" aria-label="Ler código de barras" onclick="lerCodigo(scanAbre)">${svgi('barras')}</button>`);return h}}
+G.estMais=function(){const A=[['Ler código de barras','lerCodigo(scanAbre)','barras'],['Entrada por bipe','entAbre()','stock'],...(DONO()?[['Entrada por nota fiscal',"go('entradas')",'entradas']]:[])].filter(a=>a[1]);
+ sheet('Estoque',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
+/* 8) O.S.: um botão "+ Adicionar" com uma busca só (kits, serviços, estoque e itens já usados) */
+const nrm2=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+let OA=null;
+function oaUsados(){const M=new Map();const put=(i,p)=>{const d=String(i.d||'').trim();if(!d||i.dgfee||i.pid)return;const k=nrm2(d),x=M.get(k);if(!x)M.set(k,{d,t:i.t||'Serviço',v:+i.v||0,custo:i.custo,n:1,p});else{x.n++;if(p>=x.p){x.v=+i.v||0;x.t=i.t||x.t;x.p=p}}};
+ db.quotes.forEach(q=>(q.items||[]).forEach(i=>put(i,1)));db.orders.forEach(o=>(o.items||[]).forEach(i=>put(i,2)));return[...M.values()].sort((a,b)=>b.n-a.n)}
+G.osAdd=function(id){const o=od(id||S.id);if(!o||!o.id)return;OA=o.id;
+ sheet('Adicionar na O.S. '+e(o.num),`<div class="oaq"><input type="search" id="oaq" placeholder="O que vai entrar? Ex.: óleo, pastilha" autocomplete="off" oninput="oaR(this.value)"><button type="button" class="srbc" aria-label="Ler código de barras da peça" onclick="oaBip()">${svgi('barras')}</button></div><div id="oar"></div>
+ <div class="oab"><button type="button" onclick="oaNovo()">${svgi('plus')}<span>Item novo</span></button><button type="button" onclick="closeM();pdDaOS('${o.id}')">${svgi('pedido')}<span>Pedir peça</span></button></div>`);oaR('')};
+G.oaR=function(v){const b=$q('#oar');if(!b)return;const q=nrm2(v).trim(),ok=t=>!q||q.split(/\s+/).every(w=>nrm2(t).includes(w)),lim=q?8:4;
+ const K=(db.kits||[]).filter(k=>ok(k.nome+' '+k.itens.map(i=>i.d).join(' '))).slice(0,lim),
+  SV=(db.svcs||[]).filter(s=>+s.preco>0&&ok(s.nome)).slice(0,lim),
+  P=PR().filter(p=>ok([p.nome,p.cod,p.ean,p.marca].join(' '))).slice(0,lim),
+  U=oaUsados().filter(u=>ok(u.d)&&!SV.some(s=>nrm2(s.nome)==nrm2(u.d))).slice(0,q?8:6);
+ const row=(f,t,s,v)=>`<button type="button" class="pk" onclick="${f}"><span><b>${e(t)}</b><small>${s}</small></span><b>${v}</b></button>`,sec=t=>`<small class="psec">${t}</small>`;
+ b.innerHTML=(K.length?sec('Kits')+K.map(k=>row(`oaKit('${k.id}')`,k.nome,e(plural(k.itens.length,'item','itens')),R(sum(k.itens,0)))).join(''):'')+
+  (SV.length?sec('Serviços prontos')+SV.map(s=>row(`oaSvc('${s.id}')`,s.nome,'Serviço',R(+s.preco))).join(''):'')+
+  (P.length?sec('Peças do estoque')+P.map(p=>{const n=qty(p.id);return row(`oaPeca('${p.id}')`,p.nome,`<span style="color:${n>0?'var(--mut)':'#E07A5F'}">${n} ${e(p.un||'un')} em estoque</span>`,R(+p.preco||0))}).join(''):'')+
+  (U.length?sec(q?'Já usados':'Mais usados')+U.map((u,i)=>row(`oaUsa(${i})`,u.d,e(u.t),R(u.v))).join(''):'')||
+  `<p class="muted oavz">Nada encontrado${q?' para “'+e(v)+'”':''}. Toque em <b>Item novo</b> para lançar.</p>`;
+ b.dataset.q=v;OA_U=U};
+let OA_U=[];
+function oaW(){const o=od(OA);return o&&o.id?o:null}
+function oaPush(its,msg){const w=oaW();if(!w)return;w.items=w.items||[];its.forEach(i=>{const c=JSON.parse(JSON.stringify(i));c.iid=uid();delete c.baixa;delete c.dgfee;w.items.push(c)});save();closeM();render();toast(msg)}
+G.oaKit=function(id){const k=(db.kits||[]).find(x=>x.id==id);if(k)oaPush(k.itens,'Kit “'+k.nome+'” lançado: '+plural(k.itens.length,'item','itens'))};
+G.oaSvc=function(id){const s=(db.svcs||[]).find(x=>x.id==id);if(s)oaPush([{t:'Serviço',d:s.nome,q:1,v:+s.preco}],s.nome+' lançado')};
+G.oaUsa=function(i){const u=OA_U[i],w=oaW();if(!u||!w)return;closeM();addItem(w,{t:u.t,d:u.d,v:u.v,...(u.custo!=null&&u.custo!==''&&DONO()?{custo:u.custo}:{})})};
+G.oaNovo=function(){const w=oaW(),q=($q('#oar')||{}).dataset;if(!w)return;closeM();addItem(w,q&&q.q?{d:q.q}:{})};
+G.oaPeca=function(pid){const p=prod(pid),w=oaW();if(!p.id||!w)return;const n0=qty(p.id);
+ sheet(e(p.nome),`<p class="muted" style="margin:0 0 10px">${n0} ${e(p.un||'un')} em estoque · ${R(+p.preco||0)} cada</p><div class="oaqt"><button type="button" onclick="oaQ(-1)" aria-label="Menos">−</button><input id="oaqn" inputmode="decimal" value="1" aria-label="Quantidade"><button type="button" onclick="oaQ(1)" aria-label="Mais">+</button></div>
+ <button type="button" class="pr oaok" onclick="oaPecaOk('${p.id}')">Lançar na O.S. (dá baixa)</button>`)};
+G.oaQ=function(d){const i=$q('#oaqn');if(!i)return;const n=Math.max(1,(+String(i.value).replace(',','.')||0)+d);i.value=n};
+G.oaPecaOk=function(pid){const p=prod(pid),w=oaW(),n=+String(($q('#oaqn')||{}).value||'').replace(',','.');if(!p.id||!w)return;if(!(n>0))return toast('Quantidade inválida');if(n>qty(p.id))return toast('Estoque insuficiente: restam '+qty(p.id));
+ w.items.push({t:'Peça',d:p.nome,det:p.cod?'Cód. '+p.cod:'',q:n,v:p.preco||0,pid:p.id,...(DONO()?{custo:+p.custo||0}:{}),baixa:true});MV().push({id:uid(),pid:p.id,tipo:'S',q:n,data:today(),obs:'O.S. '+w.num});save();closeM();render();toast(p.nome+' lançada · '+n+' '+(p.un||'un'))};
+G.oaBip=function(){lerCodigo(c=>{const k=nrm2(c).replace(/\s/g,''),p=PR().find(x=>[x.ean,x.cod].some(y=>y&&nrm2(y).replace(/\s/g,'')==k));if(p){oaPeca(p.id);return true}toast('Código '+c+' não está em nenhuma peça do estoque');return true},{titulo:'Código de barras da peça'})};
+if(V.order){const _vo=V.order;V.order=function(){const h=_vo.apply(this,arguments);
+ return h.replace(/<div class="bar" style="margin-top:10px"><button onclick="addItem\(od\(S\.id\)\)">Adicionar item<\/button>[\s\S]*?<\/div>/,`<button type="button" class="pr oaadd" onclick="osAdd()">+ Adicionar serviço ou peça</button>`)}}
+/* 4) e 5) menu ⋯ da O.S.: nota fiscal aparece aqui quando a aba está escondida */
+if(typeof osMais=='function'){const _om=osMais;G.osMais=osMais=function(id){const r=_om.apply(this,arguments),o=od(id),l=$q('#modal .osml');if(l&&o&&DONO()&&typeof nfAba=='function'&&!nfAba(o))l.insertAdjacentHTML('beforeend',`<button type="button" onclick="closeM();osTab('nf')">${svgi('notas')}<span>Nota fiscal</span></button>`);return r}}
+
+
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
 #main{padding-bottom:96px}
@@ -346,6 +403,30 @@ body.tvon{overflow:hidden}#tv{position:fixed;inset:0;z-index:100;background:#0E0
 @media (orientation:portrait){#tv>main{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr)}#tv{padding:10px;gap:8px}#tv header{flex-wrap:wrap;gap:6px 12px;font-size:15px}#tv header span{display:none}}
 /* 2.28.3: filtros compactos e microfone na barra */
 .ktf .kt small.ktsub{display:block;font-size:11px;color:var(--mut);margin-top:2px}
+/* 2.32.0 */
+.mfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 0}.mfoot button{margin:0;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600}
+.mfoot svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.mfoot svg path[fill]{fill:currentColor}
+.osml button span small{display:block;font-weight:500;font-size:12.5px;margin-top:2px}
+.flink{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;color:var(--ink)}.flink svg{width:22px;height:22px;flex:none;fill:none;stroke:var(--hi);stroke-width:1.9}.flink small{display:block;color:var(--mut);font-weight:500}.flink i{margin-left:auto;font-style:normal;font-size:22px;color:var(--mut)}
+.srch{position:relative}.srbc{position:absolute;right:6px;top:50%;transform:translateY(-50%);margin:0!important;min-height:38px!important;min-width:44px;padding:0 10px!important;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.srbc svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9}.srch:has(.srbc) input{padding-right:58px}
+.oaq{position:relative}.oaq input{width:100%;margin:0;padding-right:58px;min-height:48px;font-size:16px}#oar{margin-top:6px;max-height:52vh;overflow:auto}#oar .psec{display:block;margin:12px 0 4px}
+.oab{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.oab button{margin:0;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700}.oab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+#oar .pk{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin:0 0 6px;min-height:52px;padding:8px 12px;text-align:left;border-radius:10px}#oar .pk span{min-width:0}#oar .pk span b{display:block;font-size:15.5px}#oar .pk small{display:block;color:var(--mut);font-weight:500;font-size:12.5px}#oar .pk>b{white-space:nowrap;font-size:15px}
+.oavz{margin:14px 0}.oaqt{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;margin-bottom:12px}.oaqt button{margin:0;min-height:56px;font-size:26px;font-weight:800}.oaqt input{margin:0;text-align:center;font-size:24px;font-weight:800;min-height:56px}
+.oaok{width:100%;min-height:54px;margin:0;font-size:17px;font-weight:800}.oaadd{width:100%;min-height:52px;margin:12px 0 0;font-size:16.5px;font-weight:800;border-radius:12px}
+/* 3) cartão do pátio sem "Escolher mecânico" e sem o marcador de tanque */
+.kc .kmec.z,.kc .fuelm{display:none!important}.kc .kcf:not(:has(.mb)){display:none}
+/* 2) filtros em fileira fina (os números grandes ficam só no Painel) */
+@media (max-width:760px){
+ .kts.ktf,.kts.pfts{display:flex!important;flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px 10px;padding:2px 12px}.kts.ktf::-webkit-scrollbar,.kts.pfts::-webkit-scrollbar{display:none}
+ .kts.ktf .kt,.kts.pfts .kt{flex:none;display:inline-flex!important;flex-direction:row-reverse;align-items:center;gap:6px;min-height:40px;height:auto;padding:6px 14px!important;border-radius:999px;border-width:1px!important;border-top-width:1px!important;box-shadow:none}
+ .kts.ktf .kt svg,.kts.pfts .kt svg,.kts.ktf .kt .ktsub{display:none}
+ .kts.ktf .kt span,.kts.pfts .kt span{font-size:14px!important;margin:0!important;line-height:1.2;white-space:nowrap}
+ .kts.ktf .kt .num,.kts.pfts .kt .num{font-size:14.5px!important;font-weight:800;color:var(--ink)}
+ .kts.ktf .kt.zero:not(.on),.kts.pfts .kt.zero:not(.on){display:none!important}
+ .kts.ktf .kt.on,.kts.pfts .kt.on{outline:0;border-color:var(--c)!important;background:color-mix(in srgb,var(--c) 22%,var(--sf))}
+}
 /* desfazer */
 #toast.tundo{gap:10px}.tundob{margin:0 0 0 auto;min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--hi);background:transparent;color:var(--hi);font-weight:800;white-space:nowrap}
 `;document.head.appendChild(css);

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Fio-Mar Gestor</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://viacep.com.br https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://viacep.com.br https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="theme-color" content="#17181A">
 <script>try{var t=localStorage.getItem("fm_tema");if(t=="light"||t=="dark")document.documentElement.setAttribute("data-theme",t)}catch(x){}</script>
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
 :root{--bg:#E6E7E9;--sf:#fff;--ink:#191B1E;--mut:#5C6269;--ln:#D0D3D7;--ac:#1E2124;--on:#FFC81A;--hi:#F5B700;--gr:#17181A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -363,7 +363,7 @@ async function push0(tent){tent=tent||0;if(!SB||!SES||!OF||PEND||BLOQ||CONF||SEM
   const row={data:part,updated_at:new Date().toISOString()};let data,error;
   try{const q=st.v?SB.from('wab_data').update(row).eq('id',RID(k)).eq('updated_at',st.v):SB.from('wab_data').insert({id:RID(k),...row});({data,error}=await q.select('updated_at'))}catch(x){error={message:x&&x.message||'sem conexão'}}
   if(error&&!st.v&&/duplicate|23505|already exists/i.test((error.code||'')+error.message)){DIRTY=true;return junta(k,tent)}
-  if(error&&/FIOMAR_PERM/.test(error.message||'')){DIRTY=false;IDB.del(pk());toast(/excluir/.test(error.message)?'Apenas o dono pode excluir registros. A tela foi atualizada.':'Apenas o dono pode alterar os dados da oficina. A tela foi atualizada.');await pull();render();return}
+  if(error&&/FIOMAR_PERM/.test(error.message||'')){DIRTY=false;IDB.del(pk());toast((m=>m.charAt(0).toUpperCase()+m.slice(1))(((error.message||'').split('FIOMAR_PERM:')[1]||'apenas o dono pode fazer isso').trim().replace(/\s*\([a-z]+\)$/,''))+'. A tela foi atualizada.');await pull();render();return}
   if(error){DIRTY=true;guardaLocal();if(!RTRY)toast(/fetch|network|conex|offline/i.test(error.message)?'Sem internet: as alterações ficaram guardadas neste aparelho e serão salvas quando a conexão voltar':'Falha ao salvar na nuvem: '+error.message);reagenda();return}
   if(st.v&&!(data&&data.length)){const c=await SB.from('wab_data').select('updated_at').eq('id',RID(k)).maybeSingle();
    if(c.data&&c.data.updated_at!=st.v){DIRTY=true;return junta(k,tent)}DIRTY=true;reagenda();return toast('Não foi possível salvar. Verifique sua conexão e permissões.')}
@@ -759,7 +759,7 @@ function addFotos(fs){const o=od(S.id),t=$('#ft').value;[...fs].forEach(f=>picRe
 function addPag(pre){const o=od(S.id);modal('Registrar pagamento',[['forma','Forma','select',FP],['valor','Valor pago (R$)','number',0,1],['parc','Parcelas (se parcelado)','number'],['data','Data','date',0,1]],{valor:Math.max(0,oTot(o)-paid(o)),data:today(),parc:1,...(pre||{})},p=>{const v=+p.valor,rest=oTot(o)-paid(o);if(!(v>0))return toast('Informe um valor maior que zero');if(v>rest+0.005)return toast('Valor maior que o restante da O.S. ('+R(Math.max(0,rest))+')');o.pags.push({...p,valor:v});save();render()})}
 function waOS(){const o=od(S.id),c=cl(o.cli),v=o.veh?vlabel(vh(o.veh)):'';
  waDoc(genOS,o,c.tel,`Olá, ${c.nome}! Tudo bem?\n\nEsse documento é a ordem de serviço Nº ${o.num}${v?' do seu '+v:''}, com os serviços e peças registrados.\nSituação: ${o.status}\nValor total: ${R(oTot(o))}\n\nQualquer dúvida, estou à disposição.\n\n${empNome()}`)}
-function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Resumo'],['diag','Diagnóstico'],['check','Checklist'],['laudo','Laudo'],['fotos','Fotos'],['pag','Pagamento'],...(DONO()?[['nf','Nota fiscal']]:[])];if(!DONO()&&S.tab=='nf')S.tab='resumo';
+function Vorder(){const o=od(S.id);if(!o)return Vorders();const T=[['resumo','Resumo'],['diag','Diagnóstico'],['check','Checklist'],['laudo','Laudo'],['fotos','Fotos'],['pag','Pagamento'],...(nfAba(o)||(DONO()&&S.tab=='nf')?[['nf','Nota fiscal']]:[])];if(!DONO()&&S.tab=='nf')S.tab='resumo';
  let b='';
  if(S.tab=='resumo'){const ok=x=>String(x||'').trim(),rs=[ok(o.mec)&&e(o.mec),ok(o.km)&&e(o.km)+' km',ok(o.comb)&&'tanque '+e(o.comb)].filter(Boolean).join(' · ');
  b=`${ok(o.problema)?`<div class="card osprob"><small>Problema relatado</small><p>${e(o.problema)}</p></div>`:''}<div class="card"><b>Serviços e peças</b> <small class="muted">Toque no item para editar</small><table>${o.items.map((i,n)=>`<tr style="cursor:pointer" onclick="editItem(od(S.id),${n},1)"><td>${typeof itFoto=='function'?itFoto(i):''}${e(i.d)}<br><small class="muted">${e(i.t)}${i.q!=1?' · '+R(i.v)+' cada':''}</small></td><td class="n">${i.q}x</td><td class="n">${R(i.q*i.v)}</td><td style="white-space:nowrap"><button class="sm" aria-label="Remover item" onclick="event.stopPropagation();rmOS(${n})">×</button></td></tr>`).join('')||'<tr><td class="muted">Nenhum item.</td></tr>'}</table>
@@ -792,7 +792,7 @@ function osTab(k){S.tab=k;render();const t=$('#ostabs'),nv=$('#nav');if(!t)retur
 /* deslizar para o lado troca de aba na O.S. */
 (()=>{let x0=null,y0=0;addEventListener('touchstart',ev=>{const tg=ev.target;x0=null;if(S.v!='order'||!tg.closest||!tg.closest('#ospane')||tg.closest('input,textarea,select,canvas,.ph,table,.cbl'))return;x0=ev.touches[0].clientX;y0=ev.touches[0].clientY},{passive:true});
  addEventListener('touchend',ev=>{if(x0==null)return;const dx=ev.changedTouches[0].clientX-x0,dy=ev.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)<80||Math.abs(dx)<Math.abs(dy)*2||$('#modal').innerHTML)return;
-  const OO=DONO()?OSORD:OSORD.filter(x=>x!='nf'),i=OO.indexOf(S.tab),j=i+(dx<0?1:-1);if(i>=0&&j>=0&&j<OO.length)osTab(OO[j])},{passive:true})})();
+  const OO=nfAba(od(S.id))||S.tab=='nf'?OSORD:OSORD.filter(x=>x!='nf'),i=OO.indexOf(S.tab),j=i+(dx<0?1:-1);if(i>=0&&j>=0&&j<OO.length)osTab(OO[j])},{passive:true})})();
 
 /* ---------- Recibo ---------- */
 function waRecibo(){const o=od(S.id),c=cl(o.cli);if(!o.pags.length)return toast('Registre um pagamento antes do recibo');
@@ -1279,6 +1279,8 @@ function fiscalCheck(o,tipo,C){C=C||ctx0();const c=C.cfg,F=C.F,cli=C.cli(o.cli),
   if(F.nfseEp=='nfse'&&!(+F.aliqIss>0))P.push(['Alíquota do ISS',cfgFix]);
   if(cli.doc&&!okDoc(cli.doc))P.push(['CPF/CNPJ do cliente está inválido',cFix])}
  return P}
+/* 2.32.0: a aba Nota fiscal só aparece para o dono quando a oficina emite de verdade ou a O.S. já tem nota */
+const nfAba=o=>!!(o&&o.id&&DONO()&&(FC().modo=='api'||notasOS(o.id).length));
 const notasOS=(id,tipo)=>NF().filter(n=>n.os==id&&(!tipo||n.tipo==tipo));
 const notaAtiva=(id,tipo,modo)=>notasOS(id,tipo).find(n=>n.modo==modo&&ATIVA.includes(n.status));
 
@@ -1864,7 +1866,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.31.0';
+const APP_VER='2.32.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

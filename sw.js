@@ -2,12 +2,12 @@
    Sempre busca a versão mais nova no servidor (GitHub Pages).
    Só usa a cópia guardada no celular quando estiver sem internet.
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.31.0';
+const VERSAO = '2.32.0';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './jspdf.umd.min.js'];
 
-// bibliotecas de fora com versão fixa (Supabase e PDF): guardadas para o app abrir e gerar PDF sem internet
-const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
+// biblioteca de fora com versão fixa (Supabase): guardada para o app abrir sem internet. O jsPDF fica no próprio app desde a 2.32.0
+const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'];
 const LIBC = 'fiomar-libs-1';
 
 self.addEventListener('install', (e) => {
