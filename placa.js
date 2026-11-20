@@ -127,12 +127,12 @@ async function le(u,pad,prog){const img=await plImg(u),A=plAcha(img,pad,1000);if
  const tyF=ty=='?'?(/[A-Z]/.test(best[4])?'m':'a'):ty;
  const alts=[best,pc.replace(/\?/g,''),...ln].filter((x,i,a)=>x&&x.length==7&&okFmt(x,tyF)&&a.indexOf(x)==i).slice(0,4);
  const sure=!!w&&A.ok&&conf>=.7&&pc==best&&ln.filter(x=>x==best).length>=1;
- return{best,alts,sure,ty:tyF,gl,semOcr:!w,tpl}}
+ return{best,alts,sure,ty:tyF,gl,semOcr:!w,tpl,conf}}
 
 /* substitui o leitor antigo (o corte continua igual) */
 const _antigo=typeof plLer=='function'?plLer:null;
-G.plLer=plLer=async function(u,ty){const pal=$('#pal');if(pal)pal.innerHTML='';pst('Procurando a placa na foto...');
- try{const r=await le(u,ty||PLT,j=>pst('Lendo a placa... '+(j+1)+'/7'));if(!document.body.contains($('#pst')))return;
+G.plLer=plLer=async function(u,ty,pre){const pal=$('#pal');if(pal)pal.innerHTML='';if(!pre)pst('Procurando a placa na foto...');
+ try{const r=pre||await le(u,ty||PLT,j=>pst('Lendo a placa... '+(j+1)+'/7'));if(!document.body.contains($('#pst')))return;
   if(r.err){if(r.err!='ilegivel'&&_antigo&&navigator.onLine!==false){return _antigo(u,ty)}
    if(r.semOcr)return pst('Sem internet para o leitor de placa (na 1ª vez ele precisa baixar). Digite a placa ou tente de novo com internet.');
    return pst(r.err=='ilegivel'?'Li só parte da placa ('+r.parcial.replace(/\?/g,'_')+'). Tire outra foto mais de perto, de frente, ou digite.':'Não achei a placa na foto. Tire mais de perto, de frente e sem reflexo, ou digite.')}
@@ -178,6 +178,43 @@ G.plConsulta=function(){const el=$('#modal [name=placa]');if(!el)return;const p=
   <div class="plcb"><button type="button" onclick="plCfFecha(1)">Corrigir</button><button type="button" class="pr" onclick="plCfOk()">Está certa, consultar</button></div></div>`;
  const pal=$('#pal'),bt=$('#modal .plcbt'),w=bt&&bt.closest('.plcw'),bar=bt&&bt.closest('.bar');
  (w||(pal&&pal.offsetParent!==null?pal:bar||el.closest('label'))).insertAdjacentHTML('afterend',box);const b=$('#modal .plcf');if(b&&b.scrollIntoView)b.scrollIntoView({block:'nearest'})};
+/* ---------- 2.34.0: leitura da placa direto da foto, sem a etapa de cortar ---------- */
+const plArq=f=>new Promise((ok,no)=>{if(typeof f=='string')return ok(f);const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(new Error('arq'));r.readAsDataURL(f)});
+/* acha a placa na foto inteira (em várias partes da foto) e devolve a caixa na resolução original */
+async function plAuto(u,ty){const img=await plImg(u),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height,k=Math.min(1,2000/Math.max(W,H));
+ const regs=[[0,0,1,1],[0,.3,1,1],[0,0,1,.7],[.1,.2,.9,.85],[0,.45,1,1],[0,.15,1,.6]];
+ for(const[x0,y0,x1,y1]of regs){const c=document.createElement('canvas');c.width=Math.max(8,Math.round(W*k*(x1-x0)));c.height=Math.max(8,Math.round(H*k*(y1-y0)));
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,W*x0,H*y0,W*(x1-x0),H*(y1-y0),0,0,c.width,c.height);
+  for(const al of [1000,1500]){let A=null;try{A=plAcha(c,ty,al)}catch(e){}
+   if(A&&A.box&&A.gl&&A.gl.length>=7)return{img,W,H,ty:A.ty,b:{x:A.box.x/k+W*x0,y:A.box.y/k+H*y0,w:A.box.w/k,h:A.box.h/k}}}}
+ return null}
+/* recorte em PNG na resolução original, com folga em volta */
+function plCorta(a,mx,my){const b=a.b,X=Math.max(0,b.x-b.w*mx),Y=Math.max(0,b.y-b.h*my),Wc=Math.min(a.W-X,b.w*(1+2*mx)),Hc=Math.min(a.H-Y,b.h*(1+2*my)),k=Math.min(1,2400/Wc),o=document.createElement('canvas');
+ o.width=Math.max(8,Math.round(Wc*k));o.height=Math.max(8,Math.round(Hc*k));const x=o.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(a.img,X,Y,Wc,Hc,0,0,o.width,o.height);return o.toDataURL('image/png')}
+/* lê com 3 recortes (folgas diferentes) e fica com a leitura mais segura */
+const plDist=(a,b)=>a.length!=b.length?9:[...a].filter((c,i)=>c!=b[i]).length;
+G.plFoto=async function(f,corte){const pal=$('#pal');if(pal)pal.innerHTML='';pst('Procurando a placa na foto...');let u;
+ try{u=await plArq(f)}catch(x){return pst('Não consegui abrir a foto. Tente de novo.')}
+ let a=null;try{a=await plAuto(u,PLT)}catch(x){}
+ if(!a){pst('Não achei a placa sozinho. Marque a placa na foto.');return corte&&corte()}
+ /* lê recortes com folgas diferentes; só diz "lida" quando as leituras concordam */
+ const ty=a.ty&&a.ty!='?'?a.ty:PLT,F=[[.12,.3],[.06,.2],[.2,.45],[.09,.25],[.16,.38]],L=[];let u0=null,err=null,n=0;
+ for(const[mx,my]of F){const c=plCorta(a,mx,my);u0=u0||c;n++;let r;try{r=await le(c,ty,j=>pst((n>1?'Conferindo a leitura ('+n+'/5)':'Lendo a placa')+'... '+(j+1)+'/7'))}catch(x){continue}
+  if(r.err){err=err||r;continue}L.push(r);const dif=new Set(L.map(x=>x.best)).size;
+  if(L.length>=2&&dif==1&&L.some(x=>x.sure))break;/* duas leituras iguais e seguras: pronto */
+  if(L.length>=3&&dif==1)break}
+ let best;if(!L.length)best=err||{err:'nada'};
+ else{const cnt={};L.forEach(x=>cnt[x.best]=(cnt[x.best]||0)+1+(x.sure?.5:0)+(x.conf||0)*.1);const ord=Object.keys(cnt).sort((x,y)=>cnt[y]-cnt[x]),top=ord[0];
+  best={...L.find(x=>x.best==top)};const um=ord.length==1;best.sure=um&&L.length>=2&&L.some(x=>x.sure);
+  best.alts=[...new Set([top,...ord.slice(1),...L.flatMap(x=>x.alts||[])])].filter(x=>x&&x.length==7).slice(0,5);best.leituras=L.length}
+ if(!best.err&&!best.sure){/* placa parecida já cadastrada vira a 1ª sugestão */const near=(db.vehicles||[]).map(v=>normPl(v.placa||'')).filter(x=>x&&plDist(x,best.best)==1);best.alts=[...new Set([...near,...best.alts])].slice(0,5)}
+ if(best.err&&best.err!='ilegivel'&&corte){pst('Não consegui ler a placa sozinho. Marque a placa na foto.');return corte()}
+ return plLer(u0,ty,best)};
+/* Entrada do carro: tira a foto e já lê (sem cortar); só pede para marcar se não achar */
+{const _ciCorte=G.ciScan;G.ciScan=function(f){if(!f)return;if(!$('#pal')){const w=$('#modal .plcw')||($('#cipl')&&$('#cipl').closest('label'));if(w)w.insertAdjacentHTML('afterend','<div id="pal" class="bar" style="margin:0 0 8px"></div>')}
+ NAENT=1;return plFoto(f,()=>_ciCorte(f)).finally(()=>{NAENT=0})}}
+/* Cadastro do veículo: idem */
+if(typeof scanPlaca=='function'){const _sc=scanPlaca;G.scanPlaca=scanPlaca=function(f){if(!f)return;return plFoto(f,()=>_sc(f))}}
 /* Entrada do carro: o botão fica logo abaixo do campo da placa */
 if(typeof checkin=='function'){const _c3=checkin;G.checkin=checkin=function(){const r=_c3.apply(this,arguments);try{const bt=$('#modal .pci .plcbt'),lb=$('#cipl')&&$('#cipl').closest('label');if(bt&&lb){const w=document.createElement('div');w.className='plcw';w.appendChild(bt);bt.textContent='Consultar dados pela placa';lb.after(w)}}catch(x){}return r}}
 /* mexeu na placa: some a confirmação */
