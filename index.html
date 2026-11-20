@@ -549,8 +549,8 @@ let VCB=null,PLG=null;
 function editVeh(id,cb,pre){VCB=cb;if(!pre)PLG=null;const orig=id?vh(id):null,v={...(orig||{}),...(pre||{})};EV=id||null;PLK='';const F=[['cli','Cliente','busca',cliArr(),1,{btn:'Novo cliente',novoTxt:'Cadastrar novo cliente',novo:(t,cur)=>viaModal(x=>editVeh(id,cb,x),cur,set=>editClient(null,n=>set({cli:n.id}),{nome:t}))}],['placa','Placa (pode informar depois)','text',0,0],['modelo','Marca/modelo','text',0,1],['ano','Ano','number'],['km','Quilometragem','number'],['motor','Motor'],['cor','Cor'],['chassi','Chassi'],['obs','Observações','area']];
  modal(id?'Editar veículo':'Novo veículo',F,v,o=>{o.placa=normPl(o.placa)||o.placa.toUpperCase();if(PLG){try{const f=normPl(o.placa);if(PLG.read&&f.length==7&&[...f].filter((c,j)=>c!=PLG.read[j]).length<=3)plLearn(PLG.ty,PLG.gl,f)}catch(x){}PLG=null}if(id)Object.assign(orig,o);else{const n={id:uid(),...o};db.vehicles.push(n);if(cb)cb(n)}save();render();if(!id&&cb)toast('Veículo cadastrado')},0,id&&DONO()&&(()=>delVeh(id)));
  const pl=$('#modal [name=placa]');pl.setAttribute('autocapitalize','characters');pl.setAttribute('autocomplete','off');pl.maxLength=8;
- pl.closest('label').insertAdjacentHTML('afterend',`<div class="bar" style="margin:-4px 0 12px"><label class="btn sm pr" style="margin:0;color:var(--on)">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><label class="btn sm" style="margin:0">Da galeria<input type="file" accept="image/*" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><button type="button" class="sm" onclick="buscaPlaca()">Buscar dados</button><span class="muted" id="pst" style="font-size:13px"></span></div><div id="pal" class="bar" style="margin:-6px 0 10px"></div>`);
- pl.addEventListener('input',()=>{pl.value=pl.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');clearTimeout(PT);if(!EV)PT=setTimeout(()=>buscaPlaca(true),700)})}
+ pl.closest('label').insertAdjacentHTML('afterend',`<div class="bar" style="margin:-4px 0 12px"><label class="btn sm pr" style="margin:0;color:var(--on)">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><label class="btn sm" style="margin:0">Da galeria<input type="file" accept="image/*" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><button type="button" class="sm plcbt" onclick="plConsulta()">Consultar placa</button><span class="muted" id="pst" style="font-size:13px"></span></div><div id="pal" class="bar" style="margin:-6px 0 10px"></div>`);
+ pl.addEventListener('input',()=>{pl.value=pl.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');clearTimeout(PT)/* 2.33.0: não consulta sozinha (gasta crédito); só pelo botão Consultar placa */})}
 async function buscaPlaca(auto){const f=$('#modal form');if(!f||!f.elements.placa)return;const p=normPl(f.elements.placa.value);
  if(!okPl(p))return auto?0:toast('Digite uma placa válida (ex.: ABC1D23)');
  if(auto&&p===PLK)return;PLK=p;
@@ -586,7 +586,7 @@ function plateFrom(txt){const raw=String(txt||'').toUpperCase(),parts=raw.split(
 async function scanPlacaOld(file){if(!file)return;const status=$('#pst');if(!status)return;pst('Preparando imagem para leitura...');let w=null;
  try{await loadTess();const variants=await prepImg(file);w=await Tesseract.createWorker('eng');await w.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});let best=null;
  for(const img of variants){for(const psm of ['11','7','8']){await w.setParameters({tessedit_pageseg_mode:psm});const r=await w.recognize(img),b=plateFrom(r.data.text);if(b&&(!best||b.miss<best.miss))best=b;if(best&&best.miss===0)break}if(best&&best.miss===0)break}
- if(!document.body.contains(status))return;if(!best)return pst('Não identifiquei a placa. Fotografe de frente, aproxime e evite reflexos; também pode recortar a imagem para deixar a placa maior.');const el=$('#modal [name=placa]');if(!el)return;el.value=best.p;el.dispatchEvent(new Event('input',{bubbles:true}));PLK='';if(best.miss===0){pst('Placa lida: '+best.p+'. Consultando dados...');buscaPlaca()}else pst('Leitura provável: '+best.p+'. Confira os caracteres e toque em Buscar dados.')
+ if(!document.body.contains(status))return;if(!best)return pst('Não identifiquei a placa. Fotografe de frente, aproxime e evite reflexos; também pode recortar a imagem para deixar a placa maior.');const el=$('#modal [name=placa]');if(!el)return;el.value=best.p;el.dispatchEvent(new Event('input',{bubbles:true}));PLK='';pst((best.miss===0?'Placa lida: ':'Leitura provável: ')+best.p+'. Confira os caracteres e toque em Consultar placa.')
  }catch(x){pst('Falha na leitura da foto. Tente outra imagem ou digite a placa.')}finally{if(w)try{await w.terminate()}catch(x){}}}
 
 /* ---- leitura da placa v2: recorte do usuário -> isola os caracteres -> OCR com votação ---- */
@@ -639,8 +639,8 @@ function plLearn(ty,gl,placa){if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa)||gl.le
  const g=db.plg=db.plg||{},t=g[ty]=g[ty]||{};gl.forEach((m,j)=>{const c=placa[j],s=plPack(plBits(m));const l=t[c]=t[c]||[];if(l.includes(s))return;l.push(s);while(l.length>4)l.shift()})}
 function plShow(best,alts,auto){const el=$('#modal [name=placa]');if(!el)return;el.value=best;el.dispatchEvent(new Event('input',{bubbles:true}));PLK='';
  const pal=$('#pal');if(pal&&!auto)pal.innerHTML='<span class="muted" style="font-size:13px">Outras leituras:</span>'+alts.filter(a=>a!=best).map(a=>`<button type="button" class="sm" onclick="plPick('${a}')">${a}</button>`).join('');
- if(auto){pst('Placa lida: '+best+'. Consultando dados...');buscaPlaca()}else pst('Leitura provável: '+best+'. Confira os caracteres (se estiver diferente, toque na leitura certa) e toque em Buscar dados.')}
-function plPick(a){const el=$('#modal [name=placa]');if(!el)return;el.value=a;el.dispatchEvent(new Event('input',{bubbles:true}));PLK='';pst('Placa: '+a+'. Toque em Buscar dados.')}
+ pst(auto?'✓ Placa lida: '+best+'. Confira e toque em Consultar placa.':'Leitura provável: '+best+'. Confira os caracteres (se estiver diferente, toque na leitura certa) e toque em Consultar placa.')}
+function plPick(a){const el=$('#modal [name=placa]');if(!el)return;el.value=a;el.dispatchEvent(new Event('input',{bubbles:true}));PLK='';pst('Placa: '+a+'. Confira e toque em Consultar placa.')}
 async function plLer(u,ty){const pal=$('#pal');if(pal)pal.innerHTML='';pst('Lendo a placa...');let w=null;
  try{const img=await plImg(u);await loadTess();w=await Tesseract.createWorker('eng');await w.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',preserve_interword_spaces:'1'});
   const P=plPrep(img),C=[];let achou=0,g7=null;PLG=null;
@@ -1866,7 +1866,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.32.0';
+const APP_VER='2.33.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

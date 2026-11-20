@@ -98,7 +98,7 @@ let CI=null;const COMB=['Reserva','1/4','1/2','3/4','Cheio'];
 G.checkin=function(pre){pre=pre||{};CI={fotos:[],comb:'',veh:null,cli:null,...pre};
  sheet('Entrada do carro',`<form class="pci" onsubmit="event.preventDefault();ciSalva()" autocomplete="off">
  <label>Placa<input name="placa" id="cipl" value="${e(pre.placa||'')}" placeholder="ABC1D23" maxlength="8" autocapitalize="characters" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');ciAch()"></label>
- <div class="bar" style="margin:-4px 0 10px"><label class="btn sm" style="margin:0">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="ciScan(this.files[0]);this.value=''"></label><span class="muted" id="pst" style="font-size:13px"></span></div>
+ <div class="bar" style="margin:-4px 0 10px"><label class="btn sm" style="margin:0">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="ciScan(this.files[0]);this.value=''"></label><button type="button" class="sm plcbt" onclick="plConsulta()">Consultar placa</button><span class="muted" id="pst" style="font-size:13px"></span></div>
  <div id="cifnd"></div>
  <div id="cinovo" style="display:none">
   <label>Cliente<input name="cnome" id="cinome" placeholder="Nome do cliente" oninput="ciSug(this.value)"></label><div id="cisug" class="psug"></div>
@@ -119,7 +119,7 @@ G.ciAch=function(){const p=normPl(($q('#cipl')||{}).value||''),f=$q('#cifnd'),nv
  if(v){const c=cl(v.cli),a=db.orders.filter(o=>o.veh==v.id&&ABERTA(o)).pop();nv.style.display='none';
   f.innerHTML=`<div class="pfnd"><b>${e(vlabel(v))}</b> ${chip('Já cadastrado','#1E9E55')}<small class="muted" style="display:block">${e(c.nome||'Sem cliente')}${c.tel?' · '+e(c.tel):''}${v.km?' · último km '+e(v.km):''}</small>${a?`<p style="margin:8px 0 0;color:#C98200"><b>Já tem a O.S. ${e(a.num)} aberta.</b> <button type="button" class="sm" onclick="closeM();go('order','${a.id}')">Abrir essa O.S.</button></p>`:''}</div>`;
   const km=$q('#cikm');if(km&&!km.value&&v.km)km.placeholder='Último: '+v.km}
- else{f.innerHTML=p.length>=5?`<p class="muted" style="margin:-4px 0 8px">Carro novo: preencha os dados abaixo.</p>`:'';nv.style.display=p.length>=5||CI.semPlaca?'':'none';if(p.length>=7&&/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(p)&&typeof buscaPlaca=='function'){clearTimeout(CI.t);CI.t=setTimeout(()=>{try{buscaPlaca(true)}catch(x){}},700)}}};
+ else{f.innerHTML=p.length>=5?`<p class="muted" style="margin:-4px 0 8px">Carro novo: preencha os dados abaixo.</p>`:'';nv.style.display=p.length>=5||CI.semPlaca?'':'none';/* 2.33.0: a consulta de dados pela placa só acontece pelo botão Consultar placa (cada consulta gasta crédito) */}};
 G.ciEstado=()=>CI;/* usado pelo leitor de placa (placa.js) para voltar à entrada sem perder nada */
 G.ciScan=function(f){if(!f||typeof scanPlaca!='function')return;Promise.resolve(scanPlaca(f)).then(()=>ciAch()).catch(()=>{})};
 G.ciSug=function(v){const b=$q('#cisug');CI.cli=null;const q=nrm(v).trim();if(!b)return;if(q.length<2){b.innerHTML='';return}

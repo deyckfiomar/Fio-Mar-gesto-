@@ -140,7 +140,7 @@ G.plLer=plLer=async function(u,ty){const pal=$('#pal');if(pal)pal.innerHTML='';p
   PLG={ty:r.ty,gl:r.gl,read:r.best};
   if(NAENT||$('#modal .pci')){const el=$('#cipl');if(el){el.value=r.best;el.dispatchEvent(new Event('input',{bubbles:true}))}if(typeof ciAch=='function')ciAch();
    const pal=$('#pal');if(pal)pal.innerHTML=r.sure?'':'<span class="muted" style="font-size:13px">Outras leituras:</span>'+r.alts.filter(a=>a!=r.best).map(a=>`<button type="button" class="sm" onclick="plNaEnt('${a}')">${a}</button>`).join('');
-   pst(r.sure?'✓ Placa lida: '+r.best:'Leitura provável: '+r.best+'. Confira os caracteres.');return}
+   pst(r.sure?'✓ Placa lida: '+r.best+'. Confira e toque em Consultar placa.':'Leitura provável: '+r.best+'. Confira os caracteres e toque em Consultar placa.');return}
   plShow(r.best,r.alts,r.sure);
   if(r.semOcr)pst('Sem internet para o leitor completo: leitura provável '+r.best+'. Confira antes de salvar.')
  }catch(x){pst('Falha na leitura da foto. Tente outra imagem ou digite a placa.')}};
@@ -153,7 +153,7 @@ G.ciScan=function(f){if(!f||typeof cropImg!='function')return;const ci=typeof ci
   checkin(ci?{...ci}:{});Object.entries(vals).forEach(([k,v])=>{const el=document.getElementById(k)||document.querySelector(`#modal .pci [name="${k}"]`);if(el&&v&&!el.value)el.value=v});
   const pl=$('#cipl'),lb=pl&&pl.closest('label');if(lb&&!$('#pst'))lb.insertAdjacentHTML('afterend','<small id="pst" class="muted" style="display:block;margin:-6px 0 6px"></small><div id="pal" class="bar" style="margin:0 0 8px"></div>');
   NAENT=1;plLer(u,ty||PLT).finally(()=>{NAENT=0})})};
-G.plNaEnt=function(a){const el=$('#cipl');if(!el)return;el.value=a;el.dispatchEvent(new Event('input',{bubbles:true}));if(typeof ciAch=='function')ciAch();pst('Placa: '+a);const pal=$('#pal');if(pal)pal.innerHTML=''};
+G.plNaEnt=function(a){const el=$('#cipl');if(!el)return;el.value=a;el.dispatchEvent(new Event('input',{bubbles:true}));if(typeof ciAch=='function')ciAch();pst('Placa: '+a+'. Confira e toque em Consultar placa.');const pal=$('#pal');if(pal)pal.innerHTML=''};
 /* caixa de corte já em cima da placa */
 if(typeof cropOpen=='function'){const _co=cropOpen;G.cropOpen=cropOpen=function(){const r=_co.apply(this,arguments);try{const C=CR;if(C&&C.opt&&C.opt.plate){const cv=$('#crc'),A=plAcha(C.src,PLT,1000);
   if(A&&A.box&&cv){const k=cv.width/C.src.width,b=A.box;C.b={x:Math.max(0,b.x*k),y:Math.max(0,b.y*k),w:Math.min(cv.width-b.x*k,b.w*k),h:Math.min(cv.height-b.y*k,b.h*k)};
@@ -163,4 +163,28 @@ if(typeof cropOpen=='function'){const _co=cropOpen;G.cropOpen=cropOpen=function(
 /* Entrada do carro: lugar para o aviso da busca de dados pela placa (APIBrasil) */
 if(typeof checkin=='function'){const _c=checkin;G.checkin=checkin=function(){const r=_c.apply(this,arguments);try{const pl=$('#cipl'),lb=pl&&pl.closest('label');if(lb&&!$('#pst'))lb.insertAdjacentHTML('afterend','<small id="pst" class="muted" style="display:block;margin:-6px 0 6px"></small><div id="pal" class="bar" style="margin:0 0 8px"></div>')}catch(x){}return r}}
 ['checkin','editVeh'].forEach(n=>{if(typeof window[n]=='function'){const o=window[n];G[n]=window[n]=function(){const r=o.apply(this,arguments);try{plAquece().catch(()=>{})}catch(x){}return r}}});
+/* ---------- 2.33.0: corte sem perder qualidade e consulta só depois de conferir ---------- */
+/* a foto do celular entra com até 4000 px (antes 2400) e o recorte sai em PNG (sem compressão), até 2400 px */
+if(typeof cropImg=='function'){const _ci=cropImg;G.cropImg=cropImg=function(f,o,d){if(o&&o.plate)o={...o,src:4000,max:2400,png:1};return _ci.call(this,f,o,d)}}
+const plCx=()=>{const b=$('#modal .plcf');if(b)b.remove()};
+G.plCfFecha=function(foco){plCx();if(foco){const el=$('#modal [name=placa]');if(el){el.focus();try{el.select()}catch(x){}}}};
+G.plCfOk=function(){plCx();buscaPlaca()};
+G.plConsulta=function(){const el=$('#modal [name=placa]');if(!el)return;const p=normPl(el.value);plCx();
+ if(!okPl(p)){toast('Digite a placa completa (ex.: ABC1D23)');el.focus();return}
+ const ja=(db.pcache||{})[p]||db.vehicles.find(v=>normPl(v.placa)==p&&v.id!=EV);if(ja)return buscaPlaca();/* já salva: não gasta crédito */
+ const mer=/^[A-Z]{3}\d[A-Z]\d{2}$/.test(p),ch=[...p].map(c=>`<b>${c}</b>`),txt=mer?ch.join(''):ch.slice(0,3).join('')+'<i>-</i>'+ch.slice(3).join('');
+ const box=`<div class="plcf" role="alertdialog" aria-label="Confirmar a placa"><div class="plcp${mer?' mer':''}">${mer?'<small>BRASIL</small>':''}<div>${txt}</div></div>
+  <p>Confira letra por letra. <b>Cada consulta gasta 1 crédito</b> da APIBrasil, mesmo se a placa estiver errada.</p>
+  <div class="plcb"><button type="button" onclick="plCfFecha(1)">Corrigir</button><button type="button" class="pr" onclick="plCfOk()">Está certa, consultar</button></div></div>`;
+ const pal=$('#pal'),bt=$('#modal .plcbt'),w=bt&&bt.closest('.plcw'),bar=bt&&bt.closest('.bar');
+ (w||(pal&&pal.offsetParent!==null?pal:bar||el.closest('label'))).insertAdjacentHTML('afterend',box);const b=$('#modal .plcf');if(b&&b.scrollIntoView)b.scrollIntoView({block:'nearest'})};
+/* Entrada do carro: o botão fica logo abaixo do campo da placa */
+if(typeof checkin=='function'){const _c3=checkin;G.checkin=checkin=function(){const r=_c3.apply(this,arguments);try{const bt=$('#modal .pci .plcbt'),lb=$('#cipl')&&$('#cipl').closest('label');if(bt&&lb){const w=document.createElement('div');w.className='plcw';w.appendChild(bt);bt.textContent='Consultar dados pela placa';lb.after(w)}}catch(x){}return r}}
+/* mexeu na placa: some a confirmação */
+document.addEventListener('input',ev=>{if(ev.target&&ev.target.matches&&ev.target.matches('#modal [name=placa]'))plCx()},true);
+{const st=document.createElement('style');st.textContent=`.plcf{border:1.5px solid var(--hi);border-radius:12px;padding:12px;margin:2px 0 12px;background:color-mix(in srgb,var(--hi) 8%,var(--sf))}
+.plcp{background:#fff;color:#111;border:2px solid #222;border-radius:8px;max-width:270px;margin:0 auto 10px;text-align:center;overflow:hidden}.plcp small{display:block;background:#0b3d91;color:#fff;font-size:10px;letter-spacing:3px;font-weight:700;padding:2px 0}
+.plcp div{font:800 34px/1.25 ui-monospace,Menlo,Consolas,monospace;letter-spacing:2px;padding:4px 6px}.plcp b{display:inline-block;min-width:.9em}.plcp i{font-style:normal;opacity:.6}
+.plcw{margin:-4px 0 10px}.plcw .plcbt{width:100%;min-height:46px;margin:0;font-weight:700;border:1.5px solid var(--hi);background:transparent;color:var(--hi)}
+.plcf p{margin:0 0 10px;font-size:14px;line-height:1.35}.plcb{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.plcb button{margin:0;min-height:48px;font-weight:700}`;document.head.appendChild(st)}
 })(window);
