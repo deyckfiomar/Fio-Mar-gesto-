@@ -271,12 +271,12 @@ let OF=null,PAPEL='',OFS=null,OFL=[],BLOQ=false,REQ=null;
 const DONO=()=>PAPEL=='dono',DONLY=['fin','notas','entradas','entrada','cfg'];
 const RS={s:{v:null,b:null},p:{v:null,b:null}};
 const RID=k=>k=='p'?OF+':dono':OF,RKS=()=>DONO()?['p','s']:['s'];
-const PRIVK=['desp','notas','entradas','pess','pcats'];
+const PRIVK=['desp','notas','entradas','pess','pcats','fechs'];/* fechs: fechamentos do dia (2.35.0) */
 const J=x=>JSON.stringify(x===undefined?null:x),cp=x=>x===undefined?undefined:JSON.parse(JSON.stringify(x));
 /* comparação que não depende da ordem das chaves */
 const JS=x=>JSON.stringify(x===undefined?null:x,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((o,k2)=>(o[k2]=v[k2],o),{}):v);
 function iids(d){[...(d.orders||[]),...(d.quotes||[])].forEach(x=>(x.items||[]).forEach(i=>{if(i&&typeof i=='object'&&!i.iid)i.iid=uid()}));return d}
-function splitDb(d){const s=cp(iids(d)),p={desp:[],notas:[],entradas:[],pess:[],pcats:[],pc:{},ic:{},mc:{}};
+function splitDb(d){const s=cp(iids(d)),p={desp:[],notas:[],entradas:[],pess:[],pcats:[],fechs:[],pc:{},ic:{},mc:{}};
  PRIVK.forEach(k=>{if(Array.isArray(s[k]))p[k]=s[k];delete s[k]});
  if(s.cfg&&typeof s.cfg=='object'&&'fiscal' in s.cfg){p.fiscal=s.cfg.fiscal;delete s.cfg.fiscal}
  (s.prods||[]).forEach(x=>{if('custo' in x){p.pc[x.id]=x.custo;delete x.custo}});
@@ -1866,7 +1866,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.34.0';
+const APP_VER='2.35.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>

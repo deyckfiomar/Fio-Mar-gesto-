@@ -142,25 +142,71 @@ G.retDash=function(){const lim=addD(today(),7),L=RT().filter(r=>!r.feito&&r.data
   f:`<button class="sm wa" onclick="retMsg('${r.id}')">Chamar no WhatsApp</button><button class="sm" onclick="retFeito('${r.id}')">Feito</button><button class="sm" onclick="retFeito('${r.id}',30)">Adiar 30 dias</button>`})}).join('')};
 const _setSt2=setSt;G.setSt=setSt=function(v){const o=od(S.id),antes=o&&o.status;_setSt2(v);if(o&&v=='Entregue'&&antes!='Entregue')setTimeout(()=>{if(!$q('#modal .ov'))retPergunta(o)},700)};
 
-/* =============== 12) Fechamento do dia =============== */
-function fechaDados(d){const pg=[],porF={};let rec=0,tx=0;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.data==d){const v=+p.valor||0;rec+=v;tx+=+p.taxa||0;porF[p.forma||'Outros']=(porF[p.forma||'Outros']||0)+v;pg.push({o,p})}}));
- const conc=db.orders.filter(o=>osFim(o)&&String(o.conc||'').slice(0,10)==d),fat=conc.reduce((a,o)=>a+oTot(o),0),arec=conc.reduce((a,o)=>a+resto(o),0),pat=db.orders.filter(o=>!osFim(o)),
-  dsp=(db.desp||[]).filter(x=>x.rec!='1'&&x.data==d),tdsp=dsp.reduce((a,x)=>a+(+x.valor||0),0),ent=db.orders.filter(o=>o.aberta==d).length,am=AG().filter(a=>a.data==addD(d,1)&&a.status!='Cancelado').length;
- return{rec,tx,porF,pg,conc,fat,arec,pat,dsp,tdsp,ent,am,liq:DONO()&&typeof finDiaDados=='function'&&d.slice(0,7)?((finDiaDados(d)||{}).liq):null}}
-function fechaTxt(d){const X=fechaDados(d),L=[`*Fechamento do dia ${D(d)}* · ${empNome()}`,'',`*Recebido: ${R(X.rec)}*`];
- Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).forEach(([f,v])=>L.push(`• ${f=='PIX'?'Pix':f}: ${R(v)}`));
+/* =============== 12) Fechamento do dia (2.35.0: navegar entre dias, conferir o caixa e fechar o dia) =============== */
+const FCH=()=>db.fechs=Array.isArray(db.fechs)?db.fechs:[];/* fica na linha do dono (PRIVK) */
+const fchDe=d=>FCH().find(x=>x.d==d);
+const ymdL=s=>{if(!s)return'';const t=new Date(s);if(isNaN(t))return String(s).slice(0,10);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const fmF=f=>f=='PIX'?'Pix':f;
+function fechaDados(d){const pg=[],porF={};let rec=0,tx=0,din=0;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.data==d){const v=+p.valor||0;rec+=v;tx+=+p.taxa||0;const f=p.forma||'Outros';porF[f]=(porF[f]||0)+v;if(/dinheiro/i.test(f))din+=v;pg.push({o,p})}}));
+ let r7=0,n7=0;for(let i=1;i<=7;i++){const dd=addD(d,-i);let s=0;db.orders.forEach(o=>(o.pags||[]).forEach(p=>{if(p.data==dd)s+=+p.valor||0}));if(s>0){r7+=s;n7++}}
+ const conc=db.orders.filter(o=>osFim(o)&&String(o.conc||'').slice(0,10)==d),fat=conc.reduce((a,o)=>a+oTot(o),0),arec=conc.reduce((a,o)=>a+resto(o),0),
+  entr=db.orders.filter(o=>o.status=='Entregue'&&ymdL(o.stAt)==d),pat=db.orders.filter(o=>!osFim(o)),prontos=db.orders.filter(o=>o.status=='Concluída'),
+  dsp=(db.desp||[]).filter(x=>x.rec!='1'&&x.data==d),tdsp=dsp.reduce((a,x)=>a+(+x.valor||0),0),ents=db.orders.filter(o=>o.aberta==d),
+  amL=AG().filter(a=>a.data==addD(d,1)&&a.status!='Cancelado').sort((a,b)=>String(a.hora).localeCompare(String(b.hora))),
+  pecas=(db.peds||[]).filter(p=>p.status=='Enviado');
+ return{rec,tx,din,porF,pg,conc,fat,arec,entr,pat,prontos,dsp,tdsp,ents,ent:ents.length,amL,am:amL.length,pecas,med:n7?r7/n7:0,
+  liq:DONO()&&typeof finDiaDados=='function'?((finDiaDados(d)||{}).liq):null}}
+const fchVeh=o=>{const v=vh(o.veh),c=cl(o.cli);return[vlabel(v),c.nome].filter(Boolean).join(' · ')};
+const fchAg=a=>[a.hora,(cl(a.cli)||{}).nome,a.veh?vlabel(vh(a.veh)):'',a.svc].filter(Boolean).join(' · ');
+const fchPat=X=>{const g={};X.pat.forEach(o=>g[o.status]=(g[o.status]||0)+1);return Object.entries(g).map(([s,n])=>n+' '+s.toLowerCase()).join(', ')};
+function fechaTxt(d){const X=fechaDados(d),F=fchDe(d),L=[`*Fechamento do dia ${D(d)}* · ${empNome()}`,'',`*Recebido: ${R(X.rec)}*`];
+ Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).forEach(([f,v])=>L.push(`• ${fmF(f)}: ${R(v)}`));
  if(X.tx>0)L.push(`Taxas de cartão: − ${R(X.tx)} (ficou ${R(X.rec-X.tx)})`);
- L.push('',`Carros que entraram: ${X.ent}`,`O.S. concluídas: ${X.conc.length} (${R(X.fat)})`);if(X.arec>0.005)L.push(`Ficou a receber de hoje: ${R(X.arec)}`);
- if(X.tdsp>0)L.push(`Despesas do dia: ${R(X.tdsp)}`);if(X.liq!=null)L.push(`*Lucro do dia: ${R(X.liq)}*`);
- L.push('',`Carros no pátio: ${X.pat.length}`);X.pat.slice(0,12).forEach(o=>L.push(`• ${vlabel(vh(o.veh))} · ${o.status}`));if(X.am)L.push('',`Agenda de amanhã: ${plural(X.am,'horário','horários')}`);return L.join('\n')}
-G.fechaDia=function(d){d=d||today();const X=fechaDados(d),ln=(a,b,c)=>`<div class="fcl"><span>${a}</span><b${c?` style="color:${c}"`:''}>${b}</b></div>`;G.FCD=d;
- sheet('Fechamento do dia',`<p class="muted" style="margin:-4px 0 10px">${new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p>
- <div class="fcb"><div class="fct"><small>Recebido hoje</small><b>${R(X.rec)}</b></div>${Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).map(([f,v])=>ln(f=='PIX'?'Pix':f,R(v))).join('')||'<small class="muted">Nenhum pagamento hoje.</small>'}${X.tx>0?ln('Taxas de cartão','− '+R(X.tx),'#B4472E')+ln('Ficou para a oficina',R(X.rec-X.tx),'#2E8B57'):''}</div>
- <div class="fcb">${ln('Carros que entraram',X.ent)}${ln('O.S. concluídas',X.conc.length+' · '+R(X.fat))}${X.arec>0.005?ln('Ficou a receber de hoje',R(X.arec),'#C98200'):''}${X.tdsp>0?ln('Despesas do dia',R(X.tdsp),'#B4472E'):''}${X.liq!=null?ln('Lucro do dia',R(X.liq),X.liq<0?'#B4472E':'#2E8B57'):''}</div>
- <div class="fcb">${ln('Carros que ficam no pátio',X.pat.length)}${X.pat.slice(0,8).map(o=>`<small class="fcp">${e(vlabel(vh(o.veh)))} · ${e(o.status)}</small>`).join('')}${X.am?ln('Agenda de amanhã',plural(X.am,'horário','horários')):''}</div>
- <div class="bar" style="margin:12px 0 0"><button type="button" class="wa" onclick="wa((db.cfg||{}).tel1||'',fechaTxtG())">Mandar no meu WhatsApp</button><button type="button" onclick="fechaCopia()">Copiar</button>${X.arec>0.005&&V.receber?`<button type="button" onclick="closeM();go('receber')">Ver a receber</button>`:''}</div>`)};
-G.fechaTxtG=()=>fechaTxt(G.FCD||today());G.fechaCopia=()=>copia(fechaTxt(G.FCD||today()));
-G.dashExtra=function(){if(!DONO())return'';const h=new Date().getHours();return`<div class="bar dshx"><button type="button" class="sm${h>=17?' pr':''}" onclick="fechaDia()">${svgi('fin')} Fechamento do dia</button></div>`};
+ if(X.liq!=null)L.push(`*Lucro do dia: ${R(X.liq)}*`);
+ if(F&&F.contado!=null)L.push('',`Caixa: deveria ter ${R(F.esperado)}, contei ${R(F.contado)} → ${Math.abs(F.dif)<0.005?'bateu ✓':(F.dif>0?'sobrou ':'faltou ')+R(Math.abs(F.dif))}`);
+ if(F&&F.obs)L.push(`Obs.: ${F.obs}`);
+ L.push('',`Carros que entraram: ${X.ent}`,`O.S. concluídas: ${X.conc.length} (${R(X.fat)})`);if(X.entr.length)L.push(`Carros entregues: ${X.entr.length}`);if(X.arec>0.005)L.push(`Ficou a receber de hoje: ${R(X.arec)}`);
+ if(X.tdsp>0)L.push(`Despesas do dia: ${R(X.tdsp)}`);
+ L.push('',`*Para amanhã*`,`Carros no pátio: ${X.pat.length}${X.pat.length?' ('+fchPat(X)+')':''}`);
+ if(X.prontos.length)L.push(`Prontos para entregar: ${X.prontos.length}`);if(X.pecas.length)L.push(`Peças a chegar: ${plural(X.pecas.length,'pedido','pedidos')}`);
+ if(X.am){L.push(`Agenda de amanhã: ${plural(X.am,'horário','horários')}`);X.amL.slice(0,10).forEach(a=>L.push('• '+fchAg(a)))}
+ return L.join('\n')}
+G.fechaDia=function(d){d=d||today();const hj=today(),X=fechaDados(d),F=fchDe(d),ln=(a,b,c)=>`<div class="fcl"><span>${a}</span><b${c?` style="color:${c}"`:''}>${b}</b></div>`;G.FCD=d;
+ const dt=(x=>x.charAt(0).toUpperCase()+x.slice(1))(new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})),eh=d==hj,
+  cmp=X.med>0&&X.rec>0?(()=>{const p=Math.round((X.rec/X.med-1)*100);return`<small class="fccmp" style="color:${p>=0?'#2E8B57':'#C98200'}">${p>=0?'▲':'▼'} ${Math.abs(p)}% ${p>=0?'acima':'abaixo'} da média dos últimos dias (${R(X.med)})</small>`})():'';
+ const fundo=F&&F.fundo!=null?F.fundo:(+((db.cfg||{}).fundoCx)||0),cont=F&&F.contado!=null?F.contado:'';
+ const caixa=DONO()?`<details class="fcd fcx"${F?'':' open'}><summary>Conferir o dinheiro da gaveta</summary>
+  <label class="fcin"><span>Troco do começo do dia</span><input id="fcfun" inputmode="decimal" value="${fundo?String(fundo).replace('.',','):''}" placeholder="0,00" oninput="fcCalc()"></label>
+  ${ln('Recebido em dinheiro',R(X.din))}<div class="fcl"><span><b>Deveria ter na gaveta</b></span><b id="fcesp">${R(fundo+X.din)}</b></div>
+  <label class="fcin"><span>Quanto tem na gaveta (contei)</span><input id="fccon" inputmode="decimal" value="${cont!==''?String(cont).replace('.',','):''}" placeholder="0,00" oninput="fcCalc()"></label>
+  <div id="fcres" class="fcres"></div>
+  <label class="fcin fcobs"><span>Observação (opcional)</span><input id="fcobs" value="${e((F&&F.obs)||'')}" placeholder="Ex.: paguei o motoboy com dinheiro da gaveta"></label></details>`:'';
+ const recL=X.pg.length?`<details class="fcd"><summary>Ver os ${plural(X.pg.length,'pagamento','pagamentos')}</summary>${X.pg.map(({o,p})=>`<button type="button" class="fcpg" onclick="closeM();go('order','${o.id}','pag')"><span>O.S. ${e(o.num)} · ${e((cl(o.cli)||{}).nome||'')}<small>${e(fmF(p.forma||''))}</small></span><b>${R(+p.valor||0)}</b></button>`).join('')}</details>`:'';
+ const mov=`<details class="fcd"><summary>Movimento do dia</summary>${ln('Carros que entraram',X.ent)}${X.ents.map(o=>`<small class="fcp">${e(fchVeh(o))}</small>`).join('')}
+  ${ln('O.S. concluídas',X.conc.length+' · '+R(X.fat))}${X.conc.map(o=>`<small class="fcp">O.S. ${e(o.num)} · ${e(fchVeh(o))}</small>`).join('')}
+  ${X.entr.length?ln('Carros entregues',X.entr.length):''}${X.tdsp>0?ln('Despesas do dia',R(X.tdsp),'#B4472E')+X.dsp.map(x=>`<small class="fcp">${e(x.desc||x.cat||'')} · ${R(+x.valor||0)}</small>`).join(''):''}</details>`;
+ const am=`<details class="fcd"${eh?' open':''}><summary>Para amanhã</summary>${ln('Carros no pátio',X.pat.length)}${X.pat.length?`<small class="fcp">${e(fchPat(X))}</small>`:''}
+  ${X.prontos.length?ln('Prontos para entregar',X.prontos.length,'#2E8B57')+X.prontos.slice(0,8).map(o=>`<small class="fcp">${e(fchVeh(o))}${resto(o)>0.005?' · falta receber '+R(resto(o)):''}</small>`).join(''):''}
+  ${X.pecas.length?ln('Peças a chegar',plural(X.pecas.length,'pedido','pedidos'),'#C98200')+X.pecas.slice(0,6).map(p=>`<small class="fcp">${e(p.forn||'Fornecedor')} · ${plural((p.itens||[]).length,'item','itens')}</small>`).join(''):''}
+  ${ln('Agenda de amanhã',X.am?plural(X.am,'horário','horários'):'livre')}${X.amL.slice(0,10).map(a=>`<small class="fcp">${e(fchAg(a))}</small>`).join('')}</details>`;
+ sheet('Fechamento do dia',`<div class="fcnav"><button type="button" aria-label="Dia anterior" onclick="fechaDia('${addD(d,-1)}')">‹</button><span>${eh?'Hoje, '+dt.charAt(0).toLowerCase()+dt.slice(1):dt}</span><button type="button" aria-label="Próximo dia" ${eh?'disabled':''} onclick="fechaDia('${addD(d,1)}')">›</button></div>
+ ${F?`<div class="fcok">✓ Dia fechado às ${e(F.hora||'')}${F.contado!=null?' · caixa '+(Math.abs(F.dif)<0.005?'bateu':(F.dif>0?'sobrou ':'faltou ')+R(Math.abs(F.dif))):''}</div>`:''}
+ <div class="fcb"><div class="fct"><small>Recebido${eh?' hoje':''}</small><b>${R(X.rec)}</b>${cmp}</div>${Object.entries(X.porF).sort((a,b)=>b[1]-a[1]).map(([f,v])=>ln(fmF(f),R(v))).join('')||'<small class="muted">Nenhum pagamento neste dia.</small>'}${X.tx>0?ln('Taxas de cartão','− '+R(X.tx),'#B4472E')+ln('Ficou para a oficina',R(X.rec-X.tx),'#2E8B57'):''}
+  ${X.liq!=null?ln('Lucro do dia',R(X.liq),X.liq<0?'#B4472E':'#2E8B57'):''}${X.arec>0.005?ln('Ficou a receber deste dia',R(X.arec),'#C98200'):''}${recL}</div>
+ ${caixa}${mov}${am}
+ <div class="fcbt">${DONO()?`<button type="button" class="pr" onclick="fechaSalva('${d}')">${F?'Atualizar o fechamento':'Fechar o dia'}</button>`:''}
+  <div class="bar"><button type="button" class="wa" onclick="fechaManda()">Mandar no meu WhatsApp</button><button type="button" onclick="fechaCopia()">Copiar</button>${X.arec>0.005&&V.receber?`<button type="button" onclick="closeM();go('receber')">Ver a receber</button>`:''}</div></div>`);
+ fcCalc()};
+const nV=v=>{v=String(v==null?'':v).trim().replace(/\s/g,'');if(!v)return null;if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=+v;return isFinite(n)?n:NaN};
+G.fcCalc=function(){const fi=$q('#fcfun'),ci=$q('#fccon'),out=$q('#fcres');if(!fi||!out)return;const X=fechaDados(G.FCD||today()),f=nV(fi.value)||0,esp=f+X.din,c=nV(ci.value);$q('#fcesp').textContent=R(esp);
+ if(c==null||isNaN(c)){out.className='fcres';out.textContent=c==null?'Conte o dinheiro e digite acima.':'Valor inválido';return}
+ const dif=c-esp;out.className='fcres '+(Math.abs(dif)<0.005?'ok':dif>0?'mais':'menos');out.textContent=Math.abs(dif)<0.005?'✓ Bateu certinho':(dif>0?'Sobrou ':'Faltou ')+R(Math.abs(dif))};
+G.fechaSalva=function(d){const X=fechaDados(d),fi=$q('#fcfun'),ci=$q('#fccon'),ob=$q('#fcobs'),f=fi?nV(fi.value)||0:0,c=ci?nV(ci.value):null;if(c!=null&&isNaN(c))return toast('Confira o valor contado na gaveta');
+ const t=new Date(),reg={id:d,d,hora:pad(t.getHours())+':'+pad(t.getMinutes()),fundo:f,esperado:f+X.din,contado:c,dif:c==null?null:c-(f+X.din),obs:(ob&&ob.value||'').trim(),rec:X.rec,liq:X.liq};
+ const L=FCH(),i=L.findIndex(x=>x.d==d);if(i>=0)L[i]=reg;else L.push(reg);db.fechs=L.sort((a,b)=>a.d<b.d?-1:1).slice(-400);db.cfg=db.cfg||{};if(d==today())db.cfg.fundoCx=f;
+ save();toast(reg.dif==null||Math.abs(reg.dif)<0.005?'Dia fechado':'Dia fechado · caixa '+(reg.dif>0?'sobrou ':'faltou ')+R(Math.abs(reg.dif)));fechaDia(d);render()};
+G.fechaTxtG=()=>fechaTxt(G.FCD||today());G.fechaCopia=()=>copia(fechaTxt(G.FCD||today()));G.fechaManda=()=>wa((db.cfg||{}).tel1||'',fechaTxt(G.FCD||today()));
+G.dashExtra=function(){if(!DONO())return'';const h=new Date().getHours(),F=fchDe(today());return`<div class="bar dshx"><button type="button" class="sm${!F&&h>=17?' pr':''}${F?' fcfeito':''}" onclick="fechaDia()">${svgi('fin')} ${F?'Dia fechado ✓':'Fechamento do dia'}</button></div>`};
 
 /* =============== 13) A receber =============== */
 function Vreceber(){const L=db.orders.filter(o=>resto(o)>0.005).sort((a,b)=>(osFim(b)-osFim(a))||String(a.conc||a.aberta||'').localeCompare(String(b.conc||b.aberta||''))),F=L.filter(osFim),A=L.filter(o=>!osFim(o)),
@@ -227,5 +273,17 @@ body:has(.qbar) #vzfab{transform:translateY(-70px)}
 .msgr span{flex:1;min-width:0}.msgr b{display:block}.msgr small{display:block;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.msgr i{flex:none;font-style:normal;font-weight:700;font-size:13px;padding:5px 10px;border-radius:99px;background:#1f8f4e;color:#fff}
 .fcb{border:1px solid var(--ln);border-radius:12px;padding:10px 12px;margin:0 0 8px;display:grid;gap:5px}.fct small{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}.fct b{font:700 30px/1.1 'Barlow Condensed','Barlow',sans-serif;color:#3fb06f}
 .fcl{display:flex;justify-content:space-between;gap:10px}.fcl span{color:var(--mut)}.fcp{display:block;color:var(--mut);padding-left:8px}
+.fcnav{display:flex;align-items:center;gap:8px;margin:-4px 0 10px}.fcnav span{flex:1;text-align:center;color:var(--mut);font-size:14.5px}
+.fcnav button{margin:0;min-width:48px;min-height:44px;font-size:24px;font-weight:700;padding:0}.fcnav button[disabled]{opacity:.3}
+.fcok{border-radius:10px;padding:8px 12px;margin:0 0 8px;background:color-mix(in srgb,#2E8B57 16%,var(--sf));color:#3fb06f;font-weight:700;font-size:14px}
+.fccmp{display:block;font-size:12.5px;font-weight:600;margin-top:2px}
+.fcd{border:1px solid var(--ln);border-radius:12px;padding:0 12px;margin:0 0 8px}.fcd>summary{cursor:pointer;list-style:none;font-weight:700;padding:12px 0;display:flex;justify-content:space-between}.fcd>summary::-webkit-details-marker{display:none}
+.fcd>summary::after{content:'›';transform:rotate(90deg);color:var(--mut);transition:transform .15s}.fcd[open]>summary::after{transform:rotate(-90deg)}.fcd[open]{padding-bottom:10px}.fcd .fcl{margin:4px 0}
+.fcb .fcd{border:0;padding:0;margin:4px 0 0}.fcb .fcd>summary{padding:6px 0;font-weight:600;color:var(--hi);font-size:14px}
+.fcpg{display:flex;justify-content:space-between;align-items:center;width:100%;margin:0 0 6px;min-height:46px;padding:6px 10px;text-align:left;border-radius:9px}.fcpg small{display:block;color:var(--mut);font-weight:500}
+.fcin{display:block;margin:8px 0}.fcin span{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}.fcin input{width:100%;margin:0;min-height:48px;font-size:18px;font-weight:700}.fcobs input{font-size:15px;font-weight:500}
+.fcres{margin:6px 0 2px;padding:10px 12px;border-radius:10px;font-weight:800;font-size:16px;text-align:center;color:var(--mut);background:var(--sf)}.fcres.ok{color:#3fb06f;background:color-mix(in srgb,#2E8B57 16%,var(--sf))}.fcres.mais{color:#C98200;background:color-mix(in srgb,#C98200 16%,var(--sf))}.fcres.menos{color:#E07A5F;background:color-mix(in srgb,#E07A5F 16%,var(--sf))}
+.fcbt{margin-top:12px}.fcbt>.pr{width:100%;min-height:54px;margin:0 0 8px;font-size:17px;font-weight:800}.fcbt .bar{margin:0}
+.dshx .fcfeito{border-color:#2E8B57;color:#3fb06f}
 `;document.head.appendChild(st);
 })(window);
