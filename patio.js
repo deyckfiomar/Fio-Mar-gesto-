@@ -27,8 +27,8 @@ const ESC=[['.p,.mb,.pchip','color:color-mix(in srgb,var(--c) 58%,#fff)'],['.plc
 const escuro=p=>p+'{color-scheme:dark}'+ESC.map(([s,b])=>s.split(',').map(x=>p+' '+x).join(',')+'{'+b+'}').join('');
 const css=`
 button.pr,.btn.pr{font-weight:700}
-.pfaz{position:relative;overflow:hidden;padding-top:10px!important}.pfaz::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:${HAZ}}
-@media (max-width:760px){#bnav{border-top:0!important}#bnav::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:${HAZ};opacity:.9}}
+.pfaz{position:relative;overflow:hidden}
+
 .osbt{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;color:var(--ink);border-radius:8px;white-space:nowrap}.osbt span{overflow:hidden;text-overflow:ellipsis}
 .osbt svg{width:16px;height:16px;stroke:var(--c);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}.osbt i{font-style:normal;color:var(--mut)}
 .osh3 .sm svg,.kbs svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}

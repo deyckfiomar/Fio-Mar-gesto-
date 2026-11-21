@@ -168,7 +168,7 @@ function fazer(){const F=[],h=today();
  return F.sort((a,b)=>a[0]-b[0])}
 G.cobraOrc=function(id){const q=db.quotes.find(x=>x.id==id);if(!q)return;const c=cl(q.cli);wa(c.tel,`Olá, ${c.nome||''}! Tudo bem?\n\nConseguiu ver o orçamento Nº ${q.n}${q.veh?' do seu '+vlabel(vh(q.veh)):''} (${R(sum(q.items,q.desc))})? Se quiser, posso tirar alguma dúvida ou ajustar alguma coisa.\n\n${typeof empNome=='function'?empNome():''}`);q.env=today();save();render()};
 G.cobraOS=function(id){const o=od(id);if(!o||!o.id)return;const c=cl(o.cli);wa(c.tel,`Olá, ${c.nome||''}! Tudo bem?\n\nPassando para lembrar do saldo de ${R(oTot(o)-paid(o))} do serviço no seu ${vlabel(vh(o.veh))} (O.S. ${o.num}). Pode ser por PIX, se preferir.\n\n${typeof empNome=='function'?empNome():''}`);o.cobrado=today();save()};
-G.fazerHTML=function(){const F=fazer();if(!F.length)return'';return sech('O que fazer agora',plural(F.length,'item','itens'))+`<div class="card pfaz">${F.slice(0,S.f.fzm?12:3).map(([,t,s,b])=>`<div class="pf"><div><b>${t}</b><small>${s}</small></div>${b}</div>`).join('')}${F.length>3?`<button type="button" class="sm" style="margin:8px 0 0;width:100%;border-style:dashed" onclick="S.f.fzm=S.f.fzm?0:1;render()">${S.f.fzm?'Mostrar menos':'Ver mais '+(F.length-3)}</button>`:''}</div>`};
+G.fazerHTML=function(){const F=fazer();if(!F.length)return'';return sech('O que fazer agora',plural(F.length,'item','itens'))+`<div class="card pfaz">${F.slice(0,12).map(([,t,s,b])=>`<div class="pf"><div><b>${t}</b><small>${s}</small></div>${b}</div>`).join('')}</div>`};
 
 /* ---------- 8) kits e serviços com preço ---------- */
 const KT=()=>db.kits=db.kits||[];

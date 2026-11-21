@@ -332,6 +332,11 @@ if(V.order){const _vo=V.order;V.order=function(){const h=_vo.apply(this,argument
 if(typeof osMais=='function'){const _om=osMais;G.osMais=osMais=function(id){const r=_om.apply(this,arguments),o=od(id),l=$q('#modal .osml');if(l&&o&&DONO()&&typeof nfAba=='function'&&!nfAba(o))l.insertAdjacentHTML('beforeend',`<button type="button" onclick="closeM();osTab('nf')">${svgi('notas')}<span>Nota fiscal</span></button>`);return r}}
 
 
+/* ---------- 14) 2.36.0: abas da O.S. com "Mais" ---------- */
+ICO.osmais='<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
+G.osTabMais=function(){const o=od(S.id);if(!o)return;const ti=osTabInfo(o),L=[['check','Checklist'],['laudo','Laudo'],...((typeof nfAba=='function'&&nfAba(o))||S.tab=='nf'?[['nf','Nota fiscal']]:[])];
+ sheet('Mais seções da O.S.',`<div class="osml">${L.map(([k,t])=>`<button type="button" class="${S.tab==k?'on':''}" onclick="closeM();osTab('${k}')">${svgi(OSICO[k])}<span>${t}<small style="color:${ti[k][1]}">${e(ti[k][0])}</small></span></button>`).join('')}</div>`)};
+
 const css=document.createElement('style');css.textContent=`
 #vzfab{width:50px!important;height:50px!important;transition:transform .15s,background .15s,translate .22s,opacity .22s}#vzfab svg{width:23px;height:23px}#vzfab.vzesc{translate:0 150%;opacity:0;pointer-events:none}
 #main{padding-bottom:96px}
@@ -356,7 +361,7 @@ const css=document.createElement('style');css.textContent=`
  nav{transition:transform .2s}body.navoff nav{transform:translateY(-110%)}
 }
 #ver{display:none}.mver{margin:14px 0 0;text-align:center;color:var(--mut);font-size:12px}
-.dsh3 .kt{padding:10px 8px}.dshl{margin:-2px 0 12px;font-size:14px;color:var(--mut)}.dshl a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}.dshl i{font-style:normal;margin:0 6px}
+.dsh3 .kt{padding:10px 8px}.dshl{margin:-2px 0 12px;display:flex;flex-wrap:wrap;gap:6px}.dshl a{display:inline-flex;align-items:center;min-height:38px;padding:6px 12px;border:1px solid var(--ln);border-radius:999px;background:var(--sf);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer}.dshl i{display:none}
 .plst{display:grid;gap:10px;margin-bottom:12px}.plst .kc{margin:0}
 .chg{border-left:5px solid var(--hi)}.chg>b{display:flex;align-items:center;gap:8px}.chg>b svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.chg>b i{font-style:normal;margin-left:auto;color:var(--mut)}
 .chgl{display:flex;align-items:center;gap:10px;padding:10px 0 0;margin-top:10px;border-top:1px solid var(--ln)}.chgh{font:800 17px/1 'Barlow Condensed','Barlow',sans-serif;min-width:46px}.chgt{flex:1;min-width:0}.chgt small{display:block;color:var(--mut)}.chgl button{margin:0;min-height:44px}
@@ -427,6 +432,15 @@ body.tvon{overflow:hidden}#tv{position:fixed;inset:0;z-index:100;background:#0E0
  .kts.ktf .kt.zero:not(.on),.kts.pfts .kt.zero:not(.on){display:none!important}
  .kts.ktf .kt.on,.kts.pfts .kt.on{outline:0;border-color:var(--c)!important;background:color-mix(in srgb,var(--c) 22%,var(--sf))}
 }
+/* 2.36.0 */
+.clc{display:flex;align-items:center;gap:12px;padding:12px;margin:0 0 8px;border:1px solid var(--ln);border-radius:14px;background:var(--sf);cursor:pointer}.clc:active{transform:scale(.99)}
+.clav{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;letter-spacing:.5px}
+.clm{flex:1;min-width:0}.clm b{display:block;font-size:16.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.clm small{display:block;color:var(--mut);font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clr{flex:none;text-align:right;display:grid;gap:3px;justify-items:end}.clr b{font-size:15px}.clpt{font-size:11.5px;font-weight:700;color:#5fa8e0;background:color-mix(in srgb,#3E7CB1 18%,transparent);padding:2px 8px;border-radius:99px}
+#ostabs.ostabs.osq{display:grid!important;grid-template-columns:1fr 1.28fr .82fr 1.2fr .8fr;gap:6px;overflow:visible!important}#ostabs.osq .ost{min-width:0!important;width:auto!important;padding:8px 3px!important}#ostabs.osq .ost .l{font-size:12px;letter-spacing:-.2px}#ostabs.osq .ost .s{font-size:10.5px}
+.ostabs.osq .ost .l,.ostabs.osq .ost .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.ostabs.osq .ost svg{fill:none;stroke:currentColor}
+.ostabs .osmx{position:relative}.ostabs .osmx svg circle{fill:currentColor;stroke:none}.ostabs .osmx.dot::after{content:"";position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:#E07A5F}
+.osml button.on{border-color:var(--hi)}.osml button span small{display:block;font-size:12.5px;font-weight:600;margin-top:2px}
 /* desfazer */
 #toast.tundo{gap:10px}.tundob{margin:0 0 0 auto;min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--hi);background:transparent;color:var(--hi);font-weight:800;white-space:nowrap}
 `;document.head.appendChild(css);
