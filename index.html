@@ -206,6 +206,9 @@ details.fgraf{margin:6px 0 4px}details.fgraf>summary{cursor:pointer;list-style:n
 body.kbopen .qbar{position:static}
 details.cfgs{margin:0 0 10px;border:1px solid var(--ln);border-radius:12px;background:var(--sf)}details.cfgs>summary{cursor:pointer;list-style:none;display:flex;align-items:center;padding:13px 16px;font-weight:700}details.cfgs>summary::after{content:'▾';margin-left:auto;color:var(--mut)}details.cfgs[open]>summary::after{transform:rotate(180deg)}details.cfgs[open]{padding:0 12px 12px;background:transparent}details.cfgs[open]>summary{padding:13px 4px}details.cfgs .card:last-child{margin-bottom:0}
 .agok{margin:0 2px 16px;padding:10px 14px;border:1px solid var(--line,#333);border-radius:12px;color:var(--mut,#9aa);font-size:15px;cursor:pointer}
+
+/* 2.42.0: motor padronizado */
+#mtchips{margin:-6px 0 12px;display:grid;gap:6px}.mtl{display:flex;flex-wrap:wrap;gap:6px}.mtc{margin:0;min-height:34px;padding:4px 12px}.mtc[aria-pressed=true]{background:var(--hi);color:#17181A;border-color:var(--hi)}
 </style>
 </head>
 <body>
@@ -546,10 +549,26 @@ const okPl=x=>/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(x);
 const pst=t=>{const n=$('#pst');if(n)n.textContent=t};
 const tcase=x=>String(x||'').toLowerCase().replace(/(^|[\s\/-])([a-zà-ú])/g,(m,a,b)=>a+b.toUpperCase());
 let VCB=null,PLG=null;
+/* 2.42.0: motor padronizado ("1. 0 8v" → "1.0 8V"); a chave junta cilindrada, válvulas e turbo para o Diagnóstico comparar */
+function motorPartes(t){t=String(t||'').replace(/(\d)\s*[.,]\s*(\d)/g,'$1.$2');const n=t.toLowerCase(),p={};
+ let m=n.match(/\b([1-6]\.\d)\b/);if(m)p.cil=m[1];else if((m=n.match(/\b(\d{3,4})\s*(?:cc|cm3|cilindradas)?\b/))&&+m[1]>=800&&+m[1]<=6000)p.cil=(Math.round(+m[1]/100)/10).toFixed(1);
+ if((m=n.match(/\b(8|12|16|20|24|32)\s*v(?:alv\w*)?\b/)))p.val=m[1]+'V';
+ if(/\bturbo\b|\btsi\b|\btfsi\b|\bthp\b|\btjet\b|\bt-?jet\b|\bturbinado/.test(n))p.tur=1;
+ p.comb=/flex|total ?flex|bicomb/.test(n)?'Flex':/diesel|tdi|\bdci\b/.test(n)?'Diesel':/gasol/.test(n)?'Gasolina':/alcool|álcool|etanol/.test(n)?'Etanol':/gnv/.test(n)?'GNV':'';return p}
+function motorNorm(t){const p=motorPartes(t);if(!(p.cil||p.val))return String(t||'').trim();
+ /* palavras que não são cilindrada, válvulas, turbo ou combustível ficam (ex.: "Fire", "AP") */
+ const resto=String(t||'').replace(/(\d)\s*[.,]\s*(\d)/g,'$1.$2').split(/\s+/).filter(w=>w&&!/^\d|^(8|12|16|20|24|32)v|^v([aá]lv\w*)?$|^(turbo|tsi|tfsi|thp|t-?jet|turbinado|flex|total|bicomb\w*|diesel|tdi|dci|gasolina|alcool|álcool|etanol|gnv|motor|cc|cm3|cilindradas)$/i.test(w));
+ return[p.cil,p.val,p.tur?'Turbo':'',...resto,p.comb].filter(Boolean).join(' ')}
+function motorChave(t){const p=motorPartes(t);return p.cil||p.val?[p.cil||'',p.val||'',p.tur?'t':''].join('|'):String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
+function motorChip(k,v){const i=$('#modal [name=motor]');if(!i)return;const p=motorPartes(i.value);if(k=='tur')p.tur=p.tur?0:1;else p[k]=p[k]==v?'':v;i.value=[p.cil,p.val,p.tur?'Turbo':'',p.comb].filter(Boolean).join(' ');motorChips()}
+function motorChips(){const i=$('#modal [name=motor]');if(!i)return;const p=motorPartes(i.value),b=(k,v,l)=>`<button type="button" class="sm mtc" aria-pressed="${k=='tur'?!!p.tur:p[k]==v}" onclick="motorChip('${k}','${v}')">${l||v}</button>`;
+ let w=document.getElementById('mtchips');if(!w){i.closest('label').insertAdjacentHTML('afterend','<div id="mtchips"></div>');w=document.getElementById('mtchips')}
+ w.innerHTML=`<div class="mtl">${['1.0','1.3','1.4','1.5','1.6','1.8','2.0'].map(v=>b('cil',v)).join('')}</div><div class="mtl">${['8V','12V','16V'].map(v=>b('val',v)).join('')}${b('tur','1','Turbo')}${['Flex','Gasolina','Diesel'].map(v=>b('comb',v)).join('')}</div>`}
 function editVeh(id,cb,pre){VCB=cb;if(!pre)PLG=null;const orig=id?vh(id):null,v={...(orig||{}),...(pre||{})};EV=id||null;PLK='';const F=[['cli','Cliente','busca',cliArr(),1,{btn:'Novo cliente',novoTxt:'Cadastrar novo cliente',novo:(t,cur)=>viaModal(x=>editVeh(id,cb,x),cur,set=>editClient(null,n=>set({cli:n.id}),{nome:t}))}],['placa','Placa (pode informar depois)','text',0,0],['modelo','Marca/modelo','text',0,1],['ano','Ano','number'],['km','Quilometragem','number'],['motor','Motor'],['cor','Cor'],['chassi','Chassi'],['obs','Observações','area']];
- modal(id?'Editar veículo':'Novo veículo',F,v,o=>{o.placa=normPl(o.placa)||o.placa.toUpperCase();if(PLG){try{const f=normPl(o.placa);if(PLG.read&&f.length==7&&[...f].filter((c,j)=>c!=PLG.read[j]).length<=3)plLearn(PLG.ty,PLG.gl,f)}catch(x){}PLG=null}if(id)Object.assign(orig,o);else{const n={id:uid(),...o};db.vehicles.push(n);if(cb)cb(n)}save();render();if(!id&&cb)toast('Veículo cadastrado')},0,id&&DONO()&&(()=>delVeh(id)));
+ modal(id?'Editar veículo':'Novo veículo',F,v,o=>{o.placa=normPl(o.placa)||o.placa.toUpperCase();if(o.motor)o.motor=motorNorm(o.motor);if(PLG){try{const f=normPl(o.placa);if(PLG.read&&f.length==7&&[...f].filter((c,j)=>c!=PLG.read[j]).length<=3)plLearn(PLG.ty,PLG.gl,f)}catch(x){}PLG=null}if(id)Object.assign(orig,o);else{const n={id:uid(),...o};db.vehicles.push(n);if(cb)cb(n)}save();render();if(!id&&cb)toast('Veículo cadastrado')},0,id&&DONO()&&(()=>delVeh(id)));
  const pl=$('#modal [name=placa]');pl.setAttribute('autocapitalize','characters');pl.setAttribute('autocomplete','off');pl.maxLength=8;
  pl.closest('label').insertAdjacentHTML('afterend',`<div class="bar" style="margin:-4px 0 12px"><label class="btn sm pr" style="margin:0;color:var(--on)">Escanear placa<input type="file" accept="image/*" capture="environment" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><label class="btn sm" style="margin:0">Da galeria<input type="file" accept="image/*" class="fi" onchange="scanPlaca(this.files[0]);this.value=''"></label><button type="button" class="sm plcbt" onclick="plConsulta()">Consultar placa</button><span class="muted" id="pst" style="font-size:13px"></span></div><div id="pal" class="bar" style="margin:-6px 0 10px"></div>`);
+ motorChips();const mi=$('#modal [name=motor]');if(mi){mi.placeholder='Ex.: 1.0 8V Flex';mi.addEventListener('input',motorChips)}
  pl.addEventListener('input',()=>{pl.value=pl.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');clearTimeout(PT)/* 2.33.0: não consulta sozinha (gasta crédito); só pelo botão Consultar placa */})}
 async function buscaPlaca(auto){const f=$('#modal form');if(!f||!f.elements.placa)return;const p=normPl(f.elements.placa.value);
  if(!okPl(p))return auto?0:toast('Digite uma placa válida (ex.: ABC1D23)');
@@ -1880,7 +1899,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.41.1';
+const APP_VER='2.42.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
