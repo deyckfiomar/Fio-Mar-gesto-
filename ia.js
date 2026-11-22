@@ -42,14 +42,14 @@ function bolha(m,ult){if(m.papel=='assistant'){const A=parteApp(m.texto);return`
 
 /* ---------- botão na página do diagnóstico ---------- */
 G.iaBar=function(o){if(!DONO())return'';if(!SAL)chama({acao:'saldo'}).then(()=>{if(S.v=='diag')(typeof renderBg=='function'?renderBg():render(1))}).catch(()=>{});
- const k=CK[o.id],fim=o.dg&&o.dg.fim;
+ const k=CK[o.id],fim=o.dg&&o.dg.fim;if(!fim)return''; /* 2.41.0: a IA aparece uma vez só: no cartão "Não achou o defeito?" do fim */
  return`<div class="card iabar"><span class="iaic">${svgi('ia')}</span><div class="iatx"><b>Especialista em diagnóstico (IA)</b><small>${k?`Consulta aberta · ${k.perguntas} de ${k.max} perguntas · continuar é grátis`:fim?'Diagnóstico fechado':saldoTxt()}</small></div>
  <button type="button" class="${fim?'':'pr'}" onclick="iaAbre('${o.id}')">${k?'Continuar':fim?'Ver conversa':'Consultar'}</button></div>`};
 
 const pdfB=o=>`<div class="iapdf"><button type="button" onclick="DG.pdfEnvia('${o.id}')">${svgi('notas')} Enviar PDF do diagnóstico</button><button type="button" class="sm" onclick="DG.pdf('${o.id}')">Baixar</button></div>`;
 G.iaAjuda=function(o,st){if(o.dg&&o.dg.fim)return'';if(!DONO())return`<div class="card iaaj"><div class="iaajh"><div><b>Não achou o defeito?</b><small>Gere um PDF com os dados do carro, os códigos, os sintomas e todos os testes feitos, com as fotos, para pedir ajuda.</small></div></div>${pdfB(o)}</div>`;const d=o.dg||{},nt=Object.values(d.t||{}).filter(x=>x&&x.r).length,nc=(d.cod||[]).length,ns=(d.sin||[]).length;
  return`<div class="card iaaj"><div class="iaajh"><span class="iaic">${svgi('ia')}</span><div><b>Não achou o defeito?</b><small>A IA cruza ${[nc&&plural(nc,'código','códigos'),ns&&plural(ns,'sintoma','sintomas'),plural(nt,'teste feito','testes feitos')].filter(Boolean).join(', ')} e sugere <b>o defeito mais provável</b> e o que falta testar.</small></div></div>
- ${nt?'':`<small class="muted iaajd">Fica mais certeira depois de registrar o resultado de alguns testes.</small>`}<button type="button" class="pr" onclick="iaSugere('${o.id}')">Pedir sugestão à IA</button>${pdfB(o)}</div>`};
+ ${nt?'':`<small class="muted iaajd">Fica mais certeira depois de registrar o resultado de alguns testes.</small>`}<button type="button" class="pr" onclick="iaSugere('${o.id}')">Pedir sugestão à IA</button><button type="button" class="iaask" onclick="iaAbre('${o.id}')">${CK[o.id]?'Continuar a consulta':'Fazer uma pergunta'}</button><small class="muted iasal">${CK[o.id]?`Consulta aberta · ${CK[o.id].perguntas} de ${CK[o.id].max} perguntas · continuar é grátis`:saldoTxt()}</small>${pdfB(o)}</div>`};
 G.iaSugere=function(oid){AUTO=SUG;iaAbre(oid)};
 /* ---------- janela da conversa ---------- */
 function tela(o,body,pe){const v=vh(o.veh);$('#modal').innerHTML=`<div class="ov psh-ov"><div class="md psh iash" role="dialog" aria-modal="true" aria-label="Especialista em diagnóstico">
@@ -113,7 +113,7 @@ const st=document.createElement('style');st.textContent=`
 .iain{display:flex;gap:8px;align-items:flex-end}.iain textarea{margin:0;resize:none;min-height:44px;font-size:16px}.iain button{flex:none;width:48px;height:44px;margin:0;padding:0;display:flex;align-items:center;justify-content:center}
 .iain button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .iaaj{margin:14px 0;border:1.5px dashed color-mix(in srgb,var(--hi) 60%,var(--ln));background:color-mix(in srgb,var(--hi) 7%,var(--sf))}.iaajh{display:flex;gap:12px;align-items:center}.iaajh b{display:block;font-size:16px}.iaajh small{display:block;color:var(--mut);margin-top:2px}.iaajh small b{display:inline;font-size:inherit;color:var(--ink)}
-.iaaj>button{width:100%;margin:12px 0 0;padding:12px}.iapdf{display:flex;gap:8px;margin-top:8px}.iapdf button{margin:0}.iapdf button:first-child{flex:1;padding:11px;display:flex;align-items:center;justify-content:center;gap:6px}.iapdf svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.iaajd{display:block;margin-top:8px}
+.iaaj>button{width:100%;margin:12px 0 0;padding:12px}.iaaj>button.iaask:not(.pr){margin-top:8px;padding:10px}.iaaj .iasal{display:block;text-align:center;margin-top:6px;font-size:12px}.iapdf{display:flex;gap:8px;margin-top:8px}.iapdf button{margin:0}.iapdf button:first-child{flex:1;padding:11px;display:flex;align-items:center;justify-content:center;gap:6px}.iapdf svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.iaajd{display:block;margin-top:8px}
 .iaac{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--ln)}.iaac button{margin:0;text-align:left;white-space:normal}
 .iarod{display:flex;align-items:center;gap:8px;margin-top:6px}.iarod button{margin:0}
 `;document.head.appendChild(st);
