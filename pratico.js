@@ -87,10 +87,10 @@ G.buscaR=function(v){BQ=v;const box=$q('#pbr');if(!box)return;const q=nrm(v).tri
  const CL=db.clients.filter(c=>has(c.nome)||(qd.length>=4&&String(c.tel||'').replace(/\D/g,'').includes(qd))||has(c.doc)).slice(0,6);
  const QU=db.quotes.filter(x=>(qd&&String(x.n)==String(+qd)&&/^\d+$/.test(String(v).trim()))||has(cl(x.cli).nome)||(qp.length>=3&&normPl(vh(x.veh).placa).includes(qp))).slice().reverse().slice(0,4);
  const it=(t,s,r,f)=>`<button type="button" onclick="closeM();${f}"><span><b>${t}</b><small>${s}</small></span>${r||''}</button>`;
- box.innerHTML=(OS.length?'<h3>O.S.</h3>'+OS.map(o=>it('O.S. '+e(o.num)+' · '+e(vlabel(vh(o.veh))),e(cl(o.cli).nome||'')+' · '+D(o.aberta)+' · '+R(oTot(o)),chip(e(o.status),SC[o.status]),`go('order','${o.id}')`)).join(''):'')+
-  (VE.length?'<h3>Veículos</h3>'+VE.map(x=>{const a=abertaV[x.id];return it(e(vlabel(x)),e(cl(x.cli).nome||'Sem cliente')+(a?' · na O.S. '+e(a.num):''),a?chip('No pátio','#2F80ED'):'',a?`go('order','${a.id}')`:`go('vehicles',0,0,{q:'${e(x.placa||x.modelo||'')}'})`)}).join(''):'')+
+ box.innerHTML=(OS.length?'<h3>O.S.</h3>'+OS.map(o=>it('O.S. '+e(o.num)+' · '+e(vlabel(vh(o.veh))),[e(cl(o.cli).nome||''),D(o.aberta),oTot(o)>0.005?R(oTot(o)):''].filter(Boolean).join(' · '),chip(e(o.status),SC[o.status]),`go('order','${o.id}')`)).join(''):'')+
+  (VE.length?'<h3>Veículos</h3>'+VE.map(x=>{const a=abertaV[x.id];return it(e(vlabel(x)),e(cl(x.cli).nome||'Sem cliente')+(a?' · na O.S. '+e(a.num):''),a?chip('No pátio','#2F80ED'):'',a?`go('order','${a.id}')`:`go('veiculo','${x.id}')`)}).join(''):'')+
   (CL.length?'<h3>Clientes</h3>'+CL.map(c=>it(e(c.nome),e(c.tel||'Sem telefone')+' · '+plural(db.vehicles.filter(x=>x.cli==c.id).length,'veículo','veículos'),'',`go('clients',0,0,{q:'${e(String(c.nome||'').replace(/'/g,''))}'})`)).join(''):'')+
-  (QU.length?'<h3>Orçamentos</h3>'+QU.map(x=>it('Orçamento Nº '+e(x.n)+' · '+e(vlabel(vh(x.veh))),e(cl(x.cli).nome||'')+' · '+R(sum(x.items,x.desc)),chip(e(x.status),'#8E5BD0'),`editQuote('${x.id}')`)).join(''):'')||
+  (QU.length?'<h3>Orçamentos</h3>'+QU.map(x=>it('Orçamento Nº '+e(x.n)+' · '+e(vlabel(vh(x.veh))),[e(cl(x.cli).nome||''),sum(x.items,x.desc)>0.005?R(sum(x.items,x.desc)):'sem itens'].filter(Boolean).join(' · '),chip(e(x.status),'#8E5BD0'),`editQuote('${x.id}')`)).join(''):'')||
   `<p class="muted" style="margin:6px 2px">Nada encontrado para “${e(v)}”.</p><button type="button" class="pr" style="width:100%" onclick="closeM();checkin({placa:'${e(qp.length>=5?qp:'')}'})">Fazer a entrada de um carro</button>`};
 
 /* ---------- 4) entrada do carro ---------- */

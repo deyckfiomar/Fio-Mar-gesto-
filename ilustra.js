@@ -1,4 +1,4 @@
-/* Fio-Mar Gestor — ilustrações dos testes do Diagnóstico (2.38.0)
+/* Fio-Mar Gestor — ilustrações dos testes do Diagnóstico (2.38.0; MAF, detonação, velas e vazão na 2.40.0)
    Pequenos desenhos do "valor certo": forma de onda no osciloscópio, relógio do manômetro, escala do multímetro.
    window.DGILU[idDoTeste] = { svg, leg }  → usado no cartão do teste (diagnostico.js, "Como fazer e valor esperado"). */
 (function (G) {
@@ -149,6 +149,52 @@
     leg: 'Pontas nas duas pontas do mesmo cabo, com o circuito funcionando. Quanto menor, melhor.' };
   L.refgnd = { svg: visor({ aria: 'Referência de 5 volts', lcd: '5,01 V', modo: 'V · ignição ligada', lado: [['Referência: 4,9–5,1 V', 'il-ok'], ['Massa do sensor:'], ['até 0,1 V', 'il-ok'], ['Referência baixa = curto', 'il-bad']] }),
     leg: 'Conector do sensor solto, ignição ligada. Referência entre o fio de 5 V e a massa do motor.' };
+
+  /* ---------- 2.40.0: MAF, detonação, velas e vazão ---------- */
+  // MAF: lenta baixa, sobe na hora ao acelerar e volta
+  L.maf = { svg: tela({ x0: 44, aria: 'Sensor MAF em g/s', ymin: 0, ymax: 30, ylin: [0, 10, 20], yfmt: (v) => v + ' g/s', xleg: 'lenta → acelerada rápida → solta (motor 1.6)',
+    faixas: [[2.4, 4]],
+    ondas: [{ p: [[0, 3.2], [.3, 3.2], [.34, 18], [.38, 23], [.44, 22], [.5, 9], [.56, 4], [.62, 3.2], [1, 3.2]] },
+      { p: [[.3, 3.2], [.4, 8], [.48, 11], [.56, 6], [.66, 3.4]], cls: 'il-bad', sw: 1.8 }],
+    notas: [[.14, 7, 'lenta 2,4–4'], [.4, 26.5, 'sobe na hora'], [.8, 9, 'errado: sobe pouco', 'middle', 'il-bad']] }),
+    leg: 'Marcha lenta ≈ 1,5–2,5 g/s por litro (motor 1.6 ≈ 2,4–4 g/s). Acelerando forte, sobe na hora e sem degraus. Sobe pouco ou devagar = sensor sujo ou entrada de ar depois dele.' };
+  // Sensor de detonação: linha parada e um surto a cada batida
+  L.knock = { svg: tela({ x0: 40, aria: 'Sinal do sensor de detonação', ymin: -1.5, ymax: 1.8, ylin: [-1, 0, 1], yfmt: (v) => f(v) + ' V', xleg: 'bater de leve no bloco, perto do sensor',
+    ondas: [{ p: (() => { const a = [], bat = [.18, .5, .8]; for (let i = 0; i <= 400; i++) { const t = i / 400; let v = 0.03 * Math.sin(t * 300); bat.forEach((b) => { if (t >= b && t < b + .12) { const d = t - b; v += 1.1 * Math.exp(-d * 38) * Math.sin(d * 520); } }); a.push([t, v]); } return a; })() }],
+    notas: [[.2, 1.45, 'batida', 'start'], [.52, 1.45, 'batida', 'start'], [.82, 1.45, 'batida', 'start']] }),
+    leg: 'Parado, o sinal fica perto de 0 V. Cada batida gera um surto (meio volt a alguns volts) que some rápido. Sem surto = sensor ou fio. Aperto conforme o manual (em geral 20–25 N·m): frouxo ou apertado demais muda o sinal.' };
+  // Velas: cores lado a lado
+  L.plugs = { svg: (() => {
+    const v = (x, c, nome, diz, cls, extra) => `<g transform="translate(${x} 0)">
+      <rect x="22" y="6" width="36" height="26" rx="3" class="il-bg"/>
+      <path d="M18 32 h44 v40 h-44 z" class="il-g" fill="#8d9298" stroke-width="1.5"/>
+      ${[38, 46, 54, 62].map((y) => `<line x1="18" y1="${y}" x2="62" y2="${y + 4}" stroke="#5d6268" stroke-width="2"/>`).join('')}
+      <path d="M26 72 h28 l-5 20 h-18 z" fill="${c}" class="il-g" stroke-width="1"/>
+      <rect x="37" y="92" width="6" height="8" fill="#9aa0a6"/>
+      <path d="M58 72 v32 h-15" fill="none" stroke="#9aa0a6" stroke-width="5" stroke-linejoin="round"/>
+      ${extra || ''}
+      <text x="40" y="124" text-anchor="middle" font-size="11" font-weight="800" class="il-v">${nome}</text>
+      <text x="40" y="140" text-anchor="middle" font-size="11" class="${cls}">${diz[0]}</text>
+      <text x="40" y="154" text-anchor="middle" font-size="11" class="${cls}">${diz[1] || ''}</text></g>`;
+    return `<svg viewBox="0 0 330 160" role="img" aria-label="Cores das velas">
+      ${v(0, '#C9A06A', 'Marrom-clara', ['normal', ''], 'il-ok')}
+      ${v(82, '#2b2b2b', 'Preta seca', ['mistura rica', 'ou ar sujo'], 'il-bad')}
+      ${v(164, '#3a2c18', 'Molhada', ['óleo ou', 'sem faísca'], 'il-bad', '<ellipse cx="34" cy="80" rx="3" ry="5" fill="#fff" opacity=".35"/>')}
+      ${v(246, '#ECEBE6', 'Branca', ['pobre ou', 'superaquecida'], 'il-bad', '<circle cx="36" cy="84" r="1.6" fill="#999"/><circle cx="44" cy="79" r="1.3" fill="#999"/>')}
+    </svg>`; })(),
+    leg: 'Compare todas as velas: a diferente mostra o cilindro com problema. Preta seca = rica; molhada de óleo = anéis ou retentores; molhada de combustível = sem faísca; branca com bolhinhas = pobre ou ponto adiantado. Confira também a folga do eletrodo.' };
+  // Vazão: proveta com o volume em 30 s
+  L.fflow = { svg: (() => {
+    const X = 40, W = 70, Y0 = 18, Y1 = 142, y = (ml) => Y1 - ml / 1000 * (Y1 - Y0), nivel = 600;
+    let s = `<rect x="${X}" y="${y(nivel).toFixed(1)}" width="${W}" height="${(Y1 - y(nivel)).toFixed(1)}" fill="#C98200" opacity=".55"/>`;
+    s += `<path d="M${X} ${Y0 - 6} v${Y1 - Y0 + 6} h${W} v-${Y1 - Y0 + 6}" fill="none" class="il-n" stroke-width="2.5"/><path d="M${X - 10} ${Y1 + 2} h${W + 20}" class="il-n" stroke-width="4"/>`;
+    for (let m = 0; m <= 1000; m += 100) { const yy = y(m).toFixed(1), g = m % 500 == 0; s += `<line x1="${X}" y1="${yy}" x2="${X + (g ? 18 : 10)}" y2="${yy}" class="il-g" stroke-width="1.5"/>`; if (g && m) s += `<text x="${X - 6}" y="${(+yy + 4)}" text-anchor="end" font-size="10.5" class="il-t">${m}</text>`; }
+    s += `<line x1="${X}" y1="${y(500).toFixed(1)}" x2="${X + W}" y2="${y(500).toFixed(1)}" stroke="#2E8B57" stroke-width="2" stroke-dasharray="5 3"/>`;
+    s += `<text x="${X + W / 2}" y="${(y(nivel) - 6).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="800" class="il-v">600 ml</text><text x="${X + W / 2}" y="${Y1 + 16}" text-anchor="middle" font-size="10.5" class="il-t">ml em 30 s</text>`;
+    const lado = [['Referência comum:', 'il-t'], ['acima de ~1 L/min', 'il-ok'], ['15 s: ≥ 250 ml', 'il-ok'], ['30 s: ≥ 500 ml', 'il-ok'], ['Abaixo: bomba fraca,', 'il-bad'], ['filtro, pescador', 'il-bad'], ['ou tensão baixa', 'il-bad']];
+    s += lado.map((l, i) => `<text x="140" y="${28 + i * 20}" font-size="13" class="${l[1]}">${l[0]}</text>`).join('');
+    return `<svg viewBox="0 0 320 166" role="img" aria-label="Vazão da bomba numa proveta">${s}</svg>`; })(),
+    leg: 'Acione a bomba por 15 ou 30 s com a saída numa proveta. Meça a tensão na bomba ao mesmo tempo: abaixo de 12 V a vazão cai. O valor certo do carro está no manual.' };
 
   G.DGILU = L;
 

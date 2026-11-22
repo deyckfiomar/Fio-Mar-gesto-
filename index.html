@@ -1702,11 +1702,17 @@ function Vquotes(){const st=S.f.qs||'',q=nrm(S.f.q||'').trim(),Q=db.quotes,n=k=>
  const lbl={'':'Todos os orçamentos',os:'Viraram O.S.',Aguardando:'Aguardando aprovação'}[st]||{Rascunho:'Rascunhos',Aprovado:'Aprovados',Recusado:'Recusados'}[st];
  return head({ico:'quotes',kick:'Vendas',title:'Orçamentos',c:PCOL.quotes,right:`<button class="pr hb" onclick="editQuote()">+ Novo</button>`})+ftiles(tl,st,'qs')+
  srch('Buscar por número, cliente ou placa',S.f.q)+sech(`${lbl} <span class="muted">(${L.length})</span>`,L.length?R(L.reduce((a,x)=>a+sum(x.items,x.desc),0)):'')+
- (lista(L.slice().reverse(),x=>{const ni=x.items.length,os=x.os&&od(x.os);return lcard({c:SC[x.status],n:'Orçamento '+e(x.n),pill:pill(x.status),v:R(sum(x.items,x.desc)),t:e(cl(x.cli).nome||'Sem cliente'),
-  m:`${e(vlabel(vh(x.veh)))}${x.prazo?' · prazo '+e(x.prazo):''}`,f:[mb(ni?plural(ni,'item','itens'):'Sem itens'),os?mb('O.S. '+e(os.num),KB):'',x.aprov?mb('Aprovado por '+e(x.aprov.nome),KG):''].join(''),on:`editQuote('${x.id}')`})})||
+ (lista(L.slice().reverse(),x=>{const ni=x.items.length,os=x.os&&od(x.os),nm=cl(x.cli).nome||'',[ini,cor]=avIni(nm),tot=sum(x.items,x.desc);
+  /* 2.40.0: mesma cara dos Clientes: cliente em destaque; número, carro e itens pequenos; valor e situação à direita */
+  return clCard({ini,cor,dim:x.status=='Recusado',t:e(nm||'Sem cliente'),sub:['Nº '+e(x.n),x.veh?e(vlabel(vh(x.veh))):'',ni?plural(ni,'item','itens'):'sem itens',x.prazo?'prazo '+e(x.prazo):''].filter(Boolean).join(' · '),
+   r:`${tot>0.005?`<b>${R(tot)}</b>`:''}${clTag(os?'O.S. '+e(os.num):e(x.status),os?KB:SC[x.status]||KM)}`,on:`editQuote('${x.id}')`})})||
   empty('quotes',q?'Nenhum orçamento encontrado.':'Nenhum orçamento neste filtro.',st||q?'':`<button class="pr" onclick="editQuote()">+ Novo orçamento</button>`))}
 
 /* ---------- Clientes ---------- */
+/* 2.40.0: iniciais e cor do cartão (Clientes, Veículos e Orçamentos usam a mesma cara) */
+function avIni(nm){nm=String(nm||'').trim();return[(nm.split(/\s+/).filter(Boolean).map(w=>w[0]).filter((x,i,a)=>i==0||i==a.length-1).join('')||'?').toUpperCase(),['#3E7CB1','#2E8B57','#B4472E','#8E5BB5','#C98200','#2A9D8F','#D15A8C'][[...nm].reduce((a,ch)=>a+ch.charCodeAt(0),0)%7]]}
+function clCard(o){return`<div class="clc${o.dim?' cldim':''}" role="button" tabindex="0" onclick="${o.on}"><span class="clav" style="background:${o.cor}">${e(o.ini)}</span><div class="clm"><b>${o.t}</b><small>${o.sub}</small></div><div class="clr">${o.r||''}</div></div>`}
+function clTag(t,c){return`<small class="clpt" style="--c:${c}">${t}</small>`}
 function waCli(id){const c=cl(id);wa(c.tel,`Olá, ${c.nome}! Tudo bem?`)}
 function Vclients(){const st=S.f.cs||'',q=nrm(S.f.q||'').trim(),C=db.clients,pat=new Set(db.orders.filter(o=>!osFim(o)).map(o=>o.cli)),dv={};
  const VB={},NO={};db.vehicles.forEach(v=>(VB[v.cli]=VB[v.cli]||[]).push(v));db.orders.forEach(o=>{NO[o.cli]=(NO[o.cli]||0)+1;const r=oTot(o)-paid(o);if(r>0.005)dv[o.cli]=(dv[o.cli]||0)+r});const tot=Object.values(dv).reduce((a,x)=>a+x,0),nd=Object.keys(dv).length;
@@ -1718,7 +1724,7 @@ function Vclients(){const st=S.f.cs||'',q=nrm(S.f.q||'').trim(),C=db.clients,pat
  srch('Buscar por nome, telefone, CPF ou placa',S.f.q)+sech(`${st=='pat'?'Com carro no pátio':st=='dev'?'Com valor a receber':'Todos os clientes'} <span class="muted">(${L.length})</span>`)+
  (lista(L,c=>{const vs=VB[c.id]||[],nOS=NO[c.id]||0;
   /* 2.36.0: nome em destaque, com as iniciais; carro e telefone pequenos; valor só quando deve */
-  const nm=String(c.nome||'').trim(),ini=(nm.split(/\s+/).filter(Boolean).map(w=>w[0]).filter((x,i,a)=>i==0||i==a.length-1).join('')||'?').toUpperCase(),cor=['#3E7CB1','#2E8B57','#B4472E','#8E5BB5','#C98200','#2A9D8F','#D15A8C'][[...nm].reduce((a,ch)=>a+ch.charCodeAt(0),0)%7],
+  const nm=String(c.nome||'').trim(),[ini,cor]=avIni(nm),
    sub=[vs.map(v=>e(vlabel(v))).join(', ')||'Sem carro cadastrado',c.tel?e(c.tel):''].filter(Boolean).join(' · ');
   return`<div class="clc" role="button" tabindex="0" onclick="${typeof cliAcoes=='function'?`cliAcoes('${c.id}')`:`editClient('${c.id}')`}"><span class="clav" style="background:${cor}">${e(ini)}</span><div class="clm"><b>${e(nm||'Sem nome')}</b><small>${sub}</small></div><div class="clr">${dv[c.id]?`<b style="color:${KA}">${R(dv[c.id])}</b>`:''}${pat.has(c.id)?`<small class="clpt">No pátio</small>`:''}</div></div>`})||
   empty('clients',q?'Nenhum cliente encontrado.':'Nenhum cliente neste filtro.',st||q?'':`<button class="pr" onclick="editClient()">+ Novo cliente</button>`))}
@@ -1731,8 +1737,11 @@ function Vvehicles(){const st=S.f.vs||'',q=nrm(S.f.q||'').trim(),V=db.vehicles,O
  return head({ico:'vehicles',kick:'Cadastros',title:'Veículos',c:PCOL.vehicles,right:`<button class="pr hb" onclick="editVeh()">+ Novo</button>`})+ftiles(tl,st,'vs')+
  srch('Buscar por placa, modelo ou cliente',S.f.q)+sech(`${st=='pat'?'No pátio':st=='sem'?'Sem placa':'Todos os veículos'} <span class="muted">(${L.length})</span>`)+
  (lista(L.slice().reverse(),v=>{const o=op(v.id),nOS=NV[v.id]||0;
-  return lcard({c:o?SC[o.status]:'var(--ln)',n:e(v.placa||'Sem placa'),pill:o?pill(o.status):'',t:e(v.modelo||'Modelo não informado')+(v.ano?` <span class="muted">${e(v.ano)}</span>`:''),
-   m:[cl(v.cli).nome,v.km&&v.km+' km',v.cor,v.motor].filter(Boolean).map(e).join(' · '),f:`${mb(plural(nOS,'serviço','serviços'))}<span class="sp"></span>${o?`<button class="sm pr" onclick="event.stopPropagation();go('order','${o.id}')">Abrir O.S. ${e(o.num)}</button>`:''}<button class="sm" onclick="event.stopPropagation();go('veiculo','${v.id}')">Histórico</button>`,on:`editVeh('${v.id}')`})})||
+  /* 2.40.0: mesma cara dos Clientes: modelo em destaque, placa e dono pequenos, toque abre o histórico */
+  const [ini,cor]=avIni(v.modelo||v.placa);
+  return clCard({ini,cor,t:e(v.modelo||'Modelo não informado')+(v.ano?` <span class="muted" style="font-weight:600">${e(v.ano)}</span>`:''),
+   sub:[`<span class="clplc">${e(v.placa||'Sem placa')}</span>`,e(cl(v.cli).nome||'Sem cliente'),v.motor&&e(v.motor)].filter(Boolean).join(' · '),
+   r:o?clTag('O.S. '+e(o.num),SC[o.status]||KB):nOS?`<small class="muted">${plural(nOS,'serviço','serviços')}</small>`:'',on:`go('veiculo','${v.id}')`})})||
   empty('vehicles',q?'Nenhum veículo encontrado.':'Nenhum veículo neste filtro.',st||q?'':`<button class="pr" onclick="editVeh()">+ Novo veículo</button>`))}
 
 /* ---------- Agenda ---------- */
@@ -1871,7 +1880,7 @@ addEventListener('appinstalled',()=>{INST=null;toast('App instalado');if(typeof 
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){const SWW=navigator.serviceWorker,tinha=!!SWW.controller;let RL=false;
  SWW.addEventListener('controllerchange',()=>{if(!tinha||RL)return;RL=true;try{if(DIRTY){clearTimeout(TS);push()}}catch(x){}try{toast('Atualizando para a nova versão...')}catch(x){}setTimeout(()=>location.reload(),600)});
  addEventListener('load',()=>SWW.register('sw.js',{updateViaCache:'none'}).then(r=>{const up=()=>r.update().catch(()=>{});setInterval(up,30*60e3);document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible')up()})}).catch(()=>{}))}
-const APP_VER='2.39.0';
+const APP_VER='2.40.0';
 (function(){const f=document.getElementById('ver');if(f)f.textContent='Fio-Mar Gestor · versão '+APP_VER;document.title=document.title})();
 boot();
 </script>
