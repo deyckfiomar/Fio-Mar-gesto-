@@ -3,7 +3,7 @@
    A versão nova chega quando este arquivo muda: o app procura ao abrir/voltar, baixa tudo de novo
    em segundo plano e recarrega sozinho (index.html, 'controllerchange').
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.42.0';
+const VERSAO = '2.42.1';
 const CACHE = 'fiomar-' + VERSAO;
 const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './ilustra.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './jspdf.umd.min.js'];
 

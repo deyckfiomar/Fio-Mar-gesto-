@@ -82,9 +82,14 @@
     ondas: [{ p: pts(120, (t) => 0.5 + 0.38 * Math.sin(t * Math.PI * 2 * 3.2)), cls: 'il-s2', sw: 1.6 }, { p: pts(40, (t) => 0.62 + 0.02 * Math.sin(t * 9)) }],
     notas: [[.02, .7, 'pós (estável)', 'start'], [.02, .98, 'pré', 'start', 'il-t']] }),
     leg: 'A pós fica quase parada entre 0,45 e 0,7 V. Se ela copia a pré, o catalisador não está funcionando.' };
-  L.tps = { svg: tela({ aria: 'Varredura do TPS', ymin: 0, ymax: 5, ylin: [0.5, 2.5, 4.5], yfmt: (v) => f(v) + ' V', xleg: 'abrir devagar → fechar devagar',
-    ondas: [{ p: [[0, .6], [.08, .6], [.48, 4.4], [.56, 4.4], [.94, .6], [1, .6]] }], notas: [[.5, 4.85, 'aberto 4–4,8 V'], [.06, 1.1, 'fechado 0,3–0,9 V', 'start']] }),
-    leg: 'Linha lisa, sem degraus nem quedas a zero. Pedal com dois sinais: os dois sobem juntos.' };
+  // TPS / pedal (2.42.1, correção do dono): depende do carro. 1 sinal no TPS separado; 2 sinais na borboleta eletrônica; 2 pistas no pedal
+  const tpsT = (aria, tt, ondas, notas) => tela({ aria, h: 128, ymin: 0, ymax: 6.4, ylin: [0.5, 2.5, 4.5], yfmt: (v) => f(v) + ' V', ondas, notas: [[.015, 5.75, tt, 'start'], ...notas] });
+  const sobe = (a, b) => [[0, a], [.08, a], [.48, b], [.56, b], [.94, a], [1, a]];
+  L.tps = { svg:
+    tpsT('TPS separado: um sinal', 'A) TPS separado (borboleta a cabo): 1 sinal', [{ p: sobe(.6, 4.4) }], [[.5, -1.05, 'fechado ≈ 0,5 V → aberto ≈ 4,5 V → fechado', 'middle', 'il-v il-b1']]) +
+    tpsT('Borboleta eletrônica: dois sinais', 'B) Borboleta eletrônica: TPS1 e TPS2', [{ p: sobe(.6, 4.4) }, { p: sobe(4.4, .6), cls: 'il-s2' }], [[.27, -1.05, '— TPS1 sobe', 'middle', 'il-v il-b1'], [.73, -1.05, '— TPS2 desce (espelhado)', 'middle', 'il-v il-b2']]) +
+    tpsT('Pedal do acelerador: duas pistas', 'C) Pedal do acelerador: APP1 e APP2', [{ p: sobe(.75, 4.2) }, { p: sobe(.38, 2.1), cls: 'il-s2' }], [[.22, -1.05, '— APP1', 'middle', 'il-v il-b1'], [.66, -1.05, '— APP2 (metade do APP1)', 'middle', 'il-v il-b2']]),
+    leg: 'Depende do carro. A) TPS separado, borboleta a cabo: um sinal só, liso, de ≈ 0,5 V fechado a ≈ 4,5 V aberto. B) Corpo de borboleta eletrônico: o sensor fica dentro do corpo e tem 2 sinais (TPS1 e TPS2). C) Pedal eletrônico: 2 pistas (APP1 e APP2). Nos sinais duplos, um pode subir enquanto o outro desce (espelhado) ou ser a metade do outro, conforme a montadora; os dois mudam juntos, sem degraus nem quedas a zero, e a ECU compara um com o outro.' };
   // CKP (roda 60-2) e CMP
   L.ckpcmp = { svg: tela({ aria: 'Sincronismo CKP e CMP', h: 150, ymin: -2, ymax: 9, xleg: 'falha da roda fônica alinhada com o pulso de fase',
     ondas: [{ p: (() => { const a = []; for (let i = 0; i <= 300; i++) { const t = i / 300, gap = t > .4 && t < .46; a.push([t, gap ? 6 : 6 + 1.6 * Math.sin(t * Math.PI * 2 * 26)]); } return a; })() },
@@ -200,7 +205,7 @@
 
   const st = document.createElement('style');
   st.textContent = `.dg-ilu{margin:8px 0 4px;padding:10px;border-radius:12px;background:var(--sf);border:1px solid var(--ln);max-width:420px}.dg-ilu svg{display:block;width:100%;height:auto}.dg-ilu p{margin:6px 0 0!important;font-size:13px;color:var(--mut);line-height:1.4}
-.il-g{stroke:var(--ln)}.il-bg{fill:color-mix(in srgb,var(--ink) 4%,transparent);stroke:var(--ln)}.il-t{fill:var(--mut)}.il-v{fill:var(--ink)}.il-s{stroke:var(--hi)}.il-s2{stroke:#5fa8e0}.il-n{stroke:var(--ink)}.il-nf{fill:var(--ink)}
+.il-g{stroke:var(--ln)}.il-bg{fill:color-mix(in srgb,var(--ink) 4%,transparent);stroke:var(--ln)}.il-t{fill:var(--mut)}.il-v{fill:var(--ink)}.il-s{stroke:var(--hi)}.il-s2{stroke:#5fa8e0}.il-b2{fill:#5fa8e0}.il-b1{fill:var(--hi)}.il-n{stroke:var(--ink)}.il-nf{fill:var(--ink)}
 .il-ok{fill:#3fb06f;font-weight:700}.il-bad{fill:#E07A5F;stroke:#E07A5F}text.il-bad{stroke:none;font-weight:700}polyline.il-bad{fill:none!important;stroke-dasharray:5 4}
 .il-z-g{stroke:#2E8B57}.il-z-a{stroke:#C98200}.il-z-r{stroke:#B4472E}.il-z-gf{fill:#2E8B57}.il-z-af{fill:#C98200;opacity:.75}.il-z-rf{fill:#B4472E}.il-zb{fill:#2E8B57;opacity:.18}
 .il-lcd{fill:#B9C7A3}.il-lcdt{fill:#1b2414}`;
