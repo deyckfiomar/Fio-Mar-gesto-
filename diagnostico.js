@@ -9,7 +9,7 @@
 const norm=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
 /* ================= EQUIPAMENTOS ================= */
-const EQ={scan:'Scanner',osc:'Osciloscópio',amp:'Alicate amperímetro',mcomb:'Manômetro de combustível',mcomp:'Manômetro de compressão',mult:'Multímetro',vis:'Inspeção / manual',caneta:'Caneta de polaridade',vac:'Vacuômetro',fum:'Máquina de fumaça',leak:'Teste de vazamento de cilindro',co2:'Teste de CO₂ (junta)',arref:'Bomba de teste do arrefecimento',ir:'Termômetro infravermelho',moleo:'Manômetro de óleo',est:'Estetoscópio'};
+const EQ={scan:'Scanner',osc:'Osciloscópio',amp:'Alicate amperímetro',mcomb:'Manômetro de combustível',mcomp:'Manômetro de compressão',mult:'Multímetro',vis:'Inspeção / manual',caneta:'Caneta de polaridade',vac:'Vacuômetro',fum:'Máquina de fumaça',leak:'Teste de vazamento de cilindro',co2:'Teste de CO₂ (junta)',arref:'Bomba de teste do arrefecimento',ir:'Termômetro infravermelho',moleo:'Manômetro de óleo',est:'Estetoscópio',banc:'Bancada de bicos'};
 const EQ_DEFAULT=['scan','osc','mcomb','mcomp','mult','vis'];
 
 /* ================= BIBLIOTECA DE TESTES ================= */
@@ -49,6 +49,20 @@ compdry:['Compressão a seco',['mcomp'],'Motor quente, todas as velas fora, borb
 swapcoil:['Trocar a bobina de cilindro',['scan'],'Troque a bobina do cilindro com falha pela de outro cilindro. Apague os códigos e rode o carro de novo, olhando o contador de falhas.','A falha mudou de cilindro junto com a bobina = bobina com defeito (marque Fora). A falha ficou no mesmo cilindro = bobina boa (marque OK).'],
 swapplug:['Trocar a vela de cilindro',['scan'],'Troque a vela do cilindro com falha pela de outro cilindro. Apague os códigos e rode o carro de novo, olhando o contador de falhas.','A falha mudou de cilindro junto com a vela = vela com defeito (marque Fora). A falha ficou no mesmo cilindro = vela boa (marque OK).'],
 swapinj:['Trocar o injetor de cilindro',['scan'],'Troque o injetor do cilindro com falha pelo de outro cilindro. Apague os códigos e rode o carro de novo, olhando o contador de falhas.','A falha mudou de cilindro junto com o injetor = injetor com defeito (marque Fora). A falha ficou no mesmo cilindro = injetor bom (marque OK).'],
+injbal:['Balanceamento dos bicos (queda de pressão)',['mcomb+scan','mcomb'],'Manômetro instalado, motor desligado. Ligue a ignição para pressurizar. Acione um bico de cada vez pelo mesmo tempo (scanner ou aparelho de pulso) e anote quanto a pressão caiu em cada um.','Quedas parecidas entre os bicos: diferença de até ~10%. Cai menos = bico entupido; cai mais = bico vazando ou abrindo demais.'],
+pwrbal:['Balanço de potência (cortar cilindro)',['scan','vis'],'Motor quente em marcha lenta estável (ou a 1.500 rpm). Corte um cilindro de cada vez (pelo scanner ou tirando o conector do bico) e anote quanto a rotação caiu.','Todos derrubam a rotação parecido. Cilindro que quase não derruba (menos de ~70% da maior queda) = cilindro fraco: compressão, faísca ou bico.'],
+injbench:['Bicos na bancada (vazão e leque)',['banc'],'Na bancada de limpeza: estanqueidade (1 minuto com pressão, sem pulsar), leque e vazão de todos juntos pelo mesmo tempo.','Vazão igual entre os bicos (diferença de até ~5%), leque cônico e bem pulverizado, sem pingar em 1 minuto. Fora disso: limpar e testar de novo; se continuar, trocar o bico.'],
+injcur:['Corrente do bico (rampa)',['osc+amp'],'Alicate de baixa corrente no fio do bico ligado ao osciloscópio, motor em marcha lenta. Comparar todos os bicos.','A corrente sobe em rampa (≈ 1 A no bico de alta impedância) e mostra um pequeno “dente” quando a agulha abre. Sem o dente = agulha presa; corrente alta demais = bobina do bico em curto.'],
+o2resp:['Resposta da sonda lambda',['osc','scan'],'Motor quente a 2.500 rpm. Acelere rápido (mistura fica rica) e depois puxe uma mangueira de vácuo (fica pobre), olhando o sinal da sonda.','Rica: sobe acima de 0,8 V. Pobre: cai abaixo de 0,2 V. A troca leva menos de ~100–300 ms. Sonda lenta ou que não chega aos extremos = sonda gasta ou contaminada.'],
+o2heat:['Aquecedor da sonda lambda',['mult','scan'],'Conector da sonda solto: medir a resistência do aquecedor (em geral os 2 fios da mesma cor). Com a ignição ligada, conferir 12 V no conector do chicote.','Resistência baixa e sem interrupção (em geral de 2 a 15 Ω; veja o manual) e 12 V no chicote. Aquecedor aberto = sonda demora a funcionar e acende a luz (P0135, P0141).'],
+wbo2:['Sonda banda larga (5 fios)',['scan'],'Scanner com motor quente: ver o lambda (ou a relação ar/combustível) da sonda em marcha lenta, acelerando forte e soltando o acelerador.','Marcha lenta ≈ lambda 1,00 (0,98–1,02). Acelerando forte fica abaixo de 1 (rica); soltando (corte de combustível) vai bem acima de 1 (pobre).'],
+evap:['Válvula do canister (purga)',['vac','scan','vis'],'Com a válvula desligada, aplique vácuo (bomba manual ou mangueira ligada na admissão): não pode passar. Depois acione a válvula (scanner ou 12 V): tem que dar clique e abrir.','Desligada: fechada, segura o vácuo. Acionada: abre. Travada aberta = mistura rica e lenta ruim depois de abastecer, partida difícil com motor quente.'],
+iatect:['Temperatura do ar × do motor (motor frio)',['scan'],'Depois de horas parado (de manhã, motor frio), ligue só a ignição e veja no scanner a temperatura do ar (IAT) e a do motor (ECT).','As duas perto da temperatura ambiente, com diferença de até 3–5 °C. Diferença maior = sensor com defeito ou fiação com mau contato.'],
+advload:['Avanço de ignição e carga no scanner',['scan'],'Motor quente em marcha lenta, sem ar e sem faróis. Ver o avanço de ignição (°) e a carga calculada (%).','Avanço estável, na faixa do carro (em geral 5–20° na lenta), e carga calculada baixa (em geral 15–35%). Avanço baixo ou pulando = detonação ou sinal de rotação ruim. Carga alta = entrada de ar, motor fraco ou ponto atrasado.'],
+iacpos:['Posição da marcha lenta (passos / %)',['scan'],'Motor quente em marcha lenta, sem consumidores. Ver os passos do motor de passo (ou o % de abertura da borboleta eletrônica). Ligar o ar e ver se corrige.','Dentro da faixa do carro e estável; sobe um pouco com o ar ligado. Muito alto = borboleta suja ou passagem de ar restrita. Muito baixo = entrada falsa de ar.'],
+flexad:['Adaptação flex (% de etanol)',['scan'],'Ver no scanner o % de etanol aprendido (ou a adaptação de combustível) e comparar com o que está no tanque.','% coerente com o tanque (gasolina comum ≈ 30% de etanol; só etanol ≈ 100%). Diferente = adaptação errada: rodar para reaprender (ou resetar pelo scanner) e conferir sonda e combustível.'],
+ecugnd:['Alimentação e massas da ECU',['mult'],'Motor ligado com consumidores (faróis, ventoinha): medir a queda de tensão entre cada massa da ECU e o negativo da bateria. Na partida: medir a tensão nos pinos de alimentação da ECU.','Massas: até 0,1 V. Alimentação: 12 V com a ignição ligada; na partida não cai abaixo de ~9,6 V. Massa ruim = falhas “fantasmas” em vários sensores ao mesmo tempo.'],
+gdirail:['Pressão do rail (injeção direta)',['scan'],'Scanner: comparar a pressão desejada e a real do rail em marcha lenta, a 3.000 rpm e numa acelerada forte.','A real acompanha a desejada, com diferença pequena. Real abaixo = bomba de alta (ou o came que a aciona), válvula reguladora ou bomba de baixa fraca. Real alta e parada = sensor do rail ou válvula reguladora.'],
 compwet:['Compressão molhada',['mcomp'],'No cilindro baixo, colocar uma colher de óleo e medir de novo.','Sobe bastante = anéis. Não muda = válvula ou junta.'],
 leak:['Vazamento de cilindro',['leak'],'Cilindro no PMS de compressão, ar comprimido pelo furo da vela.','Até 10–15%. Ar no escape = válvula de escape; na admissão = válvula de admissão; no cárter = anéis; bolhas no radiador = junta ou cabeçote.'],
 vacidle:['Vácuo em marcha lenta',['vac'],'Vacuômetro direto no coletor, motor quente.','17–21 inHg estável. Baixo e estável = ponto atrasado ou entrada de ar; ponteiro batendo = válvula.'],
@@ -400,11 +414,19 @@ function aprendidos(o){const d=dgOf(o),P=pal(o.problema),m=new Map();
   ts.forEach(k=>{const a=m.get(k)||{n:0,why:new Set(),fora:0};a.n++;a.why.add(why);if(T[k].r=='falha')a.fora++;m.set(k,a)})});
  return m}
 function meusHTML(){syncT();const L=meus();return`<div class="card"><b>Testes da oficina</b><p class="muted" style="margin:4px 0 10px">Testes que você criou em "Fazer outro teste". Aparecem na busca e como sugestão em carros com defeito parecido.</p>${L.length?L.map(t=>{const n=db.orders.filter(o=>o.dg&&o.dg.t&&o.dg.t[t.id]&&o.dg.t[t.id].r).length;return`<div class="dg-meu"><div><b>${esc(t.n)}</b><small>${n?'usado em '+plural(n,'carro','carros'):'ainda não usado'}${t.esp?' · esperado: '+esc(t.esp):''}</small></div><button type="button" class="sm" onclick="DG.editTeste('${t.id}')">Editar</button><button type="button" class="sm dg" onclick="DG.delTeste('${t.id}')">Excluir</button></div>`}).join(''):'<p class="muted">Nenhum teste criado ainda.</p>'}</div>`}
+const INJT=[[/^P03\d\d$/,/falha|trepid|engasg/,['pwrbal','injbal','advload']],[/^P017[1-5]$/,/consumo|fuma.a preta|cheiro de combust/,['injbal','wbo2','evap','flexad']],
+ [/^P01(3[0-9]|4[0-9]|5[0-9]|6[0-7])$/,null,['o2resp','o2heat','wbo2']],[/^P0(03[0-9]|04[0-9]|05[0-9]|06[0-4]|13[5]|14[1]|15[5]|16[1])$/,null,['o2heat']],
+ [/^P04[4-5]\d$/,/cheiro de combust|abastec/,['evap']],[/^P011[0-4]$/,null,['iatect']],[/^P01(1[5-9]|2[5-8])$/,/partida a frio|frio/,['iatect']],
+ [/^P050[5-7]$/,/lenta/,['iacpos','advload']],[/^P03(2[5-9]|3[0-4])$/,/batida|detona/,['advload']],[/^P00(8[7-9])$|^P019[0-3]$/,null,['gdirail']],
+ [/^P02(0\d|6\d|7[0-2])$/,null,['injcur','injbal','injbench']],[/^U0\d\d\d$|^P056[0-3]$|^P06\d\d$/,/varios sensores|luzes|apaga/,['ecugnd']],
+ [/^P0(17[0-5]|30\d)$/,/partida|flex|etanol/,['flexad']],[/^P01(7[1-5])$|^P030\d$/,null,['injbench']]];
 function suggestions(o,M){syncT();const d=dgOf(o),v=vOf(o),m=new Map();const add=(t,f)=>{if(!TESTS[t])return;if(!m.has(t))m.set(t,{from:[],hist:0,ord:m.size});const x=m.get(t);if(f&&!x.from.includes(f))x.from.push(f)};
  (M||[]).forEach(g=>g.testes.forEach((n,t)=>{add(t,null);if(m.get(t))m.get(t).hist+=n}));
  d.cod.forEach(c=>{const r=lookupV(c,v);(r?r.tests:['codes']).forEach(t=>add(t,c))});d.sin.forEach(s=>{const y=SYM[s];if(y)y.tests.forEach(t=>add(t,y.t))});
  aprendidos(o).forEach((a,t)=>{add(t,'Aprendido: você usou em '+plural(a.n,'carro parecido','carros parecidos')+' ('+[...a.why].slice(0,2).join(', ')+')');const x=m.get(t);if(x)x.apr=a.n+a.fora});
  if(d.cod.some(c=>/^P030[1-8]$/.test(c)))['swapcoil','swapplug','swapinj'].forEach(t=>add(t,'Separa vela, bobina e injetor do cilindro'));
+ /* 2.43.0: testes de injeção ligados aos códigos e aos sintomas */
+ INJT.forEach(([rc,rs,L])=>{const c=d.cod.find(x=>rc.test(x)),y=rs&&d.sin.map(x=>SYM[x]).find(x=>x&&rs.test(norm(x.t)));if(c||y)L.forEach(t=>add(t,c||y.t))});
  d.ext.forEach(t=>add(t,'Adicionado por você'));Object.entries(d.t).forEach(([t,r])=>{if(r&&(r.r||r.v||r.o))add(t,null)});return m}
 
 /* ================= MENSAGENS ================= */
@@ -485,7 +507,7 @@ function tcard(o,tid,info,av){const t=TESTS[tid],d=dgOf(o),r=d.t[tid]||{},man=d.
   ${ab?`<div class="dg-tin"><input placeholder="Valor medido" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"><input placeholder="Observação" value="${esc(r.o)}" onchange="DG.tval('${tid}','o',this.value)" aria-label="Observação"></div>${vaHTML(o,tid,r)}
   ${tfotos(o,tid)}`:UI.gcard===tid?`<div class="dg-tin dg-tin1"><input placeholder="${VALIDOS.has(tid)?'Valor medido: o app marca OK ou Fora':'Valor medido (opcional)'}" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"></div>${vaHTML(o,tid,r)}<button type="button" class="dg-tmais" onclick="(DG.ui.top=DG.ui.top||{})['${tid}']=1;render()">+ observação ou foto</button>`:`<button type="button" class="dg-tmais" onclick="(DG.ui.top=DG.ui.top||{})['${tid}']=1;render()">+ valor medido, observação ou foto</button>`}
   ${man?`<button type="button" class="sm" onclick="DG.rmTest('${tid}')">Remover teste</button>`:''}</div>`}
-const VALIDOS=new Set(['compdry','bat','fpress','vacidle','leak','ft','draw','refgnd','map','oilpress','ect','rpmcrank','misf','maf']);
+const VALIDOS=new Set(['compdry','bat','fpress','vacidle','leak','ft','draw','refgnd','map','oilpress','ect','rpmcrank','misf','maf','injbal','pwrbal','injbench','o2heat','wbo2','iatect','ecugnd']);
 function vaHTML(o,tid,r){const a=r&&String(r.v||'').trim()?valAval(tid,r.v,o):null;if(!a)return'';return`<small class="dg-va va-${a.st}">${a.st=='ok'?'✓':'✗'} ${esc(a.txt)}${r.auto?' · marcado pelo valor':''}</small>`}
 /* busca de teste: digita e aparece */
 const RLB={ok:'OK',falha:'Fora',inc:'Inconclusivo'};
@@ -724,7 +746,7 @@ const DG={
  conf(r){const o=cur();if(!o)return;const d=dgOf(o),c=d.caso&&casos().find(x=>x.id==d.caso);
   if(r=='ok'){const el=document.getElementById('dgdep');if(el)d.depois=el.value;d.conf={r:'ok',data:today(),pos:1};if(c){c.conf='ok';c.confEm=today();if(String(d.depois||'').trim())c.depois=String(d.depois).trim()}commit(o);render();return toast('Reparo confirmado. Este caso ganha destaque no caminho rápido.')}
   if(c){c.conf='falhou';c.confEm=today()}d.fim=false;d.conf=null;d.caso=null;d.laudo=0;if(d.tm&&!d.tm.on)d.tm.on=Date.now();UI.step[o.id]='diag';commit(o);render();scrollTo(0,0);toast('Caso marcado como “não resolveu”. Continue o diagnóstico.')},
- /* para os testes */ aval(t,v){const o=cur()||{};return valAval(t,v,o)},causas(){const o=cur();return o?causesFor(o,matchCases(o)):[]},
+ /* para os testes */ get testes(){return TESTS},sugIds(){const o=cur();return o?[...suggestions(o,matchCases(o)).keys()]:[]},aval(t,v){const o=cur()||{};return valAval(t,v,o)},causas(){const o=cur();return o?causesFor(o,matchCases(o)):[]},
  voz(frase){try{return vozDG(frase)}catch(x){console.warn('voz',x);return null}}
 };
 
@@ -865,7 +887,12 @@ const TC={compdry:['anel','aneis','valvula','junta do cabecote','cabecote','comp
  knock:['detonac','combustivel','ponto'],bat:['bateria','alternador','regulador de tensao','carga'],ripple:['alternador','diodo'],drop:['cabo','massa','aterramento','terminal','conector','motor de partida'],draw:['fuga','consumo','bateria'],
  refgnd:['chicote','conector','massa','alimentacao','referencia','sensor','ecu','modulo'],can:['rede',' can ','modulo','chicote'],imob:['imobilizador','chave','transponder'],rpmcrank:['sensor de rotacao',' ckp ','motor de partida','bateria','roda fonica'],
  coldstart:['partida a frio','tanquinho','aquecedor','eletrovalvula','etanol'],boost:['turbo','wastegate','intercooler'],belt:['correia','tensor','polia'],mounts:['coxim','coxins'],stetho:['rolamento','ruido','tucho','polia','tensor'],
- turnhand:['travad','bronzina','calco'],leaksvis:['vazamento','junta','retentor'],airfilter:['filtro de ar','duto'],fuelq:['combustivel','gasolina','etanol','agua']};
+ turnhand:['travad','bronzina','calco'],
+ injbal:['injetor','bico'],pwrbal:['cilindro','compress','vela','bobina','injetor','bico','anel','aneis','valvula'],injbench:['injetor','bico'],injcur:['injetor','bico'],
+ o2resp:['sonda','lambda',' o2 '],o2heat:['aquecedor','sonda','lambda'],wbo2:['sonda','lambda','banda larga','mistura'],evap:['canister','purga','evap'],
+ iatect:['sensor de temperatura','iat',' ect ','temperatura do ar'],advload:['detonac','ponto','sensor de rotacao','entrada de ar','falsa de ar','compress'],
+ iacpos:['marcha lenta','borboleta','motor de passo','iac','entrada de ar','falsa de ar'],flexad:['etanol','combustivel','adapta','flex','partida a frio'],
+ ecugnd:['massa','aterramento','alimentacao','ecu','modulo','chicote','rele'],gdirail:['alta pressao','bomba de alta','rail','injecao direta','sensor de pressao do combustivel','valvula reguladora'],leaksvis:['vazamento','junta','retentor'],airfilter:['filtro de ar','duto'],fuelq:['combustivel','gasolina','etanol','agua']};
 const nC=t=>' '+norm(String(t||'')).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' ';
 /* o teste confere esta causa? (tabela acima; se o teste não está nela, pelo nome, como antes) */
 const lk=(tid,causa)=>{const L=TC[tid];if(L){const c=nC(causa);return L.some(k=>c.includes(k))}return TESTS[tid]?liga(TESTS[tid].n,causa):false};
@@ -910,6 +937,12 @@ function valAval(tid,v,o){if(tid=='misf')v=String(v||'').replace(/cil\w*\.?\s*\d
   case'ect':return N[0]>60?R(rng(N,85,105),'quente 85–105','°C'):null;
   case'rpmcrank':return R(N[0]>=150,'acima de ~150','rpm');
   case'misf':return R(Math.max(...N.map(Math.abs))<=2,'zero ou quase zero');
+  case'injbal':case'injbench':{if(N.length<2)return null;const L=N.map(Math.abs),mx=Math.max(...L),mn=Math.min(...L),md=L.reduce((a,b)=>a+b,0)/L.length,lim=tid=='injbal'?10:5,dif=(mx-mn)/md*100;return R(dif<=lim,'diferença até '+lim+'% (deu '+Math.round(dif)+'%)')}
+  case'pwrbal':{if(N.length<2)return null;const L=N.map(Math.abs),mx=Math.max(...L),mn=Math.min(...L);return R(mn>=.7*mx,'todos derrubam parecido; o menor deu '+Math.round(mn/mx*100)+'% do maior')}
+  case'o2heat':return R(rng([N[0]],1.5,20),'em geral 2–15 Ω (veja o manual)');
+  case'wbo2':return N[0]<3?R(rng([N[0]],.97,1.03),'lambda ≈ 1,00 na marcha lenta'):null;
+  case'iatect':return N.length>=2?R(Math.abs(N[0]-N[1])<=5,'diferença até 5 °C (deu '+fx(Math.abs(N[0]-N[1]))+')'):null;
+  case'ecugnd':return N.every(x=>x<2)?R(rng(N,0,.1),'massa até 0,1','V'):R(rng(N.filter(x=>x>=2),9.6,15),'alimentação ≥ 9,6 V na partida','V');
   case'maf':{const l=litros(o);if(!l)return null;return R(rng([N[0]],1.5*l,2.5*l),`marcha lenta ${fx(1.5*l)}–${fx(2.5*l)} (motor ${fx(l)})`,'g/s')}
  }return null}
 /* causas com porcentagem (top 6 somam 100%) */
@@ -931,7 +964,7 @@ function valsCarro(o,tid){const v=vOf(o);if(!modTok(v))return'';const A=[];
  return`<small class="dg-vm"><b>Medido neste ${esc(nomeCarro(v,lv))}:</b> ${ok.length?`<span class="dg-vok">bom ${ok.map(esc).join(' · ')}</span>`:''}${ok.length&&fo.length?' &nbsp; ':''}${fo.length?`<span class="dg-vfo">fora ${fo.map(esc).join(' · ')}</span>`:''} <span class="muted">(${plural(B.length,'carro','carros')})</span></small>`}
 /* 3) modo guiado: o próximo teste que mais ajuda */
 /* testes que decidem sozinhos (resultado claro) ganham um pouco de preferência */
-const DECIS=new Set(['swapcoil','swapplug','swapinj','compwet','leak','smoke','co2']);
+const DECIS=new Set(['swapcoil','swapplug','swapinj','compwet','leak','smoke','co2','injbal','pwrbal','injbench']);
 function proxTeste(o,can,C){const d=dgOf(o),P=can.filter(t=>!res(d,t));if(!P.length)return null;const pc=pctCausas(C),A=pc[0],B=pc[1];if(!A)return{t:P[0],why:''};
  let best=null;P.forEach((t,i)=>{const la=lk(t,A.t),lb=B?lk(t,B.t):false;let s=(B&&la!==lb?3:0)+(la||lb?1:0)+(TC[t]?.3:0)+(DECIS.has(t)?.5:0)-i*.01;if(la&&!lb)s+=A.p/100;if(lb&&!la)s+=B.p/100;if(!best||s>best.s)best={t,s,la,lb}});
  const b=best,why=B&&b.la!==b.lb?`Separa as duas primeiras: ${A.t} × ${B.t}`:b.la&&b.lb&&B?`Confere ${A.t} e ${B.t}`:b.la?`Confere ${A.t}`:'';return{t:b.t,why}}

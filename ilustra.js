@@ -201,6 +201,71 @@
     return `<svg viewBox="0 0 320 166" role="img" aria-label="Vazão da bomba numa proveta">${s}</svg>`; })(),
     leg: 'Acione a bomba por 15 ou 30 s com a saída numa proveta. Meça a tensão na bomba ao mesmo tempo: abaixo de 12 V a vazão cai. O valor certo do carro está no manual.' };
 
+  /* ---------- 2.43.0: testes de injeção ---------- */
+  // barras lado a lado (uma por bico/cilindro); ruins em vermelho com o motivo embaixo
+  function barras(o) {
+    const X0 = 40, X1 = 312, Y0 = 16, Y1 = 118, n = o.v.length, bw = Math.min(46, (X1 - X0) / n * .58), y = (v) => Y1 - v / o.max * (Y1 - Y0);
+    let s = `<rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" rx="4" class="il-bg"/>`;
+    (o.ylin || []).forEach((v) => { s += `<line x1="${X0}" y1="${y(v).toFixed(1)}" x2="${X1}" y2="${y(v).toFixed(1)}" class="il-g" stroke-width="1"/><text x="${X0 - 4}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" class="il-t" font-size="10.5">${o.yfmt ? o.yfmt(v) : f(v)}</text>`; });
+    if (o.faixa) s += `<rect x="${X0}" y="${y(o.faixa[1]).toFixed(1)}" width="${X1 - X0}" height="${(y(o.faixa[0]) - y(o.faixa[1])).toFixed(1)}" class="il-zb"/>`;
+    o.v.forEach((v, i) => { const cx = X0 + (X1 - X0) * (i + .5) / n, b = (o.ruim || {})[i];
+      s += `<rect x="${(cx - bw / 2).toFixed(1)}" y="${y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(Y1 - y(v)).toFixed(1)}" rx="3" class="${b ? 'il-z-rf' : 'il-z-gf'}"/>`;
+      s += `<text x="${cx.toFixed(1)}" y="${(y(v) - 5).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="700" class="il-v">${o.fmt ? o.fmt(v) : f(v)}</text>`;
+      s += `<text x="${cx.toFixed(1)}" y="${Y1 + 15}" text-anchor="middle" font-size="11" class="il-t">${o.lbl[i]}</text>`;
+      if (b) s += `<text x="${cx.toFixed(1)}" y="${Y1 + 30}" text-anchor="middle" font-size="11" class="il-bad">${b}</text>`; });
+    return `<svg viewBox="0 0 320 ${Y1 + 36}" role="img" aria-label="${o.aria}">${s}</svg>`;
+  }
+  L.injbal = { svg: barras({ aria: 'Queda de pressão por bico', v: [0.62, 0.6, 0.38, 0.85], max: 1, ylin: [0, 0.5, 1], yfmt: (v) => f(v) + ' bar', lbl: ['bico 1', 'bico 2', 'bico 3', 'bico 4'], ruim: { 2: 'entupido', 3: 'vazando' }, faixa: [0.56, 0.68], fmt: (v) => v.toFixed(2).replace('.', ',') }),
+    leg: 'Cada bico acionado pelo mesmo tempo. A queda de pressão tem que ser parecida (diferença até ~10%). Caiu menos = entupido; caiu mais = vazando ou abrindo demais.' };
+  L.pwrbal = { svg: barras({ aria: 'Queda de rotação ao cortar cada cilindro', v: [120, 115, 35, 125], max: 150, ylin: [0, 50, 100, 150], yfmt: (v) => v + '', lbl: ['cil. 1', 'cil. 2', 'cil. 3', 'cil. 4'], ruim: { 2: 'fraco' }, fmt: (v) => '−' + v }),
+    leg: 'Quanto a rotação caiu (rpm) ao cortar cada cilindro. Todos parecidos = ok. O que quase não derruba é o cilindro fraco: veja compressão, faísca e bico dele.' };
+  L.injbench = { svg: barras({ aria: 'Vazão dos bicos na bancada', v: [62, 61, 48, 62], max: 80, ylin: [0, 40, 80], yfmt: (v) => v + ' ml', lbl: ['bico 1', 'bico 2', 'bico 3', 'bico 4'], ruim: { 2: 'vazão baixa' }, faixa: [59, 65], fmt: (v) => v + ' ml' }),
+    leg: 'Mesmo tempo para todos: vazão igual (diferença até ~5%), leque cônico e pulverizado, sem pingar em 1 minuto com pressão. Fora disso: limpar e testar de novo.' };
+  L.injcur = { svg: tela({ aria: 'Corrente do bico com o dente da agulha', ymin: 0, ymax: 1.4, ylin: [0, 0.5, 1], yfmt: (v) => f(v) + ' A', xleg: 'tempo do pulso (≈ 3 ms na lenta)',
+    ondas: [{ p: (() => { const a = [[0, 0], [.12, 0]]; for (let i = 0; i <= 60; i++) { const t = i / 60, tt = .12 + t * .6; let v = 1.05 * (1 - Math.exp(-t * 4)); if (t > .42 && t < .52) v -= .07 * Math.sin((t - .42) / .1 * Math.PI); a.push([tt, v]); } a.push([.72, 0], [1, 0]); return a; })() },
+      { p: (() => { const a = []; for (let i = 0; i <= 30; i++) { const t = i / 30; a.push([.12 + t * .6, 1.05 * (1 - Math.exp(-t * 4))]); } return a; })(), cls: 'il-bad', sw: 1.6 }],
+    notas: [[.5, .45, '“dente”: agulha abriu'], [.42, 1.27, 'tracejada sem dente = agulha presa', 'middle', 'il-bad']] }),
+    leg: 'A corrente sobe em rampa até ≈ 1 A (bico de alta impedância). O pequeno “dente” no meio é a agulha abrindo. Sem o dente = agulha presa. Corrente alta demais = bobina do bico em curto.' };
+  L.o2resp = { svg: tela({ aria: 'Resposta da sonda lambda', ymin: 0, ymax: 1, ylin: [0.2, 0.45, 0.8], yfmt: (v) => f(v) + ' V', xleg: 'acelera rápido → puxa mangueira de vácuo',
+    faixas: [[0.8, 1], [0, 0.2]],
+    ondas: [{ p: [...pts(40, (t) => 0.45 + 0.35 * Math.sin(t * 28)).map(([t, v]) => [t * .25, v]), [.28, .92], [.5, .93], [.53, .08], [.78, .07], [.82, .5], [1, .5]] },
+      { p: [[.5, .93], [.7, .35], [.78, .1]], cls: 'il-bad', sw: 1.6 }],
+    notas: [[.38, .97, 'rica > 0,8 V'], [.66, .13, 'pobre < 0,2 V'], [.8, .75, 'descida lenta = gasta', 'middle', 'il-bad']] }),
+    leg: 'Acelerando rápido a sonda vai acima de 0,8 V; puxando uma mangueira de vácuo cai abaixo de 0,2 V. A descida tem que ser quase vertical (menos de ~100–300 ms). Descida lenta = sonda gasta ou contaminada.' };
+  L.o2heat = { svg: visor({ aria: 'Multímetro medindo o aquecedor da sonda', lcd: '6,0 Ω', modo: 'Ω · aquecedor da sonda', lado: [['Em geral 2–15 Ω', 'il-ok'], ['(veja o manual)'], ['OL / aberto = queimado', 'il-bad'], ['12 V no chicote', 'il-ok']] }),
+    leg: 'Medir com o conector solto, nos 2 fios do aquecedor (em geral da mesma cor). Aberto (OL) = aquecedor queimado. Com a ignição ligada, o chicote tem que ter 12 V.' };
+  L.wbo2 = { svg: escala({ aria: 'Lambda da sonda banda larga', min: 0.8, max: 1.3, marcas: [0.8, 0.9, 1, 1.1, 1.2, 1.3], fmt: (v) => f(v), zonas: [[0.98, 1.02, 'g'], [0.8, 0.98, 'a'], [1.02, 1.3, 'a']],
+    pinos: [[0.88, 'acelerando (rica)'], [1, 'lenta ≈ 1,00'], [1.22, 'soltando (pobre)']] }),
+    leg: 'No scanner, com motor quente: marcha lenta ≈ lambda 1,00 (0,98–1,02). Acelerando forte fica abaixo de 1; soltando o acelerador (corte de combustível) vai bem acima de 1.' };
+  L.evap = { svg: (() => {
+    const v = (x, tt, ab, ok, sub) => `<g transform="translate(${x} 0)"><rect x="4" y="6" width="148" height="128" rx="10" class="il-bg"/>
+      <text x="78" y="26" text-anchor="middle" font-size="12.5" font-weight="800" class="il-v">${tt}</text>
+      <path d="M18 70 h36 M102 70 h36" class="il-n" stroke-width="6" stroke-linecap="round"/>
+      <rect x="54" y="50" width="48" height="40" rx="6" fill="none" class="il-n" stroke-width="2.5"/>
+      ${ab ? '<path d="M40 70 h76" class="il-s" stroke-width="3" stroke-dasharray="6 4"/><path d="M110 64 l8 6 l-8 6" fill="none" class="il-s" stroke-width="3"/>' : '<path d="M78 52 v36" class="il-n" stroke-width="5"/><path d="M40 70 h10" class="il-s" stroke-width="3"/>'}
+      <text x="78" y="112" text-anchor="middle" font-size="12" class="${ok}">${sub[0]}</text><text x="78" y="127" text-anchor="middle" font-size="11" class="il-t">${sub[1]}</text></g>`;
+    return `<svg viewBox="0 0 320 140" role="img" aria-label="Válvula do canister fechada e aberta">${v(0, 'Desligada', 0, 'il-ok', ['fechada ✓', 'segura o vácuo'])}${v(160, 'Acionada (12 V)', 1, 'il-ok', ['abre ✓', 'clique e passa ar'])}</svg>`; })(),
+    leg: 'Desligada, a válvula não pode deixar passar vácuo. Acionada, tem que abrir. Se passa vácuo desligada (travada aberta) = mistura rica e lenta ruim depois de abastecer.' };
+  L.iatect = { svg: escala({ aria: 'Temperatura do ar e do motor com o motor frio', min: 0, max: 50, marcas: [0, 10, 20, 30, 40, 50], fmt: (v) => v + ' °C', zonas: [[19, 29, 'g']],
+    pinos: [[22, 'ar (IAT) 22 °C'], [25, 'motor (ECT) 25 °C']] }),
+    leg: 'Motor frio depois de horas parado: as duas temperaturas ficam perto da do ambiente, com diferença de até 3–5 °C. Diferença maior = sensor com defeito ou fiação com mau contato.' };
+  L.advload = { svg: escala({ aria: 'Avanço de ignição na marcha lenta', min: -5, max: 35, marcas: [-5, 0, 5, 10, 20, 35], fmt: (v) => v + '°', zonas: [[5, 20, 'g'], [-5, 5, 'a'], [20, 35, 'a']], pinos: [[12, 'avanço na lenta 5–20°']] }) +
+    escala({ aria: 'Carga calculada na marcha lenta', min: 0, max: 100, marcas: [0, 15, 35, 60, 100], fmt: (v) => v + '%', zonas: [[15, 35, 'g'], [35, 100, 'a']], pinos: [[25, 'carga na lenta 15–35%']] }),
+    leg: 'Motor quente em marcha lenta, sem ar ligado. Avanço estável na faixa do carro e carga baixa. Avanço baixo ou pulando = detonação ou sinal de rotação ruim. Carga alta = entrada de ar, motor fraco ou ponto atrasado.' };
+  L.iacpos = { svg: escala({ aria: 'Posição da marcha lenta', min: 0, max: 100, marcas: [0, 20, 40, 60, 80, 100], fmt: (v) => v + '%', zonas: [[0, 15, 'r'], [15, 45, 'g'], [45, 100, 'a']],
+    pinos: [[8, 'baixo: ar falso'], [30, 'normal'], [75, 'alto: borboleta suja']] }),
+    leg: 'Exemplo em % de abertura (no motor de passo, em passos). Dentro da faixa do carro e estável; sobe um pouco com o ar ligado. Muito alto = borboleta suja ou passagem restrita. Muito baixo = entrada falsa de ar.' };
+  L.flexad = { svg: escala({ aria: 'Percentual de etanol aprendido', min: 0, max: 112, marcas: [0, 30, 50, 75, 100], fmt: (v) => v + '%', zonas: [[25, 35, 'g'], [92, 100, 'g']],
+    pinos: [[30, 'gasolina comum ≈ 30%'], [100, 'etanol 100%']] }),
+    leg: 'O % de etanol que a injeção aprendeu tem que combinar com o tanque. Diferente: rodar para reaprender (ou resetar pelo scanner) e conferir sonda lambda e qualidade do combustível.' };
+  L.ecugnd = { svg: visor({ aria: 'Queda de tensão na massa da ECU', lcd: '0,04 V', modo: 'V · massa da ECU → bateria (−)', lado: [['Massas: até 0,1 V', 'il-ok'], ['Acima = massa ruim', 'il-bad'], ['Alimentação: 12 V', 'il-ok'], ['Partida: ≥ 9,6 V', 'il-ok']] }),
+    leg: 'Ponta preta no negativo da bateria e vermelha na massa da ECU, motor ligado com faróis e ventoinha. Massa ruim causa falhas “fantasmas” em vários sensores ao mesmo tempo.' };
+  L.gdirail = { svg: tela({ aria: 'Pressão do rail desejada e real', ymin: 0, ymax: 220, ylin: [50, 100, 200], yfmt: (v) => v + ' bar', x0: 46, xleg: 'lenta → 3.000 rpm → acelerada forte',
+    ondas: [{ p: [[0, 50], [.3, 50], [.36, 100], [.6, 100], [.66, 190], [.9, 190], [1, 190]], cls: 'il-s2', sw: 2 }, { p: [[0, 48], [.3, 48], [.37, 97], [.6, 98], [.68, 186], [.9, 187], [1, 187]] },
+      { p: [[.6, 98], [.7, 130], [.9, 128], [1, 127]], cls: 'il-bad', sw: 1.6 }],
+    notas: [[.04, 70, 'desejada', 'start', 'il-v il-b2'], [.04, 30, 'real', 'start', 'il-v il-b1'], [.45, 152, 'tracejada: real abaixo = bomba de alta', 'middle', 'il-bad']] }),
+    leg: 'A real (amarela) acompanha a desejada (azul) em todas as rotações. Real abaixo = bomba de alta (ou o came dela), válvula reguladora ou bomba de baixa fraca. Real alta e parada = sensor do rail ou válvula reguladora.' };
+
   G.DGILU = L;
 
   const st = document.createElement('style');
