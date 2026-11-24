@@ -294,7 +294,7 @@ G.estMais=function(){const A=[['Ler código de barras','lerCodigo(scanAbre)','ba
  sheet('Estoque',`<div class="osml">${A.map(([t,f,ic])=>`<button type="button" onclick="closeM();${f}">${svgi(ic)}<span>${t}</span></button>`).join('')}</div>`)};
 /* 8) O.S.: um botão "+ Adicionar" com uma busca só (kits, serviços, estoque e itens já usados) */
 const nrm2=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-let OA=null;
+let OA=null;G.oaAlvo=x=>{OA=x};
 function oaUsados(){const M=new Map();const put=(i,p)=>{const d=String(i.d||'').trim();if(!d||i.dgfee||i.pid)return;const k=nrm2(d),x=M.get(k);if(!x)M.set(k,{d,t:i.t||'Serviço',v:+i.v||0,custo:i.custo,n:1,p});else{x.n++;if(p>=x.p){x.v=+i.v||0;x.t=i.t||x.t;x.p=p}}};
  db.quotes.forEach(q=>(q.items||[]).forEach(i=>put(i,1)));db.orders.forEach(o=>(o.items||[]).forEach(i=>put(i,2)));return[...M.values()].sort((a,b)=>b.n-a.n)}
 G.osAdd=function(id){const o=od(id||S.id);if(!o||!o.id)return;OA=o.id;
@@ -313,7 +313,7 @@ G.oaR=function(v){const b=$q('#oar');if(!b)return;const q=nrm2(v).trim(),ok=t=>!
   `<p class="muted oavz">Nada encontrado${q?' para “'+e(v)+'”':''}. Toque em <b>Item novo</b> para lançar.</p>`;
  b.dataset.q=v;OA_U=U};
 let OA_U=[];
-function oaW(){const o=od(OA);return o&&o.id?o:null}
+function oaW(){if(OA=='q')return S.q||null;const o=od(OA);return o&&o.id?o:null}
 function oaPush(its,msg){const w=oaW();if(!w)return;w.items=w.items||[];its.forEach(i=>{const c=JSON.parse(JSON.stringify(i));c.iid=uid();delete c.baixa;delete c.dgfee;w.items.push(c)});save();closeM();render();toast(msg)}
 G.oaKit=function(id){const k=(db.kits||[]).find(x=>x.id==id);if(k)oaPush(k.itens,'Kit “'+k.nome+'” lançado: '+plural(k.itens.length,'item','itens'))};
 G.oaSvc=function(id){const s=(db.svcs||[]).find(x=>x.id==id);if(s)oaPush([{t:'Serviço',d:s.nome,q:1,v:+s.preco}],s.nome+' lançado')};
