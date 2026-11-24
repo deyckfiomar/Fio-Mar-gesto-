@@ -18,15 +18,19 @@ const nomeF=s=>String(s||'').replace(/[^\wÀ-ú]+/g,'_').replace(/^_|_$/g,'');
 Object.assign(ICO,{pedido:'<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',caixa:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>'});
 
 /* ---------- novo pedido ---------- */
-G.pdNovo=function(abre){const n=db.pseq=(+db.pseq||PD().length)+1,ult=PD().slice().reverse().find(p=>p.forn)||{};
+/* 2.44.1: pedido vazio (sem peça, sem fornecedor) não fica guardado: ao abrir de novo, reaproveita; ao sair, some */
+const vazio=p=>p&&p.status=='Montando'&&!(p.itens||[]).length&&!String(p.forn||'').trim()&&!String(p.obs||'').trim();
+function limpaVazios(menos){const L=PD(),fica=L.filter(p=>!vazio(p)||p.id==menos);if(fica.length<L.length){db.peds=fica;save()}}
+G.pdNovo=function(abre){const re=PD().slice().reverse().find(vazio);if(re){if(abre!==0)go('ped',re.id);return re}
+ const n=db.pseq=(+db.pseq||PD().length)+1,ult=PD().slice().reverse().find(p=>p.forn)||{};
  const p={id:uid(),n:String(n).padStart(4,'0'),data:today(),status:'Montando',forn:'',ftel:'',obs:'',itens:[]};PD().push(p);save();if(abre!==0)go('ped',p.id);return p};
 const montando=()=>PD().slice().reverse().find(p=>p.status=='Montando');
 
 /* ---------- lista ---------- */
-function Vpeds(){const f=S.f.pd||'abertos',L=PD().slice().reverse(),n=k=>L.filter(p=>k=='abertos'?aberto(p):p.status==k).length;
+function Vpeds(){limpaVazios();const f=S.f.pd||'abertos',L=PD().slice().reverse(),n=k=>L.filter(p=>k=='abertos'?aberto(p):p.status==k).length;
  const tl=[['abertos','Em aberto','pedido',String(n('abertos')),n('abertos')?KB:KM],['Recebido','Recebidos','caixa',String(n('Recebido')),n('Recebido')?KG:KM],['Cancelado','Cancelados','alert',String(n('Cancelado'))]];
  const V2=L.filter(p=>f=='abertos'?aberto(p):p.status==f);
- return head({back:"go('stock')",kick:'Estoque',title:'Pedidos de peças',c:PCOL.stock,right:`<button class="pr hb" onclick="pdNovo()">+ Novo pedido</button>`})+ftiles(tl,f,'pd')+
+ return head({back:"go('stock')",kick:'Estoque',title:'Pedidos de peças',c:PCOL.stock,right:`<button class="pr hb" aria-label="Novo pedido" onclick="pdNovo()">+ Novo</button>`})+ftiles(tl,f,'pd')+
  (V2.map(p=>{const F=p.itens.flatMap(i=>i.fotos||[]).slice(0,5),nq=p.itens.length;
   return lcard({c:ST[p.status],n:'Pedido '+e(p.n)+' · '+D(p.data),pill:pill(p.status),t:e(p.forn||'Fornecedor não informado'),
    m:nq?p.itens.slice(0,4).map(i=>e(i.nome)).join(' · ')+(nq>4?' e mais '+(nq-4):''):'Nenhuma peça ainda',
@@ -171,4 +175,7 @@ const st=document.createElement('style');st.textContent=`
 .pdos{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--ln)}.pdos div{flex:1}.pdos small{display:block;color:var(--mut)}
 `;document.head.appendChild(st);
 if(typeof SES!='undefined'&&SES)setTimeout(()=>{try{render()}catch(x){}},0);
+
+/* 2.44.1: saiu de um pedido vazio: ele some */
+{const _g=go;G.go=go=function(k,id,...r){const de=S.v=='ped'?S.id:null;const x=_g(k,id,...r);try{if(de&&!(k=='ped'&&id==de)){const p=ped(de);if(vazio(p)){db.peds=PD().filter(q=>q.id!=de);save();if(S.v=='peds')render(1)}}}catch(e){}return x}}
 })(window);

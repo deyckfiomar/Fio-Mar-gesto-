@@ -72,9 +72,9 @@ nav .tacs{display:none}
       ['pay', 'Receber', "closeM();go(V.receber?'receber':'orders',0,0,V.receber?{}:{st:'receber'})"],
       dono ? ['desp', 'Despesa', "closeM();go('fin');editDesp()"] : ['orc', 'Orçamento', "closeM();go('quotes');editQuote()"],
       ['diag', 'Diagnóstico', "closeM();abreDG(()=>{go('diag');DG.novo()})"], dono ? ['orc', 'Orçamento', "closeM();go('quotes');editQuote()"] : null].filter(Boolean);
-    const B = [['Cliente', 'closeM();editClient()'], ['Veículo', 'closeM();editVeh()'], ...(typeof pdNovo == 'function' ? [['Pedido de peças', 'closeM();pdNovo()']] : [])];
+    const B = [['Cliente', 'closeM();editClient()'], ['Veículo', 'closeM();editVeh()'], ...(typeof pdNovo == 'function' ? [['Pedidos de peças', "closeM();go('peds')", 1]] : [])];
     sheetM('Novo', `<div class="nvg">${A.map(([k, l, f, p]) => `<button type="button" class="${p ? 'pr' : ''}" onclick="${f}">${ic(k)}<span>${l}</span></button>`).join('')}</div>
-     <div class="nvs">${B.map(([l, f]) => `<button type="button" onclick="${f}">+ ${l}</button>`).join('')}</div>`)
+     <div class="nvs">${B.map(([l, f, ver]) => `<button type="button" onclick="${f}">${ver ? '' : '+ '}${l}</button>`).join('')}</div>`)
   };
 
   /* ☰ Mais (topo): o menu de antes sem a parte "Novo" (que foi para o + Novo); continuam Tema, Sair e a versão */
