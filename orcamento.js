@@ -75,7 +75,7 @@ details.qmore[open]>summary{color:var(--ink)}
     modal('Mão de obra por hora', [['d', 'Serviço', 'text', 0, 1], ['hr', 'Horas', 'number', 0, 1], ['vh', 'Valor da hora (R$)', 'number', 0, 1]], { d: 'Mão de obra', hr: 1, vh: vh0 }, (o) => {
       const h = +o.hr, vh = +o.vh; if (!(h > 0)) return toast('Horas inválidas'); if (!(vh > 0)) return toast('Valor da hora inválido');
       db.cfg = db.cfg || {}; if (DONO()) db.cfg.vhora = vh;
-      const w = S.v == 'quote' ? S.q : null; if (!w) return; w.items.push({ t: 'Mão de obra', d: o.d || 'Mão de obra', det: `${String(h).replace('.', ',')} h × ${R(vh)}`, q: h, v: vh }); save(); render(); toast('Mão de obra lançada: ' + R(h * vh))
+      const w = S.v == 'quote' ? S.q : S.v == 'order' ? od(S.id) : null; if (!w) return; w.items.push({ t: 'Mão de obra', d: o.d || 'Mão de obra', det: `${String(h).replace('.', ',')} h × ${R(vh)}`, q: h, v: vh }); save(); render(); toast('Mão de obra lançada: ' + R(h * vh))
     })
   };
 

@@ -334,7 +334,7 @@ if(typeof osMais=='function'){const _om=osMais;G.osMais=osMais=function(id){cons
 
 /* ---------- 14) 2.36.0: abas da O.S. com "Mais" ---------- */
 ICO.osmais='<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
-G.osTabMais=function(){const o=od(S.id);if(!o)return;const ti=osTabInfo(o),L=[['check','Checklist'],['laudo','Laudo'],...((typeof nfAba=='function'&&nfAba(o))||S.tab=='nf'?[['nf','Nota fiscal']]:[])];
+G.osTabMais=function(){const o=od(S.id);if(!o)return;const ti=osTabInfo(o),L=[['pag','Pagamento'],['check','Checklist'],['laudo','Laudo'],...((typeof nfAba=='function'&&nfAba(o))||S.tab=='nf'?[['nf','Nota fiscal']]:[])];
  sheet('Mais seções da O.S.',`<div class="osml">${L.map(([k,t])=>`<button type="button" class="${S.tab==k?'on':''}" onclick="closeM();osTab('${k}')">${svgi(OSICO[k])}<span>${t}<small style="color:${ti[k][1]}">${e(ti[k][0])}</small></span></button>`).join('')}</div>`)};
 
 const css=document.createElement('style');css.textContent=`
