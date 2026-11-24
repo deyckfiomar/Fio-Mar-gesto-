@@ -161,7 +161,19 @@ function kcard(o){const v=vh(o.veh),c=cl(o.cli),tot=oTot(o),rest=tot-paid(o),n=d
  <div class="kc1">${plc(v)}<small>O.S. ${e(o.num)}</small><span class="sp"></span>${mb(par?'peça há '+par+(par==1?' dia':' dias'):tempo(o),(par>=3||n>=7)&&o.status!='Concluída'?KR:'')}</div>
  <b class="kct">${e(v.modelo||(v.placa?'':'Sem veículo'))}</b><small>${e(c.nome||'Sem cliente')}</small><button type="button" class="kmec${o.mec?'':' z'}" onclick="event.stopPropagation();patioMec('${o.id}')">${svgi('stwr')} ${o.mec?e(o.mec):'Escolher mecânico'}</button>${o.problema?`<small class="kcp">${e(o.problema)}</small>`:''}
  <div class="kcf">${tot>0?(rest<=0.005?mb('Pago',KG):mb(paid(o)>0?'Falta '+R(rest):R(tot),KA)):''}${o.status=='Concluída'&&o.avisado?mb('Avisado',KG):''}<span class="sp"></span>${fuelMini(o.comb)}</div>
- <div class="kca">${av}${b}${rest>0.005&&typeof recebe=='function'?`<button type="button" class="rcb" onclick="event.stopPropagation();recebe('${o.id}')">Receber</button>`:''}</div></div>`}
+ <div class="kca">${kcUm(o,rest)}</div></div>`}
+/* 2.44.0: um botão só no cartão (o próximo passo); o resto fica no ⋯ */
+function kcUm(o,rest){const c=cl(o.cli),P=PASSO[o.status]||[],pri=P.find(x=>x[2]),av=o.status=='Concluída'&&c.tel&&!o.avisado,rc=rest>0.005&&typeof recebe=='function';
+ let b=pri?`<button type="button" class="pr" onclick="event.stopPropagation();stMuda('${o.id}','${pri[0]}')">${pri[1]}</button>`:'';
+ if(o.status=='Concluída'&&av)b=`<button type="button" class="wa" onclick="event.stopPropagation();waCarro('${o.id}')">Avisar</button>`;
+ else if(o.status=='Concluída'&&rc)b=`<button type="button" class="pr" onclick="event.stopPropagation();recebe('${o.id}')">Receber</button>`;
+ const mais=P.filter(x=>!x[2]).length+(rc?1:0)+(av?1:0)+(pri?1:0);return b+(mais>1||!pri?`<button type="button" class="kcm" aria-label="Mais ações" onclick="event.stopPropagation();kcMais('${o.id}')">⋯</button>`:'')}
+G.kcMais=function(id){const o=od(id);if(!o)return;const c=cl(o.cli),rest=oTot(o)-paid(o),P=PASSO[o.status]||[],B=[];
+ P.forEach(([s,l,p])=>B.push([l,`closeM();stMuda('${id}','${s}')`,p]));
+ if(o.status=='Concluída'&&c.tel&&!o.avisado)B.push(['Avisar no WhatsApp',`closeM();waCarro('${id}')`]);
+ if(rest>0.005&&typeof recebe=='function')B.push(['Receber '+R(rest),`closeM();recebe('${id}')`]);
+ B.push(['Abrir a O.S.',`closeM();go('order','${id}')`],['Mudar a situação',`closeM();stSheet('${id}')`]);
+ $('#modal').innerHTML=`<div class="ov psh-ov" onclick="if(event.target===this)closeM()"><div class="md psh" role="dialog" aria-modal="true" aria-label="Ações"><div class="psh-h"><h2>${e(vlabel(vh(o.veh)))}</h2><button type="button" class="ib" aria-label="Fechar" onclick="closeM()">×</button></div><div class="kcml">${B.map(([l,f,p])=>`<button type="button" class="${p?'pr':''}" onclick="${f}">${e(l)}</button>`).join('')}</div></div></div>`};
 /* pátio no Painel: quadro (cartões) ou lista, escolha guardada no aparelho */
 const PK='fm_patio',modo=()=>{let m=null;try{m=localStorage.getItem(PK)}catch(x){}if(m=='lista'||m=='quadro')return m;return innerWidth<760?'lista':'quadro'};
 G.patioModo=function(m){try{localStorage.setItem(PK,m)}catch(x){}KBX=0;render(1)};

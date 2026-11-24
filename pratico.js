@@ -57,17 +57,18 @@ const st=document.createElement('style');st.id='pr-css';st.textContent=css;docum
 if(typeof ICO!='undefined'){Object.assign(ICO,{plus:'<path d="M12 5v14M5 12h14"/>',mais:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',busca:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',entrada:'<path d="M3 13l2-5h14l2 5v5H3z"/><circle cx="7.5" cy="15.5" r="1.3"/><circle cx="16.5" cy="15.5" r="1.3"/><path d="M12 2v5M9.5 4.5L12 7l2.5-2.5"/>',kit:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M3 12h18"/>',sino:'<path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 004 0"/>'})}
 
 /* ---------- 1) menu embaixo ---------- */
-const BN=[['dash','Painel'],['agenda','Agenda'],['diag','Diagnóstico'],['patio','Pátio'],['plus','Mais']];
+/* 2.44.0: "+ Novo" no meio da barra; o "Mais" foi para o topo (☰) */
+const BN=[['dash','Painel'],['agenda','Agenda'],['plus','Novo'],['patio','Pátio'],['diag','Diagnóstico']];
 const grupo=v=>({veiculo:'vehicles',order:'orders',recibo:'orders',agsvc:'agenda',pessoal:'fin',receber:'fin'}[v]||v);
 /* menu de baixo: o dono tem Finanças no lugar do Diagnóstico (o mecânico continua com Diagnóstico) */
 const BNL=()=>BN.map(x=>x[0]=='diag'&&DONO()?['fin','Finanças']:x);
 function bnav(){let b=document.getElementById('bnav');const show=SES&&!PEND&&!BLOQ&&!SEMOF;
  if(!b){b=document.createElement('div');b.id='bnav';b.setAttribute('role','navigation');b.setAttribute('aria-label','Menu principal');document.body.appendChild(b)}
  if(!show){b.innerHTML='';b.style.visibility='hidden';return}b.style.visibility='';const g=grupo(S.v),base=['dash','agenda','diag'];
- b.innerHTML=BNL().map(([k,l])=>k=='plus'?`<a class="pl" role="button" aria-label="Mais: novo e outras telas" onclick="maisAcoes()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg><span>Mais</span></a>`:
+ b.innerHTML=BNL().map(([k,l])=>k=='plus'?`<a class="pl" role="button" aria-label="Novo: entrada do carro, agendar, receber..." onclick="novoAcoes()"><span class="c"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Novo</span></a>`:
   `<a class="${g==k?'on':''}" onclick="${k=='busca'?'buscaG()':`go('${k}')`}">${svgi(k)}<span>${l}</span></a>`).join('')}
 const _render=render;G.render=render=function(k){_render(k);try{bnav()}catch(x){}};
-const _nav=navHtml;G.navHtml=navHtml=function(){return _nav().replace('<div class="nbr">',`<div class="nbr"><button type="button" class="nbtn pbus" aria-label="Buscar" onclick="buscaG()">${svgi('busca')}<span>Buscar</span></button><button type="button" class="nbtn pmais" onclick="maisAcoes()">${svgi('plus')}<span>Novo</span></button>`)};
+const _nav=navHtml;G.navHtml=navHtml=function(){return _nav().replace('<div class="nbr">',`<div class="nbr"><button type="button" class="nbtn pbus" aria-label="Buscar" onclick="buscaG()">${svgi('busca')}<span>Buscar</span></button><button type="button" class="nbtn pmais" onclick="novoAcoes()">${svgi('plus')}<span>Novo</span></button><button type="button" class="nbtn pmenu" aria-label="Mais telas" onclick="maisAcoes()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Mais</span></button>`)};
 G.menuMais=function(){const bk=BNL().map(x=>x[0]),L=NAVX().filter(([k])=>!bk.includes(k)&&k!='out').sort((a,b)=>(b[0]=='orders')-(a[0]=='orders'));
  sheet('Mais',`<div class="pgrid">${L.map(([k,l])=>`<button type="button" onclick="closeM();${k=='inst'?'instalarApp()':`go('${k}')`}">${svgi(k)}<span>${e(l)}</span></button>`).join('')}<button type="button" onclick="closeM();doOut()">${svgi('out')}<span>Sair</span></button></div>`)};
 
