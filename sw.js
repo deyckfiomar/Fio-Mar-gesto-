@@ -3,9 +3,9 @@
    A versão nova chega quando este arquivo muda: o app procura ao abrir/voltar, baixa tudo de novo
    em segundo plano e recarrega sozinho (index.html, 'controllerchange').
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.48.0';
+const VERSAO = '2.49.0';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './ilustra.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './orcamento.js', './ordem.js', './teclado.js', './moderno.js', './jspdf.umd.min.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './ilustra.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './orcamento.js', './ordem.js', './teclado.js', './estoque.js', './moderno.js', './jspdf.umd.min.js'];
 
 // biblioteca de fora com versão fixa (Supabase): guardada para o app abrir sem internet. O jsPDF fica no próprio app desde a 2.32.0
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'];
