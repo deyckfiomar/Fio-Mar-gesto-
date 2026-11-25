@@ -138,7 +138,7 @@ const TVC=[['Aberta','Chegaram'],['Em andamento','Em serviço'],['Aguardando pe�
 function tvDesenha(){const t=$q('#tv');if(!t)return;const now=new Date(),hj=today();
  const col=([st,tt])=>{const L=db.orders.filter(o=>o.status==st).sort((a,b)=>(a.aberta||'').localeCompare(b.aberta||''));
   return`<section style="--c:${SC[st]||'#777'}"><h2>${tt}<b>${L.length}</b></h2>${L.map(o=>{const v=vh(o.veh),n=ndias(st=='Concluída'?o.conc:o.aberta),al=st!='Concluída'&&n>=6||st=='Concluída'&&n>=3;
-   return`<div class="tvc${al?' al':''}"><div class="tv1">${v.placa?`<span class="tvp">${e(v.placa)}</span>`:''}<b>${e(v.modelo||'Sem veículo')}</b></div><small>${e(cl(o.cli).nome||'')}${o.mec?' · 🔧 '+e(o.mec):''}</small><i>${st=='Concluída'?(o.avisado?'avisado · ':'')+(n?'pronto há '+n+(n==1?' dia':' dias'):'pronto hoje'):(n?n+(n==1?' dia':' dias'):'entrou hoje')}</i></div>`}).join('')||'<p class="tvz">—</p>'}</section>`};
+   const ft=typeof carroFoto=='function'?carroFoto(o):'';return`<div class="tvc${al?' al':''}${ft?' tvf':''}">${ft?`<img class="tvim" ${fimg(ft)} alt="">`:''}<div class="tvb"><div class="tv1">${v.placa?`<span class="tvp">${e(v.placa)}</span>`:''}<b>${e(v.modelo||'Sem veículo')}</b></div><small>${e(cl(o.cli).nome||'')}${o.mec?' · 🔧 '+e(o.mec):''}</small><i>${st=='Concluída'?(o.avisado?'avisado · ':'')+(n?'pronto há '+n+(n==1?' dia':' dias'):'pronto hoje'):(n?n+(n==1?' dia':' dias'):'entrou hoje')}</i></div></div>`}).join('')||'<p class="tvz">—</p>'}</section>`};
  const ag=(typeof AG=='function'?AG():[]).filter(a=>a.data==hj&&!['Cancelado','Concluído'].includes(a.status)).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
  t.innerHTML=`<header><b>${e((db.cfg&&db.cfg.nome)||'Fio-Mar')} · Pátio</b><span>${now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</span><strong>${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</strong><button type="button" onclick="tvFecha()">Sair</button></header>
  <main>${TVC.map(col).join('')}</main>${ag.length?`<footer><b>Agenda de hoje:</b> ${ag.slice(0,6).map(a=>`<span>${e(a.hora||'')} ${e(cl(a.cli).nome||a.nome||'')}</span>`).join('')}</footer>`:''}`}
@@ -248,7 +248,7 @@ const chegam=()=>(typeof AG=='function'?aOrd(AG()):[]).filter(a=>a.data==today()
 G.agChegou=function(id){const a=ag(id);if(!a||!a.id)return;desfazivel(()=>{a.status='Confirmado';agLiga(a,'Confirmado',1)})};
 function chegamHTML(){const L=chegam();if(!L.length)return'';
  return`<div class="card chg"><b>${svgi('agenda')} Chegam hoje <i>${L.length}</i></b>${L.map(a=>{const v=a.veh?vh(a.veh):{},c=cl(a.cli);return`<div class="chgl"><span class="chgh">${e(a.hora||'')}</span><span class="chgt"><b>${e(v.modelo||'Sem veículo')}${v.placa?' · '+e(v.placa):''}</b><small>${e(c.nome||'')}${a.svc?' · '+e(a.svc):''}</small></span><button type="button" class="sm pr" onclick="agChegou('${a.id}')">Chegou</button></div>`}).join('')}</div>`}
-if(typeof V!='undefined'&&V.patio){const _vp=V.patio;V.patio=function(){const h=_vp.apply(this,arguments),c=chegamHTML();if(!c)return h;const k='<div class="kts kq pfts"',i=h.indexOf(k);return i<0?c+h:h.slice(0,i)+c+h.slice(i)}}
+if(typeof V!='undefined'&&V.patio){const _vp=V.patio;V.patio=function(){const h=_vp.apply(this,arguments),c=chegamHTML();if(!c)return h;const k='<div class="pfl"',i=h.indexOf(k);return i<0?c+h:h.slice(0,i)+c+h.slice(i)}}
 /* 5) mecânicos no ⋯ Mais do pátio */
 G.patioMais=function(){const P=db.orders.filter(o=>['Aberta','Em andamento','Aguardando peças','Concluída'].includes(o.status)),M=[...new Set(P.map(o=>String(o.mec||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
  const A=[['Todas as O.S.',"go('orders',0,0,{st:''})",'orders'],['Meus carros (mecânico)',"go('meus')",'clients'],...(typeof tvAbre=='function'?[['Modo TV (tela cheia)','tvAbre()','dash']]:[])];
@@ -400,7 +400,8 @@ body.tvon{overflow:hidden}#tv{position:fixed;inset:0;z-index:100;background:#0E0
 #tv>main{max-width:none!important;width:100%;margin:0!important;padding:0!important;flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;min-height:0}
 #tv section{background:#1A1C1F;border-radius:14px;border-top:6px solid var(--c);padding:1vw;overflow:hidden;display:flex;flex-direction:column;gap:.8vw}
 #tv h2{margin:0;display:flex;justify-content:space-between;align-items:center;font-size:clamp(18px,2.1vw,38px)}#tv h2 b{background:var(--c);color:#111;border-radius:999px;padding:0 .8em;font-size:.85em}
-.tvc{background:#24272B;border-radius:10px;padding:.8vw 1vw;border-left:5px solid var(--c)}.tvc.al{border-left-color:#E5484D;box-shadow:inset 0 0 0 2px #E5484D55}
+.tvc{background:#24272B;border-radius:10px;padding:.8vw 1vw;border-left:5px solid var(--c)}
+.tvc.tvf{display:flex;align-items:center;gap:1vw}.tvim{flex:none;width:7vw;height:7vw;max-width:110px;max-height:110px;border-radius:8px;object-fit:cover}.tvb{flex:1;min-width:0}.tvc.al{border-left-color:#E5484D;box-shadow:inset 0 0 0 2px #E5484D55}
 .tv1{display:flex;align-items:center;gap:.7vw;flex-wrap:wrap}.tv1 b{font-size:clamp(17px,1.9vw,34px)}.tvp{background:#fff;color:#111;border-top:5px solid #1F4FB0;border-radius:4px;padding:0 .4em;font:800 clamp(14px,1.5vw,28px)/1.3 monospace;letter-spacing:.06em}
 .tvc small{display:block;color:#C3C7CC;font-size:clamp(13px,1.3vw,24px);margin-top:.3vw}.tvc i{display:block;font-style:normal;color:#F5B700;font-size:clamp(12px,1.1vw,20px);margin-top:.2vw}.tvc.al i{color:#FF7A7A}
 .tvz{color:#555;font-size:2vw;text-align:center}
