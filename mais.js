@@ -140,7 +140,7 @@ G.retMsg=function(id){const r=RT().find(x=>x.id==id);if(!r)return;const c=cl(r.c
 G.retDash=function(){const lim=addD(today(),7),L=RT().filter(r=>!r.feito&&r.data<=lim&&cl(r.cli).id).sort((a,b)=>a.data.localeCompare(b.data));if(!L.length)return'';
  return sech('Chamar de volta',plural(L.length,'cliente','clientes'))+L.slice(0,5).map(r=>{const c=cl(r.cli),v=r.veh?vh(r.veh):{};return lcard({c:'#8E5BD0',n:r.data<=today()?'Hoje':D(r.data),pill:r.avisado?mb('Avisado '+D(r.avisado).slice(0,5),KG):'',t:e(c.nome||''),m:`${e(v.modelo?vlabel(v):'')}${v.modelo?' · ':''}${e(r.motivo)}`,
   f:`<button class="sm wa" onclick="retMsg('${r.id}')">Chamar no WhatsApp</button><button class="sm" onclick="retFeito('${r.id}')">Feito</button><button class="sm" onclick="retFeito('${r.id}',30)">Adiar 30 dias</button>`})}).join('')};
-const _setSt2=setSt;G.setSt=setSt=function(v){const o=od(S.id),antes=o&&o.status;_setSt2(v);if(o&&v=='Entregue'&&antes!='Entregue')setTimeout(()=>{if(!$q('#modal .ov'))retPergunta(o)},700)};
+/* 2.50.2: a pedido do dono, a janela "Chamar o cliente de volta?" não abre mais ao entregar o carro (os lembretes já criados continuam no Painel) */
 
 /* =============== 12) Fechamento do dia (2.35.0: navegar entre dias, conferir o caixa e fechar o dia) =============== */
 const FCH=()=>db.fechs=Array.isArray(db.fechs)?db.fechs:[];/* fica na linha do dono (PRIVK) */
