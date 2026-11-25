@@ -24,6 +24,7 @@ function mesDias(m){const cx=finModo()=='caixa';const n=dim(m),fx=fixoDia(m),L=[
    if(cx){x.fat+=v;x.custo+=c;if(!x.os.includes(o))x.os.push(o)}})});
  DP().forEach(d=>{if(d.rec!='1'){const x=at(d.data);if(x){x.av+=+d.valor||0;x.avL.push(d)}}});
  L.forEach(x=>{x.bruto=x.fat-x.custo;x.dsp=x.av+x.fx+x.tx;x.liq=x.bruto-x.dsp;x.mov=x.os.length||x.avL.length||x.pg.length});return L}
+G.finMesDias=mesDias;
 G.finDiaDados=d=>mesDias(d.slice(0,7))[+d.slice(8,10)-1];
 G.finHoje=()=>{const x=finDiaDados(today());return x?x.liq:0};
 
