@@ -178,9 +178,9 @@ function kcard(o){const v=vh(o.veh)||{},c=cl(o.cli),tot=oTot(o),rest=tot-paid(o)
  const val=tot>0?(rest<=0.005?`<span class="pkv ok">Pago</span>`:`<span class="pkv">${paid(o)>0?'falta ':''}${R(rest)}</span>`):'';
  return`<div class="kc pk" data-o="${o.id}" style="--c:${SC[o.status]}" role="button" tabindex="0" aria-label="O.S. ${e(o.num)}, ${e(vlabel(v))}. Toque para ver as opções" onclick="kcMais('${o.id}')" onkeydown="if(event.key=='Enter')kcMais('${o.id}')">
  ${ft?`<img class="pkf" ${fimg(ft)} alt="Foto do ${e(v.modelo||'carro')}" onclick="event.stopPropagation();verFoto(this.src)">`:`<button type="button" class="pkf pkf0" aria-label="Pôr a foto do carro" onclick="event.stopPropagation();pkFotoPega('${o.id}')">${CARRO}<i>${svgi('osfotos')}</i></button>`}
- <div class="pkt"><div class="pk1">${plc(v)}<b>${e(v.modelo||(v.placa?'':'Sem veículo'))}</b></div>
- <small class="pk2">${e(c.nome||'Sem cliente')} · O.S. ${e(o.num)}</small>
- <div class="pk3"><button type="button" class="pkm${o.mec?'':' z'}" style="${o.mec?'--ac:'+mc:''}" aria-label="${o.mec?'Mecânico: '+e(o.mec)+'. Trocar':'Escolher mecânico'}" title="${e(o.mec||'Sem mecânico')}" onclick="event.stopPropagation();patioMec('${o.id}')">${o.mec?e(mi):'+'}</button><span class="pkd ${dCor(n)}">${pr?(n?'pronto '+dTxt(n):'pronto hoje'):dTxt(n)}</span>${par>=3?`<span class="pkd r">parado ${plural(par,'dia','dias')}</span>`:''}${pinfo?`<span class="pkd">${e(pinfo)}</span>`:''}${o.status=='Concluída'&&o.avisado?'<span class="pkd g">avisado</span>':''}</div></div>
+ <div class="pkt"><div class="pk1"><b>${e(v.modelo||(v.placa?'Carro':'Sem veículo'))}</b></div>
+ <div class="pk2">${plc(v)}<small>${e(c.nome||'Sem cliente')}</small></div>
+ <div class="pk3"><button type="button" class="pkm${o.mec?'':' z'}" style="${o.mec?'--ac:'+mc:''}" aria-label="${o.mec?'Mecânico: '+e(o.mec)+'. Trocar':'Escolher mecânico'}" title="${e(o.mec||'Sem mecânico')}" onclick="event.stopPropagation();patioMec('${o.id}')">${o.mec?e(mi):'+'}</button><span class="pkd">O.S. ${e(o.num)}</span><span class="pkd ${dCor(n)}">${pr?(n?'pronto '+dTxt(n):'pronto hoje'):dTxt(n)}</span>${par>=3?`<span class="pkd r">parado ${plural(par,'dia','dias')}</span>`:''}${pinfo?`<span class="pkd">${e(pinfo)}</span>`:''}${o.status=='Concluída'&&o.avisado?'<span class="pkd g">avisado</span>':''}</div></div>
  <div class="pka">${val}${pkAcao(o,rest)}</div></div>`}
 
 /* 2.44.0: um botão só no cartão (o próximo passo); o resto fica no ⋯ */
@@ -289,19 +289,19 @@ V.veiculo=Vveic;
 /* ---------- 2.50.0: Desfazer ao mudar a situação (Concluída e Entregue têm as próprias telas) ---------- */
 {const _sm=G.stMuda;G.stMuda=function(id,v){const o=od(id);if(!o||o.status==v){closeM();return}if(['Concluída','Entregue'].includes(v)||typeof desfazivel!='function')return _sm(id,v);closeM();desfazivel(()=>_sm(id,v),'O.S. '+o.num+': '+v)}}
 {const s2=document.createElement('style');s2.textContent=`
-.kc.pk{display:flex;align-items:center;gap:11px;padding:9px 10px;margin:0 0 8px;border-left:4px solid var(--c);min-height:84px}
+.kc.pk{display:flex;align-items:center;gap:10px;padding:9px 10px;margin:0 0 8px;border-left:4px solid var(--c);min-height:84px;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}
 .pkf{flex:none;width:66px;height:66px;border-radius:10px;object-fit:cover;display:block;cursor:zoom-in;background:#000}
 .pkf0{position:relative;margin:0;padding:0;border:1.5px dashed var(--ln);background:color-mix(in srgb,var(--ink) 5%,transparent);color:var(--mut);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .pkf0 svg{width:46px;height:30px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linejoin:round}.pkf0 i{position:absolute;right:-5px;bottom:-5px;width:24px;height:24px;border-radius:50%;background:var(--hi);color:#17181A;display:flex;align-items:center;justify-content:center}.pkf0 i svg{width:14px;height:14px;stroke-width:2.4}
-.pkt{flex:1;min-width:0}.pk1{display:flex;align-items:center;gap:7px;min-width:0}.pk1 b{font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pk2{display:block;color:var(--mut);font-size:13px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkt{flex:1 1 0;min-width:0;overflow:hidden}.pk1{display:flex;align-items:center;gap:7px;min-width:0}.pk1 b{flex:1 1 auto;min-width:0;font-size:16px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.pk2{display:flex;align-items:center;gap:7px;margin-top:4px;min-width:0}.pk2 .plc{flex:none;font-size:13px}.pk2 small{flex:1 1 auto;min-width:0;color:var(--mut);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pk3{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
 .pkm{flex:none;width:26px;height:26px;min-height:0;margin:0;padding:0;border-radius:50%;border:0;background:color-mix(in srgb,var(--ac,#888) 24%,transparent);color:var(--ac,var(--ink));font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .pkm.z{background:transparent;border:1.5px dashed var(--ln);color:var(--mut);font-size:15px}
 .pkd{font-size:12.5px;color:var(--mut);white-space:nowrap}.pkd.a{color:#D9A21B;font-weight:600}.pkd.r{color:#E06A4E;font-weight:600}.pkd.g{color:#3FA56C;font-weight:600}
-.pka{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-.pkv{font-size:13px;font-weight:700;color:#D9A21B;font-variant-numeric:tabular-nums;white-space:nowrap}.pkv.ok{color:#3FA56C}
-.pkb{margin:0;padding:7px 12px;min-height:36px;font-size:14px;border-radius:9px;white-space:nowrap}
+.pka{flex:0 0 auto;max-width:42%;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pkv{font-size:13px;font-weight:700;color:#D9A21B;font-variant-numeric:tabular-nums;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.pkv.ok{color:#3FA56C}
+.pkb{margin:0;padding:7px 11px;min-height:36px;font-size:14px;border-radius:9px;white-space:nowrap;max-width:100%}
 .plst .kc.pk{margin:0}
 .pkh{display:flex;align-items:center;gap:8px;width:100%;margin:12px 0 8px;padding:2px 2px;background:none;border:0;color:var(--ink);font:600 15px/1.2 inherit;text-align:left;min-height:0}
 .pkh span{flex:1}.pkh b{font-size:13px;color:var(--mut)}.pkh em{font-style:normal;color:var(--mut);font-size:12px;width:14px;text-align:center}.pkdot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
@@ -310,9 +310,11 @@ V.veiculo=Vveic;
 .pfc{flex:none;margin:0;padding:5px 11px;min-height:32px;border-radius:99px;font-size:13.5px;font-weight:600;border:1px solid var(--ln);background:transparent;color:var(--mut)}.pfc b{color:var(--ink);margin-left:2px}
 .pfc.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 20%,var(--sf));color:var(--ink)}
 .pfq .pkcam{position:absolute;right:4px;top:50%;transform:translateY(-50%);margin:0;padding:0;width:40px;height:36px;min-height:0;border:0;background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center}.pfq .pkcam svg{position:static;transform:none;width:20px;height:20px}.pfq input{padding-right:46px}
-.pkres{font-size:14px;color:var(--mut);font-weight:600;min-width:0}
+.pkres{flex:1 1 0;font-size:14px;color:var(--mut);font-weight:600;min-width:0;line-height:1.3}
+.osh3:has(.pkres){flex-wrap:nowrap;align-items:center;gap:8px}.osh3:has(.pkres)>.sp{display:none}.osh3:has(.pkres) .pvi,.osh3:has(.pkres) button{flex:none;margin:0}
 .pvi button{padding:6px 9px}.pvi button span{display:none}
 .pkhint{text-align:center;font-size:12px;color:var(--mut);margin:6px 0 10px}
+@media (max-width:390px){.pkf{width:54px;height:54px}.kc.pk{gap:9px;padding:9px 8px}.pkb{padding:7px 9px}}
 .kbc .kc.pk{flex-wrap:wrap;min-height:0}.kbc .pkf{width:52px;height:52px}.kbc .pka{flex-direction:row;align-items:center;width:100%;justify-content:space-between}
 .kc.drag{opacity:.45}.kbc.dz{outline:2px dashed var(--c);outline-offset:2px}
 .pkpl #pkpr{margin-top:8px}.pkpl #pkpr .pr{margin:4px 0}
