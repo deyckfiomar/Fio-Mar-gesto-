@@ -391,15 +391,109 @@ function matchCases(o){const d=dgOf(o),v=vOf(o);if(!d.cod.length&&!d.sin.length)
   const k=dkey(c.def);if(!k)return;const g=G.get(k)||{def:c.def,sis:c.sis,casos:[],score:0,codes:new Set(),syms:new Set(),testes:new Map(),sols:new Set()};
   g.casos.push(c);g.score+=sco;if(c.conf=='ok')g.ok=(g.ok||0)+1;sc.forEach(x=>g.codes.add(x));ss.forEach(x=>g.syms.add(x));if(c.tc)g.testes.set(c.tc,(g.testes.get(c.tc)||0)+1);if(c.sol)g.sols.add(c.sol);G.set(k,g)});
  return[...G.values()].sort((a,b)=>b.score-a.score||b.casos.length-a.casos.length)}
+/* ================= 2.52.0: mais acerto no guiado (motores ciclo Otto: gasolina e flex) ================= */
+/* 10) grupos fixos de causa: o texto da causa (de códigos, sintomas e casos) cai em um ou mais grupos */
+const CGRX={ar:/entrada de ar|falsa de ar|vacuo|vazamento de ar|mangueira|junta do coletor|coletor de admiss|\bpcv\b|respiro|servo|duto de ar/,
+ combb:/bomba (de |eletrica de )?(combust|gasolina)|bomba eletrica|bomba fraca|filtro de combust|pressao de combust|pescador|regulador de pressao|linha de combust|baixa pressao de combust|vazao de combust/,
+ inj:/\bbico|injetor/,maf:/\bmaf\b|fluxo de ar|massa de ar/,map:/\bmap\b|pressao absoluta|pressao do coletor/,o2:/sonda|lambda|sensor de oxigenio|\bo2\b/,
+ ign:/ignic|centelha|faisca/,vela:/\bvela|cabo de vela|cabos de vela|cabos de ignic/,bob:/bobina|modulo de ignic/,
+ mec:/compress|\banel\b|aneis|valvulas? (de admissao|de escape|queimad|empenad|presa)|junta do cabecote|cabecote|pistao|desgaste do motor|folga de valvula/,
+ dist:/correia dentada|correia da distribui|corrente de comando|corrente da distribui|ponto da distribui|ponto atrasado|ponto adiantado|sincron|comando de valvula|\bvvt\b|variador|defasad/,
+ ect:/sensor de temperatura|termostat|\bect\b|temperatura do motor|arrefecimento/,
+ tps:/borboleta|\btps\b|marcha lenta|atuador de lenta|motor de passo|\biac\b|pedal do acelerador|\bapp\b/,
+ esc:/escap|catalis|silencios/,elet:/bateria|alternador|\bmassa\b(?! de ar)|aterramento|chicote|conector|\brele\b|fusivel|queda de tensao|alimentacao (da|do) (ecu|modulo|central)|regulador de tensao/,
+ ecu:/\becu\b|modulo de inje|central eletr|\bpcm\b/,evap:/canister|purga|\bevap\b/,
+ combq:/adulter|qualidade do combust|agua no combust|combustivel ruim|combustivel contamin|combustivel velho/,
+ flex:/\bflex\b|etanol|partida a frio|tanquinho|adaptac/,ckp:/sensor de rotacao|\bckp\b|\bcmp\b|sensor de fase|roda fonica/,knock:/detona|batida de pino|pre ignic/};
+const GNOME={ar:'Entrada de ar falsa',combb:'Alimentação de combustível',inj:'Bicos injetores',maf:'Sensor MAF',map:'Sensor MAP',o2:'Sonda lambda',ign:'Ignição',vela:'Velas e cabos',bob:'Bobina',mec:'Mecânica (compressão)',dist:'Distribuição / ponto',ect:'Temperatura do motor',tps:'Borboleta / marcha lenta',esc:'Escapamento / catalisador',elet:'Elétrica (bateria, massa, chicote)',ecu:'Módulo de injeção',evap:'Canister',combq:'Qualidade do combustível',flex:'Adaptação flex / partida a frio',ckp:'Sensor de rotação / fase',knock:'Detonação'};
+const grp=t=>{const c=nC(t);return Object.keys(CGRX).filter(g=>CGRX[g].test(c))};
+/* tabela teste × grupo: [o quanto "Fora" multiplica, o quanto "OK" multiplica] */
+const MAT={ft:{ar:[2.2,.5],combb:[1.8,.6],inj:[1.6,.65],maf:[1.7,.6],map:[1.4,.7],o2:[1.4,.75],evap:[1.3,.85],combq:[1.3,.85],flex:[1.3,.85]},
+ misf:{ign:[2,.5],vela:[2,.5],bob:[2,.5],inj:[1.6,.6],mec:[1.6,.6],ar:[1.2,.85],ckp:[1.2,.9]},
+ vacidle:{ar:[2,.5],dist:[1.8,.55],mec:[1.5,.7],esc:[1.2,.9]},vac2500:{esc:[3,.3]},smoke:{ar:[3,.3],evap:[1.5,.75]},
+ compdry:{mec:[3,.25],dist:[1.6,.6]},compwet:{mec:[2.5,.5]},leak:{mec:[3,.25]},relcomp:{mec:[2.5,.4]},
+ swapcoil:{bob:[3.5,.3],vela:[.8,1.3],inj:[.8,1.5],mec:[.8,1.4]},swapplug:{vela:[3,.4],bob:[.8,1.3],inj:[.8,1.4],mec:[.8,1.4]},swapinj:{inj:[3.5,.3],bob:[.8,1.4],vela:[.8,1.4],mec:[.8,1.4]},
+ spark:{bob:[2.5,.4],vela:[1.5,.7],ign:[2,.5],ckp:[1.8,.7],elet:[1.4,.85]},plugs:{vela:[2.2,.5],mec:[1.4,.85],inj:[1.3,.85]},ign:{bob:[2.2,.5],vela:[2,.5],ign:[2.5,.4]},
+ fpress:{combb:[3,.3],combq:[1.2,.9]},fhold:{combb:[2,.6],inj:[1.6,.7]},freg:{combb:[2.5,.5]},fflow:{combb:[3,.35]},
+ injbal:{inj:[2.8,.35]},injbench:{inj:[3.5,.25]},pwrbal:{inj:[1.5,.7],ign:[1.5,.7],vela:[1.4,.75],bob:[1.4,.75],mec:[1.5,.7]},
+ o2:{o2:[2.5,.4]},o2resp:{o2:[2.5,.4],esc:[1.2,.9]},map:{map:[3,.3],ar:[1.3,.9]},maf:{maf:[3,.3],ar:[1.2,.9]},
+ ect:{ect:[3,.3]},iatect:{ect:[2,.5]},tps:{tps:[3,.3]},idle:{tps:[2,.5],ar:[1.4,.8]},
+ bat:{elet:[2.5,.5]},drop:{elet:[2.8,.4]},refgnd:{elet:[2.2,.5],map:[1.2,.9],tps:[1.2,.9]},ecugnd:{elet:[2.5,.5],ecu:[1.5,.8]},
+ flexad:{flex:[2.8,.4],o2:[1.2,.9]},coldstart:{flex:[2.8,.4],inj:[1.2,.9]},fuelq:{combq:[3.5,.3]},evap:{evap:[3,.35]},
+ ckpcmp:{ckp:[3,.3],dist:[2,.5]},timingmk:{dist:[3,.3]},knock:{knock:[2.5,.4],dist:[1.3,.9]},vvt:{dist:[2.5,.4]},exhvis:{esc:[2.5,.5]}};
+/* testes de sensor: com bateria ou massa ruim, o resultado deles vale menos */
+const SENS=new Set(['map','maf','ect','iatect','tps','o2','o2resp','idle','refgnd','ckpcmp']);
+/* 8) tempo de cada teste (minutos) */
+const TMIN0={codes:2,ft:3,misf:2,ect:2,map:3,maf:3,idle:2,flexad:2,o2:5,o2resp:8,bat:3,drop:6,refgnd:8,ecugnd:10,vacidle:5,vac2500:5,smoke:15,fpress:10,fhold:15,freg:10,fflow:15,
+ compdry:30,compwet:35,leak:40,relcomp:15,swapcoil:10,swapplug:15,swapinj:30,injbal:25,injbench:60,pwrbal:10,spark:5,plugs:15,ign:15,tps:8,coldstart:5,fuelq:5,evap:10,ckpcmp:15,timingmk:30,knock:10,vvt:10,exhvis:5};
+const tmin=t=>TMIN0[t]||((TESTS[t]&&TESTS[t].eq.some(a=>/vis/.test(a)))?8:12);
+/* 9) teste direto de cada grupo (contra-prova antes de trocar a peça) */
+const CONF={ar:['smoke','vacidle'],combb:['fpress','fflow','fhold'],inj:['injbal','swapinj','injbench'],maf:['maf'],map:['map'],o2:['o2resp','o2'],ign:['spark','ign'],bob:['swapcoil','spark','ign'],vela:['swapplug','plugs'],
+ mec:['compdry','leak','compwet'],dist:['timingmk','ckpcmp'],ect:['ect','iatect'],tps:['tps','idle'],esc:['vac2500','exhvis'],elet:['drop','bat','refgnd'],ecu:['ecugnd'],evap:['evap'],
+ combq:['fuelq'],flex:['flexad','coldstart'],ckp:['ckpcmp'],knock:['knock']};
+const BASE=['bat','ft'];
+/* 1) condições da falha e 3) combustível */
+const CONDS=[['frio','A frio'],['quente','Motor quente'],['lenta','Marcha lenta'],['acel','Acelerando'],['carga','Com carga / subida'],['chuva','Com chuva ou lavagem'],['abast','Depois de abastecer'],['interm','Vai e volta']];
+const CONDM={frio:[['ect',1.6],['inj',1.3],['flex',1.6],['ckp',.9]],quente:[['bob',1.4],['ign',1.3],['ckp',1.5],['combb',1.2],['ect',.8]],lenta:[['ar',1.5],['tps',1.5],['inj',1.2]],
+ acel:[['tps',1.3],['combb',1.3],['ign',1.2],['bob',1.2],['maf',1.3]],carga:[['ign',1.4],['bob',1.4],['vela',1.3],['combb',1.5],['esc',1.4],['knock',1.2]],chuva:[['vela',1.8],['bob',1.6],['ign',1.5],['elet',1.3]],
+ abast:[['combq',2.2],['evap',1.5],['flex',1.5]],interm:[['elet',1.4],['ckp',1.3]]};
+const CONDNEW={chuva:['Cabo de vela ou bobina com fuga (umidade)',1.5],abast:['Combustível adulterado ou com água',1.5]};
+function ctxAjuste(o,m){const d=dgOf(o),cn=d.cond||[],cb=d.comb||{},vv=d.vivo||{};let n=0;
+ const novo=(t,w,why)=>{const k=dkey(t);if(!m.has(k))m.set(k,{t,w,src:[why],hist:0})};
+ const mulG=(g,k,why)=>m.forEach(x=>{if(grp(x.t).includes(g)){x.w*=k;if(k>1&&why&&!x.src.includes(why))x.src.push(why)}});
+ cn.forEach(c=>{const L=CONDM[c];if(!L)return;const lb=(CONDS.find(x=>x[0]==c)||[])[1]||c;if(CONDNEW[c])novo(CONDNEW[c][0],CONDNEW[c][1],'falha: '+lb.toLowerCase());L.forEach(([g,k])=>mulG(g,k,'falha: '+lb.toLowerCase()));n++});
+ const tq=cb.tq,ab=cb.ab,pct=parseFloat(String(cb.pct||'').replace(',','.'));
+ if(tq=='eta'&&cn.includes('frio')){novo('Sistema de partida a frio (flex)',1.2,'etanol e a frio');mulG('flex',1.6,'etanol e a frio');n++}
+ if(ab=='hoje'||ab=='semana'){mulG('combq',1.4,'abasteceu há pouco');mulG('flex',1.3,'abasteceu há pouco');n++}
+ if(isFinite(pct)&&tq&&((tq=='gas'&&pct>60)||(tq=='eta'&&pct<50))){novo('Adaptação flex não concluída',1.5,'% de etanol não bate com o tanque');mulG('flex',1.8,'% de etanol não bate com o tanque');n++}
+ const av=parseFloat(String(vv.av||'').replace(',','.')),ti=parseFloat(String(vv.ti||'').replace(',','.'));
+ if(isFinite(av)&&(av<3||av>25)){mulG('dist',1.4,'avanço fora na lenta');mulG('knock',1.2);n++}
+ if(isFinite(ti)&&ti>5){mulG('combb',1.2,'tempo de injeção alto');mulG('ar',1.15);n++}
+ return n}
+/* 4) padrões de leitura em dois pontos */
+const PATS={pobre_lenta:{t:'Pobre só na lenta',r:'falha',m:[[/entrada de ar|falsa de ar|vacuo|vazamento de ar|mangueira|junta do coletor|pcv|respiro|servo/,2.2],[/bomba|filtro de combust|pressao de combust|regulador/,.7],[/\bmaf\b/,.8]],dica:'Entrada de ar falsa: faça o teste de fumaça ou borrife na admissão.'},
+ pobre_tudo:{t:'Pobre na lenta e a 2.500 rpm',r:'falha',m:[[/bomba|filtro de combust|pressao de combust|regulador|pescador|vazao/,1.8],[/\bbico|injetor/,1.4],[/\bmaf\b|massa de ar/,1.6],[/entrada de ar|falsa de ar|vacuo/,.7]],dica:'Falta combustível ou o MAF lê pouco ar: meça a pressão e a vazão.'},
+ rica:{t:'Mistura rica',r:'falha',m:[[/\bbico|injetor/,1.6],[/canister|purga/,1.5],[/regulador|pressao de combust/,1.3],[/\bmaf\b|\bmap\b/,1.3],[/sonda|lambda/,1.2],[/entrada de ar|falsa de ar|vacuo/,.5]],dica:'Rica: bico pingando, pressão alta, canister aberto ou sensor lendo errado.'},
+ normal_ft:{t:'Correção normal',r:'ok',m:[[/entrada de ar|falsa de ar|vacuo|vazamento de ar/,.5],[/bomba|pressao de combust|regulador/,.6],[/\bmaf\b/,.6]]},
+ vac_ok:{t:'Estável 17–21 inHg',r:'ok',m:[[/entrada de ar|falsa de ar|vacuo|vazamento de ar/,.5],[/correia|ponto|sincron|distribui/,.6],[/escap|catalis|entupi/,.7]]},
+ vac_baixo:{t:'Estável, mas baixo',r:'falha',m:[[/entrada de ar|falsa de ar|vacuo|vazamento de ar|junta do coletor/,1.5],[/correia|ponto|sincron|distribui|defasad/,1.8],[/compress|anel|aneis/,1.2]],dica:'Vácuo baixo e estável: ponto atrasado (distribuição) ou entrada de ar.'},
+ vac_reg:{t:'Cai regular a cada volta',r:'falha',m:[[/valvula|cabecote|compress/,2],[/vela|bobina|ignic/,1.2]],dica:'Queda regular: válvula queimada ou presa. Confirme com compressão.'},
+ vac_irreg:{t:'Oscila irregular',r:'falha',m:[[/vela|bobina|cabo de vela|ignic/,1.6],[/\bbico|injetor/,1.4],[/entrada de ar|falsa de ar|vacuo/,1.3]],dica:'Oscilação irregular: falha de ignição ou de mistura.'},
+ vac_cai:{t:'Cai devagar a 2.500 rpm',r:'falha',m:[[/escap|catalis|silencios|entupi/,2.5]],dica:'Escape ou catalisador entupido: confira a contrapressão.'},
+ aneis:{t:'Molhada subiu: anéis',r:'falha',m:[[/\banel\b|aneis|pistao|desgaste do motor/,2.2],[/valvula|junta do cabecote/,.6]]},
+ valvulas:{t:'Molhada não subiu: válvulas',r:'falha',m:[[/valvula|cabecote/,1.8],[/\banel\b|aneis/,.6]]},
+ junta:{t:'Dois cilindros vizinhos baixos: junta',r:'falha',m:[[/junta do cabecote/,2.5],[/\banel\b|aneis/,.7]]}};
+const VACP=['vac_ok','vac_baixo','vac_reg','vac_irreg','vac_cai'];
+function ftPat(r){const l=parseFloat(String(r.l||'').replace(',','.')),a=parseFloat(String(r.a||'').replace(',','.'));if(!isFinite(l)&&!isFinite(a))return'';
+ if(!isFinite(l)||!isFinite(a))return(isFinite(l)?l:a)<-10?'rica':'';const L=l,A=a;if(L<-10||A<-10)return'rica';if(L>10&&A>10)return'pobre_tudo';if(L>10&&A<=L-5)return'pobre_lenta';if(L>10)return'pobre_tudo';return'normal_ft'}
+function compPat(o){const d=dgOf(o),D=nums((d.t.compdry||{}).v),W=nums((d.t.compwet||{}).v);if(D.length<2||W.length<2)return'';const mx=Math.max(...D),low=D.map((x,i)=>x<mx*.9?i:-1).filter(i=>i>=0);if(!low.length)return'';
+ if(low.length==2&&low[1]-low[0]==1&&!low.some(i=>W[i]!=null&&W[i]>D[i]*1.1))return'junta';const sobe=low.some(i=>W[i]!=null&&W[i]>D[i]*1.1);return sobe?'aneis':'valvulas'}
+/* 2) falha presente agora? Se não, "OK" descarta menos (defeito intermitente) */
+function fatorAgora(o,r,f){return dgOf(o).agora=='nao'&&r=='ok'&&f<1?1-(1-f)*.35:f}
+/* probabilidade de o teste dar "Fora" se a causa for esta (para escolher o próximo teste) */
+function pFora(t,causa){const M=MAT[t];if(M){let best=null;grp(causa).forEach(g=>{if(M[g]){const[a,b]=M[g],s=Math.max(0,Math.min(1,(Math.log(a)-Math.log(b))/(Math.log(3.5)-Math.log(.25))));if(best==null||s>best)best=s}});return best==null?.15:.15+.7*best}
+ return lk(t,causa)?.75:.15}
+const ent=P=>-P.reduce((s,p)=>s+(p>0?p*Math.log2(p):0),0);
+/* 9) contra-prova da causa mais provável */
+function contraProva(o,pc,av){if(!pc||!pc.length||pc[0].p<55)return null;const d=dgOf(o),G=grp(pc[0].t);if(!G.length)return null;
+ const L=[...new Set(G.flatMap(g=>CONF[g]||[]))].filter(t=>TESTS[t]);if(!L.length)return null;
+ const fz=L.find(t=>res(d,t)=='falha');if(fz)return{ok:fz};const okd=L.find(t=>res(d,t)=='ok');
+ const falta=L.find(t=>!res(d,t)&&(!av||hasEq(TESTS[t],av)));return{falta,okd}}
+
 function causesFor(o,M){const d=dgOf(o),v=vOf(o),m=new Map();const add=(t,w,src)=>{const k=dkey(t);if(!k)return;const x=m.get(k)||{t,w:0,src:[],hist:0};x.w+=w;if(src&&!x.src.includes(src))x.src.push(src);m.set(k,x)};
  d.cod.forEach(c=>{const r=lookupV(c,v);if(r)r.ca.forEach((x,i)=>add(x,3-i*.3,c))});d.sin.forEach(s=>{const y=SYM[s];if(y)y.ca.forEach((x,i)=>add(x,2-i*.2,y.t))});
  M.forEach(g=>{const k=dkey(g.def);const x=m.get(k)||{t:g.def,w:0,src:[],hist:0};x.w+=4+g.casos.length*3;x.hist=g.casos.length;m.set(k,x)});
  /* 2.42.0: teste "Fora" reforça e "OK" enfraquece as causas que ele confere (tabela TC), misturado com o que os casos da oficina ensinaram */
- const S=aprMapa();let ap=0;Object.entries(d.t||{}).forEach(([t,r])=>{if(!r||!TESTS[t]||(r.r!='falha'&&r.r!='ok'))return;m.forEach(x=>{const[f,a]=fatorTeste(t,r.r,x.t,S);x.w*=f;if(a)ap=1})});
+ const cx=ctxAjuste(o,m);
+ const S=aprMapa();let ap=0;const base=['bat','drop','refgnd','ecugnd'].some(t=>res(d,t)=='falha');
+ Object.entries(d.t||{}).forEach(([t,r])=>{if(!r||!TESTS[t]||(r.r!='falha'&&r.r!='ok'))return;const P=r.pat&&PATS[r.pat]&&PATS[r.pat].r==r.r?PATS[r.pat]:null;
+  m.forEach(x=>{let f=1,a=0;if(P){const c=nC(x.t);P.m.forEach(([rx,k])=>{if(rx.test(c))f*=k});if(f>1&&!x.src.includes(P.t))x.src.push(P.t)}else[f,a]=fatorTeste(t,r.r,x.t,S);
+   f=fatorAgora(o,r.r,f);if(base&&SENS.has(t))f=Math.pow(f,.5);x.w*=f;if(a)ap=1})});
  const ff=ffAjuste(o,m);
  /* reparo que não resolveu neste modelo perde peso */
  casos().forEach(c=>{if(c.conf!='falhou'||c.os===o.id||!mesmoCarro(v,c.veh||{}))return;const x=m.get(dkey(c.def));if(x){x.w*=.6;const w='não resolveu neste modelo';if(!x.src.includes(w))x.src.push(w)}});
- const L=[...m.values()].sort((a,b)=>b.w-a.w);L.apr=ap;L.ff=ff;return L}
+ casos().forEach(c=>{if(c.conf!='falhou'||c.os===o.id||mesmoCarro(v,c.veh||{})||!(c.cod||[]).some(x=>d.cod.includes(x)))return;const x=m.get(dkey(c.def));if(x){x.w*=.8;const w='não resolveu em carro parecido';if(!x.src.includes(w))x.src.push(w)}});
+ const L=[...m.values()].sort((a,b)=>b.w-a.w);L.apr=ap;L.ff=ff;L.cx=cx;L.base=base;return L}
 /* ---- testes criados pela oficina (db.dtests) entram na mesma lista dos testes de fábrica ---- */
 const meus=()=>Array.isArray(db.dtests)?db.dtests:(db.dtests=[]);
 function syncT(){meus().forEach(t=>{if(t&&t.id)TESTS[t.id]={id:t.id,n:t.n,eq:['vis'],como:t.como||'',esp:t.esp||'',meu:1}})}
@@ -427,7 +521,7 @@ function suggestions(o,M){syncT();const d=dgOf(o),v=vOf(o),m=new Map();const add
  if(d.cod.some(c=>/^P030[1-8]$/.test(c)))['swapcoil','swapplug','swapinj'].forEach(t=>add(t,'Separa vela, bobina e injetor do cilindro'));
  /* 2.43.0: testes de injeção ligados aos códigos e aos sintomas */
  INJT.forEach(([rc,rs,L])=>{const c=d.cod.find(x=>rc.test(x)),y=rs&&d.sin.map(x=>SYM[x]).find(x=>x&&rs.test(norm(x.t)));if(c||y)L.forEach(t=>add(t,c||y.t))});
- d.ext.forEach(t=>add(t,'Adicionado por você'));Object.entries(d.t).forEach(([t,r])=>{if(r&&(r.r||r.v||r.o))add(t,null)});return m}
+ if(d.cod.some(c=>/^P[0-3]/.test(c))||d.sin.length)BASE.forEach(t=>add(t,'Básico: confere antes dos sensores'));d.ext.forEach(t=>add(t,'Adicionado por você'));Object.entries(d.t).forEach(([t,r])=>{if(r&&(r.r||r.v||r.o))add(t,null)});return m}
 
 /* ================= MENSAGENS ================= */
 function msg({title,intro,items,okLabel,focus,alt,altLabel,warn}){
@@ -475,6 +569,7 @@ function abMsg(o){const d=dgOf(o),p=parseCode(UI.code),pc=p.ok&&!d.cod.includes(
  const a=[];if(d.cod.length)a.push(plural(d.cod.length,'código','códigos'));if(d.sin.length)a.push(plural(d.sin.length,'sintoma','sintomas'));
  if(pc||ps)a.push((pc&&ps?'código e sintoma digitados':pc?'código digitado':'sintoma digitado')+' entram ao avançar');return a.length?a.join(' · '):'Digite um código ou escolha um sintoma'}
 function stepDiag(o){const d=dgOf(o),av=eqSet(),M=matchCases(o),sug=suggestions(o,M),C=causesFor(o,M);
+ {const pc0=pctCausas(C),cp=contraProva(o,pc0,av);if(cp&&cp.falta&&!sug.has(cp.falta))sug.set(cp.falta,{from:['Confirma '+pc0[0].t],hist:0,ord:sug.size})}
  if(!d.cod.length&&!d.sin.length&&!String(o.problema||'').trim())return empty('oslaudo','Informe os códigos de falha ou os sintomas para montar o diagnóstico.',`<button class="pr" onclick="DG.step('sin')">Informar sintomas e códigos</button>`);
  const ids=[...sug.keys()].sort((a,b)=>{const A=sug.get(a),B=sug.get(b);return(B.hist-A.hist)||((B.apr||0)-(A.apr||0))||(A.ord-B.ord)});
  const can=ids.filter(t=>hasEq(TESTS[t],av)||res(d,t)),cannot=ids.filter(t=>!can.includes(t)),reg=can.filter(t=>res(d,t)).length,fal=ids.filter(t=>res(d,t)=='falha');
@@ -487,7 +582,7 @@ function stepDiag(o){const d=dgOf(o),av=eqSet(),M=matchCases(o),sug=suggestions(
    ${ts.length?`<small><b>Confirmado com:</b> ${ts.map(esc).join(', ')}</small>`:''}${g.sols.size?`<small><b>Solução:</b> ${[...g.sols].slice(0,2).map(esc).join(' / ')}</small>`:''}
    <small>Último: ${esc([last.veh&&last.veh.modelo,last.veh&&last.veh.motor].filter(Boolean).join(' '))} · ${D(last.data)}</small>
    <div><button type="button" class="sm pr" onclick="DG.pick(${esc(JSON.stringify(g.def))},${esc(JSON.stringify(g.sis||''))})">É este o defeito</button></div></div>`}).join('')}</div>`:''}
- ${!can.length?'':UI.glista?`<button type="button" class="sm dg-gbt" onclick="DG.ui.glista=0;render()">← Voltar ao modo guiado</button>`:guiaHTML(o,can,sug,av,C,reg)+`<details class="dg-all"><summary>Todos os testes e causas</summary>`}
+ ${ctxHTML(o)}${!can.length?'':UI.glista?`<button type="button" class="sm dg-gbt" onclick="DG.ui.glista=0;render()">← Voltar ao modo guiado</button>`:guiaHTML(o,can,sug,av,C,reg)+`<details class="dg-all"><summary>Todos os testes e causas</summary>`}
  ${C.length?'':'<!--'}<div class="card"><div class="dg-h"><b>Causas prováveis</b><small class="muted">da mais para a menos provável</small></div>
   <ol class="dg-causes">${C.slice(0,UI.cmore?8:3).map(c=>`<li class="${c.hist?'hist':''}"><span><b>${esc(c.t)}</b><small>${c.hist?`Encontrado em ${plural(c.hist,'caso','casos')} da oficina${c.src.length?' · ':''}`:''}${c.src.map(esc).join(' · ')}</small><i style="--w:${Math.round(c.w/mx*100)}%"></i></span><button type="button" class="sm" onclick="DG.pick(${esc(JSON.stringify(c.t))},'')">É este</button></li>`).join('')}</ol>${C.length>3?`<button type="button" class="sm dg-more" onclick="DG.ui.cmore=!DG.ui.cmore;render()">${UI.cmore?'Mostrar menos':'Ver mais '+(Math.min(8,C.length)-3)+' causas'}</button>`:''}</div>${C.length?'':'-->'}
  <div class="card"><div class="dg-h"><b>Testes</b><small class="muted">${reg} de ${can.length} feitos${fal.length?` · <span style="color:${KR}">${fal.length} fora do esperado</span>`:''}</small></div>
@@ -503,7 +598,7 @@ function tcard(o,tid,info,av){const t=TESTS[tid],d=dgOf(o),r=d.t[tid]||{},man=d.
  return`<div class="dg-tc${r.r?' r-'+r.r:''}"><div class="dg-th"><b>${esc(t.n)}</b><span class="dg-eqs">${info&&info.hist?`<span class="dg-hb">Confirmou defeito em ${plural(info.hist,'caso','casos')}</span>`:''}${eqLabel(t,av)}</span></div>
   ${valsCarro(o,tid)}${from.length?`<small class="muted${from.some(f=>/^Aprendido/.test(f))?' dg-apr':''}">${from.some(f=>/^Aprendido/.test(f))?'':'Indicado por: '}${from.map(esc).join(' · ')}</small>`:''}
   ${t.meu?`${t.como||t.esp?`<details><summary>Como fazer e valor esperado</summary>${t.como?`<p>${esc(t.como)}</p>`:''}${t.esp?`<p><b>Esperado:</b> ${esc(t.esp)}</p>`:''}</details>`:''}<button type="button" class="dg-tmais" onclick="DG.editTeste('${tid}')">${t.como||t.esp?'Editar este teste':'Teste da oficina · escrever como fazer e o valor esperado'}</button>`:`${(window.DGILU||{})[tid]?`<div class="dg-ilu dg-ilu-v">${DGILU[tid].svg}<p>${esc(DGILU[tid].leg)}</p></div>`:''}<details><summary>Como fazer e valor esperado</summary><p>${esc(t.como)}</p><p><b>Esperado:</b> ${esc(t.esp)}</p></details>`}
-  <div class="dg-seg" role="group" aria-label="Resultado">${[['ok','OK'],['falha','Fora'],['inc','Inconclusivo']].map(([k,l])=>`<button type="button" data-r="${k}" aria-pressed="${r.r==k}" onclick="DG.res('${tid}','${k}')">${l}</button>`).join('')}</div>
+  <div class="dg-seg${SWAPL[tid]?' dg-seg3':''}" role="group" aria-label="Resultado">${(SWAPL[tid]||[['ok','OK'],['falha','Fora'],['inc','Inconclusivo']]).map(([k,l])=>`<button type="button" data-r="${k}" aria-pressed="${r.r==k}" onclick="DG.res('${tid}','${k}')">${l}</button>`).join('')}</div>${patHTML(o,tid)}
   ${ab?`<div class="dg-tin"><input placeholder="Valor medido" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"><input placeholder="Observação" value="${esc(r.o)}" onchange="DG.tval('${tid}','o',this.value)" aria-label="Observação"></div>${vaHTML(o,tid,r)}
   ${tfotos(o,tid)}`:UI.gcard===tid?`<div class="dg-tin dg-tin1"><input placeholder="${VALIDOS.has(tid)?'Valor medido: o app marca OK ou Fora':'Valor medido (opcional)'}" value="${esc(r.v)}" onchange="DG.tval('${tid}','v',this.value)" aria-label="Valor medido"></div>${vaHTML(o,tid,r)}<button type="button" class="dg-tmais" onclick="(DG.ui.top=DG.ui.top||{})['${tid}']=1;render()">+ observação ou foto</button>`:`<button type="button" class="dg-tmais" onclick="(DG.ui.top=DG.ui.top||{})['${tid}']=1;render()">+ valor medido, observação ou foto</button>`}
   ${man?`<button type="button" class="sm" onclick="DG.rmTest('${tid}')">Remover teste</button>`:''}</div>`}
@@ -653,8 +748,27 @@ const DG={
  addSym(id){const o=cur();if(!o)return;const d=dgOf(o);if(!d.sin.includes(id))d.sin.push(id);UI.sym='';commit(o);render();toast('Sintoma adicionado: '+SYM[id].t)},
  tsym(id){const o=cur();if(!o)return;const d=dgOf(o);d.sin.includes(id)?d.sin=d.sin.filter(x=>x!=id):d.sin.push(id);commit(o);render()},
  tfil(k){UI.tf=k;render()},
+ grupos:t=>grp(t),
+ cond(k){const o=cur();if(!o)return;const d=dgOf(o),L=d.cond=Array.isArray(d.cond)?d.cond:[];const i=L.indexOf(k);if(i>=0)L.splice(i,1);else L.push(k);commit(o);render()},
+ ctx(k,v){const o=cur();if(!o)return;const d=dgOf(o);d[k]=d[k]==v?'':v;commit(o);render()},
+ comb(k,v){const o=cur();if(!o)return;const d=dgOf(o),c=d.comb=d.comb&&typeof d.comb=='object'?d.comb:{};v=String(v==null?'':v).trim();c[k]=k!='pct'&&c[k]==v?'':v;commit(o);render()},
+ ft2(f,v){const o=cur();if(!o)return;const d=dgOf(o),r=d.t.ft=d.t.ft&&typeof d.t.ft=='object'?d.t.ft:{};r[f]=String(v==null?'':v).trim();const p=ftPat(r);
+  const mud=p&&p!=r.pat;if(p){r.pat=p;r.r=PATS[p].r;r.at=Date.now();delete r.auto;if(r.r=='falha'&&!d.tc)d.tc='ft'}else if(r.pat){delete r.pat}commit(o);render();
+  if(mud){const cb=d.comb||{};toast(PATS[p].t+(PATS[p].dica?'\n'+PATS[p].dica:'')+(PATS[p].r=='falha'&&(cb.ab=='hoje'||cb.ab=='semana')?'\nAbasteceu há pouco: pode ser só adaptação do flex.':''))}},
+ pat(t,k){const o=cur();if(!o||!PATS[k])return;const d=dgOf(o),r=d.t[t]=d.t[t]&&typeof d.t[t]=='object'?d.t[t]:{};delete r.auto;if(r.pat==k){delete r.pat;r.r=null}else{r.pat=k;r.r=PATS[k].r;r.at=Date.now();if(r.r=='falha'&&!d.tc)d.tc=t}commit(o);render();if(r.pat&&PATS[k].dica)toast(PATS[k].t+'\n'+PATS[k].dica)},
+ vivo(){const o=cur();if(!o)return;const v=dgOf(o).vivo||{};
+  $('#modal').innerHTML=`<div class="ov"><div class="md dg-msg" role="dialog" aria-modal="true" aria-label="Dados ao vivo"><h2 style="margin-top:0">Dados ao vivo</h2><p class="muted" style="margin:-4px 0 10px">Motor quente, em marcha lenta, sem carga. Preencha o que o scanner mostra; o que não tiver, deixe em branco.</p>
+  <form class="dg-vivo" onsubmit="event.preventDefault();DG.vivoOk()"><div class="g2">${VIVO.map(([k,l,im])=>`<label>${l}<input name="${k}" inputmode="${im}" value="${esc(v[k]||'')}" autocomplete="off"></label>`).join('')}</div>
+  <small class="muted">Sonda lambda pré-catalisador</small><div class="dq-chs" role="radiogroup" aria-label="Sonda lambda">${[['osc','Oscilando'],['pobre','Parada em pobre'],['rica','Parada em rica']].map(([k,l])=>`<label class="dq-ch"><input type="radio" name="o2" value="${k}" ${v.o2==k?'checked':''}> ${l}</label>`).join('')}</div>
+  <div class="bar" style="margin:12px 0 0"><button type="button" onclick="closeM(1)">Cancelar</button><span class="sp"></span><button class="pr">Conferir</button></div></form></div></div>`;
+  setTimeout(()=>{const i=document.querySelector('.dg-vivo input');if(i)i.focus()},30)},
+ vivoOk(){const o=cur(),f=document.querySelector('#modal form.dg-vivo');if(!o||!f)return;const d=dgOf(o),v={};VIVO.forEach(([k])=>{const x=String(f[k].value||'').trim();if(x)v[k]=x});const r2=f.querySelector('[name=o2]:checked');if(r2)v.o2=r2.value;d.vivo=v;
+  const L=vivoAval(o,v);let n=0;L.forEach(x=>{if(!x.tid||!TESTS[x.tid])return;const r=d.t[x.tid]=d.t[x.tid]&&typeof d.t[x.tid]=='object'?d.t[x.tid]:{};if(r.r&&!r.auto&&!r.vivo)return;
+   r.r=x.ok?'ok':'falha';r.auto=1;r.vivo=1;r.at=Date.now();if(x.val!=null)r.v=String(x.val);if(x.tid=='ft'){r.l=fx((parseFloat(String(v.st||0).replace(',','.'))||0)+(parseFloat(String(v.lt||0).replace(',','.'))||0));const p=ftPat(r);if(p)r.pat=p}if(!x.ok&&!d.tc)d.tc=x.tid;n++});
+  closeM(1);commit(o);render();const fo=L.filter(x=>!x.ok).length;toast(L.length?(fo?plural(fo,'valor fora','valores fora')+' · as causas foram ajustadas':'Dados ao vivo dentro do esperado'):'Nenhum dado preenchido')},
  res(t,k){const o=cur();if(!o)return;const d=dgOf(o),r=d.t[t]=d.t[t]&&typeof d.t[t]=='object'?d.t[t]:{};delete r.auto;if(r.r==k){r.r=null;r.at=null}else{r.r=k;r.at=Date.now()}if(k=='falha'&&r.r&&!d.tc)d.tc=t;commit(o);render()},
  tval(t,f,v){const o=cur();if(!o)return;const d=dgOf(o),r=d.t[t]=d.t[t]&&typeof d.t[t]=='object'?d.t[t]:{};r[f]=v;
+  if(f=='v'&&(t=='compwet'||t=='compdry')){const w=d.t.compwet;if(w){const p=compPat(o);if(p){w.pat=p;w.r='falha';w.at=Date.now();if(!d.tc)d.tc='compwet'}else if(w.pat)delete w.pat}}
   /* 2.42.0: valor com referência marca OK/Fora sozinho (se o mecânico não marcou outra coisa) */
   /* espera um pouco: se o mecânico tocou OK/Fora logo depois de digitar, vale o toque dele */
   if(f=='v'){const t0=Date.now();commit(o);setTimeout(()=>{if(r.at&&r.at>=t0&&!r.auto)return;const a=valAval(t,r.v,o);
@@ -678,7 +792,7 @@ const DG={
   if(!force){const op=[];if(!d.sis)op.push('Sistema');if(!String(d.sol||'').trim())op.push('Solução / peças trocadas');
    if(op.length)return msg({title:'Faltam alguns campos',intro:'Estes campos ajudam no Caminho rápido dos próximos carros:',items:op,okLabel:'Preencher',focus:!d.sis?'dgsis':'dgsol',alt:()=>DG.saveCase(force||1),altLabel:'Salvar assim mesmo'})}
   tmPara(d);const v=vOf(o),id=d.caso||uid(),C=casos(),i=C.findIndex(x=>x.id==id),old=i>=0?C[i]:null;
-  const c={id,os:o.id,num:o.num,data:today(),cod:[...d.cod],sin:[...d.sin],def:d.def.trim(),sis:d.sis||'',tc:d.tc||'',tcd:String(d.tcd||'').trim(),sol:String(d.sol||'').trim(),obs:String(d.obs||'').trim(),vid:o.veh||'',semProva:d.tc?undefined:1,min:Math.round(tmMs(d)/60000)||0,ff:d.ff&&ffTxt(d.ff)?{...d.ff}:undefined,conf:old&&old.conf||null,veh:{modelo:v.modelo,motor:v.motor,ano:v.ano},km:v.km||'',
+  const c={id,os:o.id,num:o.num,data:today(),cod:[...d.cod],sin:[...d.sin],def:d.def.trim(),sis:d.sis||'',tc:d.tc||'',tcd:String(d.tcd||'').trim(),sol:String(d.sol||'').trim(),obs:String(d.obs||'').trim(),vid:o.veh||'',semProva:d.tc?undefined:1,prev0:Array.isArray(d.prev0)?d.prev0.slice(0,3):undefined,prev:(()=>{try{return pctCausas(causesFor(o,matchCases(o))).slice(0,3).map(x=>x.t)}catch(x){return undefined}})(),min:Math.round(tmMs(d)/60000)||0,ff:d.ff&&ffTxt(d.ff)?{...d.ff}:undefined,conf:old&&old.conf||null,veh:{modelo:v.modelo,motor:v.motor,ano:v.ano},km:v.km||'',
     vals:Object.fromEntries(Object.entries(d.t||{}).filter(([t,r])=>r&&r.r&&TESTS[t]).map(([t,r])=>[t,{r:r.r,v:String(r.v||'').trim()}])),
     pecas:(o.items||[]).filter(i=>/pe[çc]a/i.test(i.t||'')&&i.d).map(i=>i.d).slice(0,12),fotos:(o.fotos||[]).filter(f=>f.tid).length};
   if(i>=0)C[i]=c;else C.push(c);const novo=!d.caso;d.caso=id;d.fim=true;
@@ -898,10 +1012,12 @@ const nC=t=>' '+norm(String(t||'')).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' 
 const lk=(tid,causa)=>{const L=TC[tid];if(L){const c=nC(causa);return L.some(k=>c.includes(k))}return TESTS[tid]?liga(TESTS[tid].n,causa):false};
 /* 3) o que os casos da oficina ensinam: para cada teste, quantas vezes deu OK/Fora em cada defeito */
 function aprMapa(){const S={};casos().forEach(c=>{if(c.conf=='falhou'||!c.vals)return;const k=dkey(c.def);if(!k)return;const w=c.semProva?0.5:1;
- Object.entries(c.vals).forEach(([t,r])=>{if(!r||(r.r!='ok'&&r.r!='falha'))return;const a=S[t]=S[t]||{},b=a[k]=a[k]||{ok:0,falha:0};b[r.r]+=w})});return S}
+ Object.entries(c.vals).forEach(([t,r])=>{if(!r||(r.r!='ok'&&r.r!='falha'))return;const a=S[t]=S[t]||{},b=a[k]=a[k]||{ok:0,falha:0};b[r.r]+=w;grp(c.def).forEach(g=>{const bg=a['g:'+g]=a['g:'+g]||{ok:0,falha:0};bg[r.r]+=w})})});return S}
 /* peso de um resultado sobre uma causa: o da tabela, misturado com o aprendido quando há 2 casos ou mais */
-function fatorTeste(tid,r,causa,S){const ex=!!TC[tid],l=lk(tid,causa);let f=l?(r=='falha'?(ex?2.5:2.2):(ex?0.4:0.55)):1;
- const b=S&&S[tid]&&S[tid][dkey(causa)];if(b){const n=b.ok+b.falha;if(n>=2){const p=(b[r]+0.5)/(n+1),fa=Math.min(3,Math.max(0.25,p/0.5)),a=n/(n+3);return[Math.pow(f,1-a)*Math.pow(fa,a),1]}}return[f,0]}
+function fatorTeste(tid,r,causa,S){const M=MAT[tid];let f;
+ if(M){let best=null;grp(causa).forEach(g=>{if(M[g]){const v=M[g][r=='falha'?0:1];if(best==null||Math.abs(Math.log(v))>Math.abs(Math.log(best)))best=v}});f=best!=null?best:(r=='falha'?.85:1)}
+ else{const ex=!!TC[tid],l=lk(tid,causa);f=l?(r=='falha'?(ex?2.5:2.2):(ex?0.4:0.55)):1}
+ const b0=S&&S[tid],b=b0&&(b0[dkey(causa)]||grp(causa).map(g=>b0['g:'+g]).find(x=>x&&x.ok+x.falha>=2));if(b){const n=b.ok+b.falha;if(n>=2){const p=(b[r]+0.5)/(n+1),fa=Math.min(3,Math.max(0.25,p/0.5)),a=n/(n+3);return[Math.pow(f,1-a)*Math.pow(fa,a),1]}}return[f,0]}
 /* 5) freeze frame: em que condição a falha apareceu muda a causa provável */
 const ffN=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(x)?x:null};
 function ffAjuste(o,m){const d=dgOf(o),f=d.ff||{},rpm=ffN(f.rpm),carga=ffN(f.carga),temp=ffN(f.temp),tens=ffN(f.tens),st=ffN(f.stft),lt=ffN(f.ltft),soma=(st||0)+(lt||0),C=d.cod;
@@ -965,14 +1081,57 @@ function valsCarro(o,tid){const v=vOf(o);if(!modTok(v))return'';const A=[];
 /* 3) modo guiado: o próximo teste que mais ajuda */
 /* testes que decidem sozinhos (resultado claro) ganham um pouco de preferência */
 const DECIS=new Set(['swapcoil','swapplug','swapinj','compwet','leak','smoke','co2','injbal','pwrbal','injbench']);
-function proxTeste(o,can,C){const d=dgOf(o),P=can.filter(t=>!res(d,t));if(!P.length)return null;const pc=pctCausas(C),A=pc[0],B=pc[1];if(!A)return{t:P[0],why:''};
- let best=null;P.forEach((t,i)=>{const la=lk(t,A.t),lb=B?lk(t,B.t):false;let s=(B&&la!==lb?3:0)+(la||lb?1:0)+(TC[t]?.3:0)+(DECIS.has(t)?.5:0)-i*.01;if(la&&!lb)s+=A.p/100;if(lb&&!la)s+=B.p/100;if(!best||s>best.s)best={t,s,la,lb}});
- const b=best,why=B&&b.la!==b.lb?`Separa as duas primeiras: ${A.t} × ${B.t}`:b.la&&b.lb&&B?`Confere ${A.t} e ${B.t}`:b.la?`Confere ${A.t}`:'';return{t:b.t,why}}
-function guiaHTML(o,can,sug,av,C,reg){const d=dgOf(o),px=proxTeste(o,can,C),nx=px&&px.t,pc=pctCausas(C),feitos=can.filter(t=>res(d,t));UI.gnx=nx;
+function proxTeste(o,can,C,av){const d=dgOf(o),P=can.filter(t=>!res(d,t));if(!P.length)return null;
+ const g3=new Set(pctCausas(C).slice(0,3).flatMap(c=>grp(c.t))),util={bat:['elet','ecu'],ft:['ar','combb','maf','map','o2','combq','flex','evap']};
+ const bas=BASE.filter(t=>P.includes(t)&&util[t].some(g=>g3.has(g)));if(bas.length)return{t:bas[0],why:bas[0]=='bat'?'Básico primeiro: com bateria fraca, as leituras dos sensores enganam':'Básico primeiro: as correções mostram se falta ar ou combustível',min:tmin(bas[0])};
+ const pc=pctCausas(C);if(!pc.length)return{t:P[0],why:'',min:tmin(P[0])};
+ const cp=contraProva(o,pc,av);if(cp&&cp.falta&&P.includes(cp.falta))return{t:cp.falta,why:'Confirma '+pc[0].t+' antes de trocar a peça',min:tmin(cp.falta)};
+ const p=pc.map(c=>c.p/100),sp=p.reduce((a,b)=>a+b,0)||1,pn=p.map(x=>x/sp),H=ent(pn);let best=null;
+ P.forEach((t,i)=>{const a=pc.map(c=>pFora(t,c.t)),pf=pn.reduce((s,x,j)=>s+x*a[j],0);let g=0;
+  if(pf>.001&&pf<.999){const pF=pn.map((x,j)=>x*a[j]/pf),pO=pn.map((x,j)=>x*(1-a[j])/(1-pf));g=H-(pf*ent(pF)+(1-pf)*ent(pO))}
+  const sc=g/(1+tmin(t)/15)+(DECIS.has(t)?.002:0)-i*1e-5;if(!best||sc>best.sc)best={t,sc,a}});
+ const A=pc[0],B=pc[1],aA=best.a[0],aB=B?best.a[1]:aA;
+ const why=B&&Math.abs(aA-aB)>.3?`Separa as duas primeiras: ${A.t} × ${B.t}`:aA>.5&&B&&aB>.5?`Confere ${A.t} e ${B.t}`:aA>.5?`Confere ${A.t}`:'';return{t:best.t,why,min:tmin(best.t)}}
+function guiaHTML(o,can,sug,av,C,reg){const d=dgOf(o),px=proxTeste(o,can,C,av),nx=px&&px.t,pc=pctCausas(C),feitos=can.filter(t=>res(d,t)),cp=contraProva(o,pc,av);UI.gnx=nx;
+ if(!d.prev0&&pc.length&&!Object.values(d.t||{}).some(r=>r&&r.r))d.prev0=pc.slice(0,3).map(c=>c.t);
  return`<div class="card dg-guia"><div class="dg-h"><b>Diagnóstico guiado</b><button type="button" class="sm" onclick="DG.ui.glista=1;render()">Ver lista</button></div>
- ${pc.length?`<div class="dg-pct" aria-label="Causas mais prováveis">${pc.slice(0,3).map(c=>`<div><span>${esc(c.t)}</span><b>${c.p}%</b><i style="--w:${c.p}%"></i></div>`).join('')}${C.apr||C.ff?`<small class="dg-pnota">${[C.apr?'Ajustado com os casos da oficina':'',C.ff?'Considerando o freeze frame':''].filter(Boolean).join(' · ')}</small>`:''}</div>`:''}
- ${nx?`<small class="dg-gnx">Faça agora · ${reg} de ${can.length} testes feitos</small>${px.why?`<small class="dg-why">${esc(px.why)}</small>`:''}${(()=>{UI.gcard=nx;const h=tcard(o,nx,sug.get(nx),av);UI.gcard=null;return h})().replace('<details><summary>Como fazer','<details open><summary>Como fazer')}`:`<p class="muted" style="margin:8px 0 0">Todos os testes indicados foram feitos. ${C.length?'Se um deles deu fora, toque em “Achei o defeito”.':''} Para outro teste, toque em “Ver lista”.</p>`}
+ ${pc.length?`<div class="dg-pct" aria-label="Causas mais prováveis">${pc.slice(0,3).map(c=>`<div><span>${esc(c.t)}</span><b>${c.p}%</b><i style="--w:${c.p}%"></i></div>`).join('')}${C.apr||C.ff||C.cx?`<small class="dg-pnota">${[C.apr?'Ajustado com os casos da oficina':'',C.ff?'Considerando o freeze frame':'',C.cx?'Considerando quando a falha acontece':''].filter(Boolean).join(' · ')}</small>`:''}</div>`:''}
+ ${C.base?`<small class="dg-pres falha">Bateria ou massa fora: as leituras dos sensores valem menos. Resolva isso primeiro.</small>`:''}
+ ${cp?cp.ok?`<div class="dg-cp ok">✓ <b>${esc(pc[0].t)}</b> confirmado por: ${esc(TESTS[cp.ok].n)}</div>`:cp.okd&&!cp.falta?`<div class="dg-cp av">⚠ O teste direto (${esc(TESTS[cp.okd].n)}) deu OK. Reveja esta causa antes de trocar a peça.</div>`:cp.falta?`<div class="dg-cp pend">Antes de trocar a peça, confirme <b>${esc(pc[0].t)}</b> com: ${esc(TESTS[cp.falta].n)}</div>`:'':''}
+ ${nx?`<small class="dg-gnx">Faça agora · ~${px.min} min · ${reg} de ${can.length} testes feitos</small>${px.why?`<small class="dg-why">${esc(px.why)}</small>`:''}${(()=>{UI.gcard=nx;const h=tcard(o,nx,sug.get(nx),av);UI.gcard=null;return h})().replace('<details><summary>Como fazer','<details open><summary>Como fazer')}`:`<p class="muted" style="margin:8px 0 0">Todos os testes indicados foram feitos. ${C.length?'Se um deles deu fora, toque em “Achei o defeito”.':''} Para outro teste, toque em “Ver lista”.</p>`}
  <div class="dg-feitos">${(()=>{/* 2.41.1: muitos testes feitos viram "+N": os "Fora" e "?" aparecem primeiro */const ord=feitos.slice().sort((a,b)=>(res(d,a)=='ok')-(res(d,b)=='ok')),mx=UI.gfz||ord.length<=5?ord.length:4,mais=ord.length-mx;return ord.slice(0,mx).map(t=>{const r=res(d,t);return`<button type="button" class="dg-fz r-${r}" onclick="DG.ui.glista=1;render()">${r=='ok'?'✓':r=='falha'?'✗':'?'} ${esc(TESTS[t].n)}</button>`}).join('')+(mais>0?`<button type="button" class="dg-fz dg-fzm" onclick="DG.ui.gfz=1;render()">+${mais} feitos</button>`:'')})()}<button type="button" class="dg-fz dg-gout" onclick="DG.ui.glista=1;render();setTimeout(()=>{const i=document.getElementById('dgtb-add');if(i){i.scrollIntoView({block:'center'});i.focus()}},60)">+ Outro teste</button></div></div>`}
+/* ---- 2.52.0: cartão "quando a falha acontece" + combustível + dados ao vivo ---- */
+const VIVO=[['rpm','Rotação (rpm)','numeric'],['ect','Temperatura (°C)','numeric'],['map','MAP (kPa)','decimal'],['maf','MAF (g/s)','decimal'],['tps','TPS (% ou V)','decimal'],['av','Avanço (°)','decimal'],['ti','Tempo de injeção (ms)','decimal'],['st','STFT (%)','decimal'],['lt','LTFT (%)','decimal']];
+function vivoAval(o,v){const n=k=>{const x=parseFloat(String(v[k]==null?'':v[k]).replace(',','.'));return isFinite(x)?x:null},L=[],lt=litros(o);
+ const chk=(k,ok,txt,tid,val)=>{if(n(k)==null)return;L.push({k,ok,txt,tid,val})};
+ chk('rpm',n('rpm')>=600&&n('rpm')<=1000,'Rotação 600–1.000 rpm','idle',v.rpm);
+ chk('ect',n('ect')>=85&&n('ect')<=105,'Temperatura 85–105 °C','ect',v.ect);
+ chk('map',n('map')>=25&&n('map')<=40,'MAP 25–40 kPa','map',v.map);
+ if(n('maf')!=null){const a=lt?lt*1.5:2,b=lt?lt*2.5:7;chk('maf',n('maf')>=a&&n('maf')<=b,`MAF ${fx(a)}–${fx(b)} g/s`,'maf',v.maf)}
+ if(n('tps')!=null){const x=n('tps');chk('tps',x<=1.2?(x>=.3&&x<=.9):x<=5,x<=1.2?'TPS 0,3–0,9 V':'TPS 0–5%',null)}
+ chk('av',n('av')>=3&&n('av')<=25,'Avanço 3–25°',null);
+ chk('ti',n('ti')>=1.5&&n('ti')<=5,'Injeção 1,5–5 ms',null);
+ if(n('st')!=null||n('lt')!=null){const sm=(n('st')||0)+(n('lt')||0);L.push({k:'ft',ok:sm>=-10&&sm<=10,txt:'Correções somadas entre −10 e +10% (deu '+fx(sm)+'%)',tid:'ft',val:fx(n('st')||0)+' '+fx(n('lt')||0)})}
+ if(v.o2){L.push({k:'o2',ok:v.o2=='osc',txt:v.o2=='osc'?'Sonda oscilando':v.o2=='pobre'?'Sonda parada em pobre (< 0,3 V)':'Sonda parada em rica (> 0,6 V)',tid:'o2',val:v.o2=='osc'?'oscila':v.o2})}
+ return L}
+function ctxResumo(d){const cn=d.cond||[],cb=d.comb||{},a=[];cn.forEach(c=>{const x=CONDS.find(y=>y[0]==c);if(x)a.push(x[1].toLowerCase())});
+ if(d.agora)a.push(d.agora=='sim'?'acontecendo agora':'não está acontecendo agora');if(cb.tq)a.push({gas:'gasolina',eta:'etanol',mist:'mistura'}[cb.tq]);return a.join(' · ')}
+function ctxHTML(o){const d=dgOf(o),cn=d.cond||[],cb=d.comb||{},vv=d.vivo||{},vl=vivoAval(o,vv),fora=vl.filter(x=>!x.ok),cheio=cn.length||d.agora||cb.tq,feitos=Object.values(d.t||{}).some(r=>r&&r.r);
+ const ch=(k,lb,on,fn)=>`<button type="button" class="dq-ch${on?' on':''}" aria-pressed="${!!on}" onclick="${fn}">${lb}</button>`;
+ return`<details class="card dg-ctx"${!cheio&&!feitos?' open':''}><summary><b>Quando a falha acontece</b><small>${cheio?esc(ctxResumo(d)):'Responder melhora o acerto'}${vl.length?` · dados ao vivo: ${fora.length?plural(fora.length,'fora','fora'):'tudo ok'}`:''}</small></summary>
+ <div class="dq-chs" role="group" aria-label="Quando acontece">${CONDS.map(([k,l])=>ch(k,l,cn.includes(k),`DG.cond('${k}')`)).join('')}</div>
+ <div class="dq-row"><span>Está acontecendo agora?</span>${ch('s','Sim',d.agora=='sim',"DG.ctx('agora','sim')")}${ch('n','Não',d.agora=='nao',"DG.ctx('agora','nao')")}</div>
+ <div class="dq-row"><span>No tanque</span>${[['gas','Gasolina'],['eta','Etanol'],['mist','Mistura']].map(([k,l])=>ch(k,l,cb.tq==k,`DG.comb('tq','${k}')`)).join('')}</div>
+ <div class="dq-row"><span>Abasteceu</span>${[['hoje','Hoje/ontem'],['semana','Esta semana'],['antes','Faz tempo']].map(([k,l])=>ch(k,l,cb.ab==k,`DG.comb('ab','${k}')`)).join('')}</div>
+ <label class="dq-ent">% de etanol aprendido (scanner)<input inputmode="numeric" value="${esc(cb.pct||'')}" placeholder="ex.: 27" onchange="DG.comb('pct',this.value)"></label>
+ <div class="dq-vivo"><button type="button" class="sm" onclick="DG.vivo()">${vl.length?'Dados ao vivo · '+(fora.length?plural(fora.length,'fora','fora'):'tudo ok'):'+ Dados ao vivo (motor quente, lenta)'}</button>${fora.length?`<small>${fora.map(x=>'✗ '+esc(x.txt)).join(' · ')}</small>`:''}</div></details>`}
+function patHTML(o,tid){const d=dgOf(o),r=d.t[tid]||{};
+ if(tid=='ft'){const p=r.pat&&PATS[r.pat],cb=d.comb||{};return`<div class="dg-pat"><small>Correção somada (STFT + LTFT), motor quente</small><div class="dg-pat2"><label>Lenta<input inputmode="decimal" value="${esc(r.l||'')}" placeholder="+%" onchange="DG.ft2('l',this.value)"></label><label>2.500 rpm<input inputmode="decimal" value="${esc(r.a||'')}" placeholder="+%" onchange="DG.ft2('a',this.value)"></label></div>${p?`<small class="dg-pres ${p.r}">${esc(p.t)}${p.dica?' · '+esc(p.dica):''}</small>`:''}${p&&p.r=='falha'&&(cb.ab=='hoje'||cb.ab=='semana')?`<small class="dg-pres inc">Abasteceu há pouco: rode 10–15 min e leia de novo (pode ser só adaptação do flex).</small>`:''}</div>`}
+ if(tid=='vacidle'||tid=='vac2500')return`<div class="dg-pat"><small>Como o ponteiro ficou?</small><div class="dq-chs">${VACP.map(k=>`<button type="button" class="dq-ch${r.pat==k?' on':''}" aria-pressed="${r.pat==k}" onclick="DG.pat('${tid}','${k}')">${esc(PATS[k].t)}</button>`).join('')}</div>${r.pat&&PATS[r.pat].dica?`<small class="dg-pres falha">${esc(PATS[r.pat].dica)}</small>`:''}</div>`;
+ if(tid=='compwet'){const p=r.pat&&PATS[r.pat];return`<div class="dg-pat"><small>Digite a compressão molhada de cada cilindro (mesma ordem da seca). O app compara com a seca.</small>${p?`<small class="dg-pres falha">${esc(p.t)}</small>`:''}</div>`}
+ return''}
+const SWAPL={swapcoil:[['falha','A falha foi junto'],['ok','Ficou no cilindro'],['inc','A falha sumiu']],swapplug:[['falha','A falha foi junto'],['ok','Ficou no cilindro'],['inc','A falha sumiu']],swapinj:[['falha','A falha foi junto'],['ok','Ficou no cilindro'],['inc','A falha sumiu']]};
+
 /* 5) caso confirmado sozinho: 30 dias sem o carro voltar com o mesmo problema */
 let AUTOC=0;
 function autoConf(){if(AUTOC)return 0;AUTOC=1;const lim=dia30();let ch=0;
@@ -990,8 +1149,13 @@ function resumoHTML(){const C=casos();if(!C.length)return'';const mes=today().sl
   ok=C.filter(c=>c.conf=='ok').length,vol=C.filter(c=>c.conf=='falhou').length,cnt=(L,f)=>{const m=new Map();L.forEach(x=>{const k=f(x);if(k)m.set(k,(m.get(k)||0)+1)});return[...m.entries()].sort((a,b)=>b[1]-a[1])};
  const defs=cnt(C,c=>String(c.def||'').trim()).slice(0,5),mods=cnt(C,c=>modNome(c.veh)),tcs=cnt(C,c=>c.tc&&TESTS[c.tc]?TESTS[c.tc].n:'').slice(0,4);
  const st=(v,l)=>`<div><b>${v}</b><small>${l}</small></div>`;
- return`<div class="card dg-res"><div class="dg-rs">${st(M.length,'casos no mês')}${st(tm.length?tmTxt(tm.reduce((a,c)=>a+c.min,0)/tm.length*60000):'—','tempo médio')}${st(C.length?Math.round(ok/C.length*100)+'%':'—','confirmados')}${st(vol,vol==1?'voltou':'voltaram')}</div>
- <details><summary>O que mais aparece</summary>
+ const acerta=(df,t)=>{if(!df||!t)return false;const a=dkey(df),b=dkey(t);if(a==b||a.includes(b)||b.includes(a))return true;const ga=grp(df);return ga.length>0&&grp(t).some(g=>ga.includes(g))};
+ const A0=C.filter(c=>c.conf!='falhou'&&Array.isArray(c.prev0)&&c.prev0.length),A1=C.filter(c=>c.conf!='falhou'&&Array.isArray(c.prev)&&c.prev.length),pc=(n,L)=>L.length?Math.round(n/L.length*100)+'%':'—';
+ const a1=A0.filter(c=>acerta(c.def,c.prev0[0])).length,a3=A0.filter(c=>c.prev0.some(t=>acerta(c.def,t))).length,af=A1.filter(c=>acerta(c.def,c.prev[0])).length;
+ const porS=new Map();A1.forEach(c=>(c.sin||[]).forEach(s=>{const x=porS.get(s)||{n:0,ok:0};x.n++;if(acerta(c.def,c.prev[0]))x.ok++;porS.set(s,x)}));const PS=[...porS.entries()].filter(([,x])=>x.n>=2).sort((a,b)=>b[1].n-a[1].n).slice(0,5);
+ const acc=A0.length||A1.length?`<div class="dg-acc"><b>Acerto do guiado</b><div><span>De primeira<b>${pc(a1,A0)}</b></span><span>Nas 3 primeiras<b>${pc(a3,A0)}</b></span><span>Depois dos testes<b>${pc(af,A1)}</b></span></div><small class="muted">${plural(Math.max(A0.length,A1.length),'caso medido','casos medidos')} · conta a partir da 2.52</small></div>`:'';
+ return`<div class="card dg-res"><div class="dg-rs">${st(M.length,'casos no mês')}${st(tm.length?tmTxt(tm.reduce((a,c)=>a+c.min,0)/tm.length*60000):'—','tempo médio')}${st(C.length?Math.round(ok/C.length*100)+'%':'—','confirmados')}${st(vol,vol==1?'voltou':'voltaram')}</div>${acc}
+ <details><summary>O que mais aparece</summary>${PS.length?`<b class="dg-rh">Acerto por sintoma (depois dos testes)</b>${PS.map(([k,x])=>`<div class="dg-rl"><span>${esc(SYM[k]?SYM[k].t:k)}</span><b>${Math.round(x.ok/x.n*100)}% <small class="muted">(${x.n})</small></b></div>`).join('')}`:''}
  ${defs.length?`<b class="dg-rh">Defeitos mais comuns</b>${defs.map(([k,n])=>`<div class="dg-rl"><span>${esc(k)}</span><b>${n}</b></div>`).join('')}`:''}
  ${mods.length?`<b class="dg-rh">Por modelo</b>${mods.slice(0,4).map(([m,n])=>{const top=cnt(C.filter(c=>modNome(c.veh)==m),c=>String(c.def||'').trim())[0];return`<div class="dg-rl"><span>${esc(m)}${top?` <small class="muted">· ${esc(top[0])}</small>`:''}</span><b>${n}</b></div>`}).join('')}`:''}
  ${tcs.length?`<b class="dg-rh">Testes que mais acharam o defeito</b>${tcs.map(([k,n])=>`<div class="dg-rl"><span>${esc(k)}</span><b>${n}</b></div>`).join('')}`:''}
@@ -1282,6 +1446,19 @@ DG.TESTS=TESTS;DG.SIS=SISTEMAS;DG.ui=UI;Object.assign(DG,{
  renCaso(id,v){const c=casos().find(x=>x.id==id),n=String(v||'').trim();if(!c||!n)return;const o=c.os&&od(c.os);c.def=n;if(o&&o.dg&&o.dg.caso==id)o.dg.def=n;save();toast('Nome do defeito atualizado')},
  juntar(L){if(!Array.isArray(L)||L.length<2)return;const alvo=L[0];let n=0;casos().forEach(c=>{if(L.includes(String(c.def).trim())&&c.def!==alvo){c.def=alvo;n++;const o=c.os&&od(c.os);if(o&&o.dg&&o.dg.caso==c.id)o.dg.def=alvo}});save();render();toast(plural(n,'caso renomeado','casos renomeados')+' para “'+alvo+'”')}
 });
+{const st2=document.createElement('style');st2.textContent=`
+.dg-ctx{padding:12px 14px}.dg-ctx>summary{cursor:pointer;list-style:none}.dg-ctx>summary::-webkit-details-marker{display:none}.dg-ctx>summary b{display:block}.dg-ctx>summary small{display:block;color:var(--mut);font-size:13px;margin-top:2px}.dg-ctx[open]>summary{margin-bottom:10px}
+.dq-chs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.dq-ch{margin:0;padding:6px 11px;min-height:34px;border-radius:99px;font-size:14px;font-weight:600;border:1px solid var(--ln);background:transparent;color:var(--mut);display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.dq-ch.on,.dq-ch:has(input:checked){background:color-mix(in srgb,var(--hi) 22%,transparent);border-color:var(--hi);color:var(--ink)}.dq-ch input{margin:0;width:auto;min-height:0}
+.dq-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 8px}.dq-row>span{flex:0 0 100%;font-size:13px;color:var(--mut);font-weight:600}
+.dq-ent{display:block;font-size:13px;color:var(--mut);margin:4px 0 10px}.dq-ent input{display:block;width:120px;margin-top:4px}
+.dq-vivo small{display:block;color:#D0553A;font-size:13px;margin-top:6px}.dq-vivo button{margin:0}
+.dg-pat{margin:8px 0 4px}.dg-pat>small{display:block;color:var(--mut);font-size:13px;margin-bottom:6px}.dg-pat2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dg-pat2 label{font-size:13px;color:var(--mut);margin:0}.dg-pat2 input{margin-top:4px}
+.dg-pres{display:block;font-size:13px;margin:6px 0 0;font-weight:600}.dg-pres.falha{color:#D0553A}.dg-pres.ok{color:#3FA56C}.dg-pres.inc{color:#D9A21B}
+.dg-cp{margin:8px 0;padding:9px 11px;border-radius:10px;font-size:14px;line-height:1.35}.dg-cp.ok{background:color-mix(in srgb,#2E8B57 16%,transparent);color:var(--ink)}.dg-cp.pend{background:color-mix(in srgb,var(--hi) 16%,transparent)}.dg-cp.av{background:color-mix(in srgb,#B4472E 16%,transparent)}
+.dg-seg3 button{font-size:13.5px;padding-left:6px;padding-right:6px}
+.dg-acc{border-top:1px solid var(--ln);margin-top:10px;padding-top:10px}.dg-acc>b{display:block;font-size:14px;margin-bottom:6px}.dg-acc>div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.dg-acc span{font-size:12.5px;color:var(--mut)}.dg-acc span b{display:block;font-size:20px;color:var(--ink)}.dg-acc>small{display:block;margin-top:6px;font-size:12px}
+`;document.head.appendChild(st2)}
 G.DG=DG;G.DGtab=DGtab;G.DGrec=DGrec;G.dgInfo=dgInfo;G.Vdiag=Vdiag;
 /* "+ Diagnosticar": depois de criar a O.S., abre direto na aba Diagnóstico */
 if(typeof go=='function'){const _go=go;go=function(v,id,tab,f){if(v=='order'&&DG.next){DG.next=null;return _go('diag',id)}return _go(v,id,tab,f)}}
