@@ -355,6 +355,13 @@
   function pintaBusca() { const el = $q('#esq-res'); if (el) { el.innerHTML = resBusca(); miniaturas() } const c = $q('#esq-corpo'); if (c) c.style.display = B.q.trim() ? 'none' : '' }
 
   /* ---------- tela principal ---------- */
+  /* 2.55.1: o moderno.js leva o título para a barra do topo e o botão da direita sumia; os botões do dono ficam no corpo */
+  function botoesDono(vv) {
+    if (!DONO()) return '';
+    esqCarrega('esqadm').catch(() => {});
+    return `<div class="bar esq-dono" style="margin:0 0 14px"><button type="button" class="pr esq-bt" onclick="go('esqadm',null,null,${vv ? `{novo:1,vv:'${vv}'}` : '{novo:1}'})">+ Adicionar esquema</button><button type="button" class="esq-bt" onclick="esqImpDaqui()">Importar pacote (.zip)</button><button type="button" class="esq-bt" onclick="go('esqadm')">Cadastro</button></div>`;
+  }
+  G.esqImpDaqui = function () { if (typeof esqImp == 'function') return esqImp(); esqCarrega('esqadm').then(() => esqImp()).catch(() => go('esqadm')) };
   function topo(extra) {
     return head({ ico: 'esq', kick: 'Oficina', title: 'Esquemas Elétricos', c: PCOL.esq,
       right: DONO() ? `<button type="button" class="sm" onclick="go('esqadm')" style="min-height:44px">Cadastro</button>` : '', sub: extra || '' });
@@ -389,7 +396,7 @@
     return topo() + `<div class="esq-box">${aviso()}
       <div class="esq-busca">${ICON('search')}<input id="esq-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar: gol 1.0 injeção, relé bomba onix…" aria-label="Buscar esquemas" value="${e(B.q)}" oninput="esqBusca(this.value)"></div>
       <div id="esq-res" aria-live="polite"></div>
-      <div id="esq-corpo">${cli}${temCat ? cascata() : ''}${ligar}${corpo}</div></div>`;
+      <div id="esq-corpo">${cli}${temCat ? botoesDono(vv && vv.id) : ''}${temCat ? cascata() : ''}${ligar}${corpo}</div></div>`;
   };
 
   function inicio() {

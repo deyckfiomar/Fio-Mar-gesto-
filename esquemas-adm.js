@@ -94,6 +94,8 @@
   /* ---------- importar pacote .zip (esquemas-imp.js, carregado junto com o cadastro) ---------- */
   let IMP = null;
   const carregaImp = () => IMP = IMP || new Promise((ok, no) => { if (ESQ.telaImp) return ok(); const s = document.createElement('script'); s.src = 'esquemas-imp.js?v=' + APP_VER; s.onload = ok; s.onerror = () => { IMP = null; no(new Error('não carregou')) }; document.head.appendChild(s) });
+  /* o dono já deixa o importador carregado: o botão abre o seletor de arquivo na hora */
+  if (DONO()) carregaImp().catch(() => {});
   G.esqImp = function () { if (typeof esqImpEscolhe == 'function') return esqImpEscolhe(); carregaImp().then(() => esqImpEscolhe()).catch(() => toast('Não deu para abrir o importador. Confira a internet.', 'erro')) };
 
   /* ---------- carro (marca → modelo → anos, motor, versão) ---------- */
