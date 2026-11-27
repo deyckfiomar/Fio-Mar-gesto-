@@ -36,16 +36,26 @@ Só criações; nenhuma tabela existente foi alterada. O SQL fica no kit de test
   - Ver = membro (link assinado); enviar, trocar e apagar = dono.
 
 ## Como funciona no app
-- **Busca:** em cascata marca → modelo → ano → motor/versão. Se só sobra uma opção, ela é escolhida sozinha. A busca livre usa o servidor; sem internet, procura na cópia do aparelho.
-- **Visualizador:**
-  - pinça, arrastar, toque duplo e roda do mouse;
-  - páginas do PDF, que é redesenhado com mais nitidez quando o zoom aumenta;
-  - modo noite (inverte as cores), brilho e tela cheia (tenta deitar a tela);
-  - na paisagem, ocupa a tela.
+- **Tela inicial (2.57):**
+  - busca e, para o dono, um botão só: **Gerenciar** (+ Adicionar esquema, Importar pacote, Cadastro);
+  - cascata marca → modelo → ano → motor/versão. Se só sobra uma opção, ela é escolhida sozinha. Com o carro escolhido, a cascata recolhe e fica o cartão do carro, com "Trocar" e "baixar o carro inteiro";
+  - **Recentes** (neste aparelho), Favoritos, Baixados e Carros. Os carros mostram a sigla da marca (só letras); os sem esquema vão para o fim, mais apagados;
+  - a busca livre usa o servidor; sem internet, procura na cópia do aparelho.
+- **Visualizador em modo foco (2.57):**
+  - ocupa a tela toda: somem o topo e a barra de baixo do app;
+  - barra fina em cima (voltar, título, favorito, ⋯) e embaixo (páginas, noite, tela cheia, **Pinos**). Um toque no desenho esconde as barras;
+  - pinça, arrastar, toque duplo (aproxima no ponto), roda do mouse; zoom até 10×. Com zoom, só o pedaço que aparece é redesenhado nítido;
+  - a próxima página do PDF já fica desenhada;
+  - ⋯: brilho, zoom pelos botões, tela cheia, marcar ponto, anotação, baixar, anexar à O.S., editar (dono);
+  - **gaveta** (embaixo em pé; do lado deitado) com Conectores, Anotações e Sobre. A alça aumenta ou diminui;
+  - **pinos em tabela** (Pino | Cor | Função, com o valor embaixo; em tela larga, Valor numa coluna), com filtro quando há mais de 5 pinos ("12", "pino 12", "VD", "verde", "sonda");
+  - aberto pela busca, a gaveta abre com os pinos que combinam destacados.
 - **CSP do app:** imagens só de `blob:`/`data:`. Por isso o arquivo vem pelo link assinado (`connect-src *.supabase.co`) e é mostrado como `blob:`. SVG é mostrado sempre por `<img>`, para nenhum script de dentro do arquivo rodar.
 - **Offline:**
   - "Baixar" guarda no IndexedDB o arquivo, a miniatura, os conectores, os pinos, os fusíveis do carro e as suas anotações;
-  - o catálogo fica sempre guardado;
+  - o catálogo fica sempre guardado e aparece na hora (a internet atualiza logo depois);
+  - os 3 últimos arquivos abertos ficam no aparelho (abrem na hora, até sem internet);
+  - PDF sem miniatura: a da página 1 fica guardada no aparelho quando é aberto;
   - o service worker guarda o pdf.js num cache fixo (a versão está no nome da pasta).
 - **Integração com a gestão:**
   - **Veículo do cliente:** botão "Ver esquemas". O carro do cliente fica ligado a um carro dos esquemas pelo campo `esqv`, no JSON. Quando ainda não está ligado, o app sugere os parecidos.
@@ -60,5 +70,6 @@ Só criações; nenhuma tabela existente foi alterada. O SQL fica no kit de test
 | Cadastrar, mudar ou apagar catálogo e arquivos | ✔ | ✘ | ✘ |
 
 ## Testes
+- `e2e-esq257.js` (kit): modo foco, pinos em tabela, tela inicial e velocidade (2.57).
 - `e2e-esq254.js` (kit): o módulo inteiro, com dados **fictícios** (`esq-seed.js` e `esq-teste/`, gerados por `gera_esq_teste.py`). Esses dados vão só para o Supabase falso dos testes, nunca para o banco real.
 - `sql/teste_esquemas_rls.sql`: regras do banco com usuários de teste. Roda e desfaz tudo no fim.

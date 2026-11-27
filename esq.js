@@ -40,6 +40,10 @@
     };
   });
 
+  /* 2.57: com o app parado, o módulo já carrega (a primeira abertura fica instantânea) */
+  const cedo = () => { if (typeof SES != 'undefined' && SES && typeof OF != 'undefined' && OF) esqCarrega('esq').catch(() => {}) };
+  setTimeout(() => { if ('requestIdleCallback' in window) requestIdleCallback(cedo, { timeout: 8000 }); else cedo() }, 4000);
+
   /* "Ver esquemas": abre o módulo já filtrado pelo carro (cv = veículo do cliente; os = O.S. de origem) */
   G.esqVeh = (vid) => go('esq', null, null, { cv: vid });
   G.esqOS = (oid) => { const o = od(oid); go('esq', null, null, { cv: (o && o.veh) || '', os: oid }) };
