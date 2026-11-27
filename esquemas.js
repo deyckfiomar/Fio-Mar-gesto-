@@ -153,10 +153,15 @@
   /* ---------- cores dos fios ---------- */
   const CORES = { PT: ['Preto', '#111111'], VM: ['Vermelho', '#D32F2F'], AM: ['Amarelo', '#FBC02D'], AZ: ['Azul', '#1E63C6'], VD: ['Verde', '#2E8B3E'], BR: ['Branco', '#F5F5F5'], MR: ['Marrom', '#7B4A26'], CZ: ['Cinza', '#8A8F96'], LJ: ['Laranja', '#EF7D1A'], RS: ['Rosa', '#E97FB0'], VI: ['Violeta', '#7E4BB5'] };
   const NOMECOR = {}; Object.entries(CORES).forEach(([k, [n]]) => { NOMECOR[nrm(n)] = k }); Object.assign(NOMECOR, { roxo: 'VI', lilas: 'VI', bege: null });
-  const sigla = (t) => { const s = String(t || '').trim(); const u = s.toUpperCase(); if (CORES[u]) return u; const n = nrm(s); return NOMECOR[n] || null };
+  const SIN = { LR: 'LJ', PR: 'PT' }; /* outras siglas comuns (LR = laranja) */
+  const sigla = (t) => { const s = String(t || '').trim(); const u = s.toUpperCase(); if (CORES[u]) return u; if (SIN[u]) return SIN[u]; const n = nrm(s); return NOMECOR[n] || null };
   /* "VM/BR" = vermelho com listra branca */
   function corFio(txt) {
-    const t = String(txt || '').trim(); if (!t) return '<span class="muted">—</span>';
+    let t = String(txt || '').trim(); if (!t) return '<span class="muted">—</span>';
+    /* "N/I" = cor não informada no original; "*" = cor provável (conferir no chicote) */
+    if (/^n\/?i$/i.test(t)) return '<span class="esq-cor" title="cor não informada"><span class="esq-fio q" aria-hidden="true"></span><span class="muted" style="font-weight:600">não informada</span></span>';
+    const prov = /\*/.test(t); t = t.replace(/\*/g, '').trim();
+    if (prov) return corFio(t).replace('</span>' + e(t.toUpperCase()) + '</span>', '</span>' + e(t.toUpperCase()) + ' <small style="font-weight:700;color:#C98200">conferir</small></span>').replace('title="', 'title="provável: ');
     const p = t.split(/\s*[\/\-–+]\s*/).filter(Boolean), a = sigla(p[0]), b = p[1] ? sigla(p[1]) : null;
     const nome = [a ? CORES[a][0] : p[0], p[1] ? (b ? CORES[b][0] : p[1]) : ''].filter(Boolean).join(' com listra ').toLowerCase();
     const sw = !a ? '<span class="esq-fio q" aria-hidden="true"></span>' : `<span class="esq-fio${b ? '' : ' liso'}" style="--a:${CORES[a][1]};--b:${b ? CORES[b][1] : CORES[a][1]}" aria-hidden="true"></span>`;
@@ -683,8 +688,8 @@
   function repinta() { if (S.v != 'esqv') return; const x = esqm(S.id), p = $q('#esq-painel'); if (x && p) p.innerHTML = painel(x, (S.f || {}).vt || 'pin'); pinta() }
   function painelInfo(x) {
     const v = veic(x.veiculo_id), s = sist(x.sistema_id);
-    const L = [['Carro', vNome(v)], ['Anos', anos(v)], ['Combustível', v && v.combustivel], ['Sistema', s.nome], ['Arquivo', (TIPO[x.tipo] || 'Sem arquivo') + (x.tipo == 'pdf' ? ' · ' + plural(VW.id == x.id ? VW.n : x.paginas || 1, 'página', 'páginas') : '')], ['Etiquetas', (x.tags || []).join(', ')], ['Descrição', x.descricao]].filter((r) => r[1]);
-    return `<table class="esq-tab"><tbody>${L.map(([a, b]) => `<tr><th scope="row" style="width:34%">${a}</th><td>${e(b)}</td></tr>`).join('')}</tbody></table>
+    const L = [['Carro', vNome(v)], ['Anos', anos(v)], ['Combustível', v && v.combustivel], ['Sistema', s.nome], ['Arquivo', (TIPO[x.tipo] || 'Sem arquivo') + (x.tipo == 'pdf' ? ' · ' + plural(VW.id == x.id ? VW.n : x.paginas || 1, 'página', 'páginas') : '')], ['Etiquetas', (x.tags || []).filter((t) => !/^(pacote|item):/.test(t)).join(', ')], ['Descrição', x.descricao]].filter((r) => r[1]);
+    return `<table class="esq-tab"><tbody>${L.map(([a, b]) => `<tr><th scope="row" style="width:34%">${a}</th><td style="white-space:pre-wrap;overflow-wrap:anywhere">${e(b)}</td></tr>`).join('')}</tbody></table>
       ${C.off[x.id] ? `<p class="muted" style="font-size:14px">Guardado no aparelho em ${e(new Date(C.off[x.id].em).toLocaleDateString('pt-BR'))}${C.off[x.id].tam ? ' · ' + (C.off[x.id].tam / 1048576).toFixed(1).replace('.', ',') + ' MB' : ''}.</p>` : ''}
       ${DONO() ? `<div class="bar"><button type="button" class="esq-bt" onclick="go('esqadm',null,null,{ed:'${x.id}'})">Editar no cadastro</button></div>` : ''}`;
   }

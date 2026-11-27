@@ -56,6 +56,8 @@
     if (!C.cat) return topo('Cadastro') + `<div class="esq-msg erro" role="alert">Não deu para carregar. ${e(C.erro)}<div class="bar"><button type="button" class="pr esq-bt" onclick="ESQ.C.erro='';ESQ.carregaCat(1)">Tentar de novo</button></div></div>`;
     const f = S.f || {};
     if (C.velha) return topo('Cadastro') + '<div class="esq-msg" role="alert">Sem internet: o cadastro precisa de conexão. Você ainda pode ver os esquemas baixados.</div>';
+    carregaImp().catch(() => {});
+    if (f.imp) { if (!ESQ.telaImp) { carregaImp().then(() => { if (S.v == 'esqadm') render() }).catch(() => {}); return topo('Importar pacote') + '<div class="card esq-load"><span class="esq-spin"></span>Abrindo o importador…</div>' } return ESQ.telaImp(topo) }
     if (f.ed || f.novo) return telaEsq(f);
     if (f.car) return telaCarro(f);
     const aba = f.aba || 'esq';
@@ -69,7 +71,7 @@
 
   function abaEsq() {
     const L = cat().esquemas.slice().sort((a, b) => natural(vNome(veic(a.veiculo_id)), vNome(veic(b.veiculo_id))) || natural(a.titulo, b.titulo));
-    return `<div class="bar" style="margin:0 0 12px"><button type="button" class="pr esq-bt" onclick="go('esqadm',null,null,{novo:1})">+ Enviar esquema</button></div>` +
+    return `<div class="bar" style="margin:0 0 12px"><button type="button" class="pr esq-bt" onclick="go('esqadm',null,null,{novo:1})">+ Enviar esquema</button><button type="button" class="esq-bt" onclick="esqImp()">Importar pacote (.zip)</button></div>` +
       (L.length ? `<div class="esq-lista">${L.map((x) => `<button type="button" class="esq-it" onclick="go('esqadm',null,null,{ed:'${x.id}'})"><span class="esq-th" data-esqmin="${x.id}">${svgi('esq')}</span><span class="esq-tx"><b>${e(x.titulo)}</b><small>${e([sist(x.sistema_id).nome, vNome(veic(x.veiculo_id))].filter(Boolean).join(' · '))}</small>${x.arquivo_path ? '' : '<small style="color:#B4472E">Sem arquivo</small>'}</span></button>`).join('')}</div>`
         : '<div class="esq-msg">Nenhum esquema ainda. Cadastre o carro e envie o arquivo (PDF, foto ou SVG).</div>') + agendaMin();
   }
@@ -88,6 +90,11 @@
       <div class="bar" style="margin:0 0 12px"><button type="button" class="pr esq-bt" onclick="esqSis()">+ Sistema</button></div>` +
       S0.map((s) => `<div class="esq-row"><span class="tx"><b>${e(s.nome)}</b><small>${s.oficina_id ? 'Da oficina' : 'Padrão'} · ${plural(uso[s.id] || 0, 'esquema', 'esquemas')}</small></span>${s.oficina_id ? `<button type="button" class="esq-bt" onclick="esqSis('${s.id}')">Editar</button>` : ''}</div>`).join('');
   }
+
+  /* ---------- importar pacote .zip (esquemas-imp.js, carregado junto com o cadastro) ---------- */
+  let IMP = null;
+  const carregaImp = () => IMP = IMP || new Promise((ok, no) => { if (ESQ.telaImp) return ok(); const s = document.createElement('script'); s.src = 'esquemas-imp.js?v=' + APP_VER; s.onload = ok; s.onerror = () => { IMP = null; no(new Error('não carregou')) }; document.head.appendChild(s) });
+  G.esqImp = function () { if (typeof esqImpEscolhe == 'function') return esqImpEscolhe(); carregaImp().then(() => esqImpEscolhe()).catch(() => toast('Não deu para abrir o importador. Confira a internet.', 'erro')) };
 
   /* ---------- carro (marca → modelo → anos, motor, versão) ---------- */
   G.esqCarro = function (id, depois) {
@@ -299,6 +306,7 @@
     return { min, paginas };
   }
   ESQ.preparaMin = preparaMin;
+  ESQ.adm = { achaMarca, achaModelo, salvaCat };
   G.esqEsqSalva = async function (form) {
     const f = S.f || {}, x = f.ed ? esqm(f.ed) : null;
     const vv = form.vv.value, si = form.si.value, ti = txt(form, 'ti'), fl = form.arq.files && form.arq.files[0];
