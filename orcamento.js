@@ -94,7 +94,7 @@ details.qmore[open]>summary{color:var(--ink)}
      ${!ro && !env ? `<button type="button" onclick="closeM();approve()">Cliente aprovou pessoalmente</button>` : ''}
      ${!ro && q.status != 'Recusado' ? `<button type="button" onclick="closeM();S.q.status='Recusado';saveQuote(1);render()">Marcar recusado</button>` : ''}
      ${DONO() ? `<label>Validade no PDF<input inputmode="numeric" value="${qv}" onchange="db.cfg=db.cfg||{};db.cfg.qval=Math.max(1,parseInt(this.value)||7);save();toast('Validade: '+db.cfg.qval+' dias')"> dias</label>` : ''}
-     ${q.novo || !DONO() ? '' : `<button type="button" class="dg" onclick="closeM();if(confirm('Excluir o orçamento Nº ${ee(q.n)}?'))delQuote()">Excluir</button>`}</div>`)
+     ${q.novo || !DONO() ? '' : `<button type="button" class="dg" onclick="closeM();desfazivel(()=>delQuote(),'Orçamento Nº ${ee(q.n)} excluído',()=>editQuote('${ee(q.id)}'))">Excluir</button>`}</div>`)
   };
 
   /* ---------- 8) salvar sozinho ---------- */

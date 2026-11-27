@@ -123,7 +123,7 @@ G.msgs=function(cli,osId,extra){const c=cl(cli),o=osId?od(osId):null;if(!c.id)re
 G.msgVai=function(k){const X=G.MSGX;if(!X)return;const c=cl(X.cli),o=X.osId?od(X.osId):null;wa(c.tel,msgMonta(k,c,o,X.extra));if(k=='pronto'&&o&&!o.avisado){o.avisado=today();save()}closeM();render(1)};
 G.msgsEdit=function(){sheet('Textos das mensagens',`<p class="muted" style="margin:-4px 0 10px;font-size:13px">Use {nome}, {carro}, {valor}, {os}, {motivo} e {oficina}: o app troca pelo dado certo na hora de enviar.</p>
  <form id="msgf" onsubmit="event.preventDefault();msgsSalva()">${MSG0.map(([k,t])=>`<label>${t}<textarea name="${k}" rows="4">${e(msgTxt(k))}</textarea></label>`).join('')}
- <div class="bar" style="margin:10px 0 0"><button class="pr">Salvar textos</button><button type="button" onclick="if(confirm('Voltar todos os textos para o padrão?')){db.cfg.msgs={};save();msgsEdit()}">Voltar ao padrão</button></div></form>`)};
+ <div class="bar" style="margin:10px 0 0"><button class="pr">Salvar textos</button><button type="button" onclick="desfazivel(()=>{db.cfg.msgs={};save();msgsEdit()},'Textos voltaram ao padrão',()=>msgsEdit())">Voltar ao padrão</button></div></form>`)};
 G.msgsSalva=function(){const f=$q('#msgf');if(!f)return;db.cfg=db.cfg||{};const m={};MSG0.forEach(([k,,d])=>{const v=f[k].value.trim();if(v&&v!=d)m[k]=v});db.cfg.msgs=m;save();closeM();toast('Textos salvos')};
 
 /* =============== 11) Lembrete de retorno =============== */

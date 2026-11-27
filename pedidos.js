@@ -235,7 +235,8 @@ function cotTags(p){const L=p.cot||[],cv=L.filter(c=>+c.v>0),cd=L.filter(c=>c.di
 G.pdCotSet=function(id,k,campo,v){const p=ped(id),c=p&&(p.cot||[])[k];if(!c)return;v=String(v||'').trim();c[campo]=v===''?null:campo=='v'?(isFinite(nBR(v))?nBR(v):null):Math.max(0,parseInt(v)||0);save();cotTags(p);render(1)};
 G.pdCotAdd=function(id,n,t){const p=ped(id);n=String(n||'').trim();if(!p)return;if(!n)return toast('Escreva o nome do fornecedor');const L=COT(p);if(L.some(c=>nrm(c.forn)==nrm(n)))return toast(n+' já está na cotação');
  L.push({forn:n,ftel:String(t||'').trim()||((PD().find(y=>y.ftel&&nrm(y.forn||'')==nrm(n))||{}).ftel||'')});save();pdCot(id);render()};
-G.pdCotRm=function(id,k){const p=ped(id);if(!p||!p.cot)return;p.cot.splice(k,1);save();pdCot(id);render()};
+G.pdCotRm=function(id,k){const p=ped(id);if(!p||!p.cot||!p.cot[k])return;const c=p.cot[k],ir=()=>{p.cot.splice(k,1);save();pdCot(id);render()};
+ if(typeof desfazivel!='function')return ir();desfazivel(ir,(c.forn||'Fornecedor')+' tirado da cotação',()=>pdCot(id))};
 G.pdCotWa=async function(id,k){const p=ped(id),c=p&&(p.cot||[])[k];if(!c||!p.itens.length)return;
  const txt=`Olá, ${c.forn}! Aqui é da ${empNome()}.\n\nPode me passar o valor e o prazo destas peças (pedido Nº ${p.n})?\n${p.itens.map((i,j)=>`${j+1}. ${i.nome} — ${nShow(i.q)} ${i.un||'un'}${i.carro?' ('+i.carro+')':''}`).join('\n')}\n\nObrigado!`;
  const ok=await waDoc(genPed,{...p,forn:c.forn,ftel:c.ftel},c.ftel,txt);if(ok){c.env=1;save()}};

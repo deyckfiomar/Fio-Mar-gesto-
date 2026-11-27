@@ -106,8 +106,9 @@ G.psCatEd=function(i,t2){const c=i>=0?PC()[i]:null,n=prompt(c?'Novo nome da cate
  const tt=c?c.t:t2;if(PC().some(x=>x!==c&&x.t==tt&&nrm(x.n)==nrm(nm)))return toast('Já existe uma categoria com esse nome','av');
  if(c){const ant=c.n;c.n=nm;PS().forEach(x=>{if(tp(x)==tt&&x.cat==ant)x.cat=nm})}else PC().push({t:tt,n:nm,c:PAL[PC().filter(x=>x.t==tt).length%PAL.length]});save();psCats();render()};
 G.psCatCor=function(i){const c=PC()[i];if(!c)return;c.c=PAL[(PAL.indexOf(c.c)+1)%PAL.length];save();psCats();render()};
-G.psCatDel=function(i){const c=PC()[i];if(!c)return;const n=PS().filter(x=>tp(x)==c.t&&x.cat==c.n).length;if(!confirm('Excluir a categoria “'+c.n+'”?'+(n?'\n\n'+plural(n,'lançamento vai','lançamentos vão')+' para “'+outro(c.t)+'”.':'')))return;
- PS().forEach(x=>{if(tp(x)==c.t&&x.cat==c.n)x.cat=outro(c.t)});db.pcats=PC().filter(x=>x!==c);save();psCats();render()};
+G.psCatDel=function(i){const c=PC()[i];if(!c)return;const n=PS().filter(x=>tp(x)==c.t&&x.cat==c.n).length;const ir=()=>{PS().forEach(x=>{if(tp(x)==c.t&&x.cat==c.n)x.cat=outro(c.t)});db.pcats=PC().filter(x=>x!==c);save();psCats();render()};
+ /* 2.53: sem "Tem certeza?": exclui na hora e oferece Desfazer */
+ if(typeof desfazivel!='function')return ir();desfazivel(ir,'Categoria “'+c.n+'” excluída'+(n?' · '+plural(n,'lançamento foi','lançamentos foram')+' para “'+outro(c.t)+'”':''),()=>psCats())};
 
 /* ---------- entender a frase falada ---------- */
 const NUM={zero:0,um:1,uma:1,dois:2,duas:2,tres:3,três:3,quatro:4,cinco:5,seis:6,sete:7,oito:8,nove:9,dez:10,onze:11,doze:12,treze:13,quatorze:14,catorze:14,quinze:15,dezesseis:16,dezessete:17,dezoito:18,dezenove:19,vinte:20,trinta:30,quarenta:40,cinquenta:50,sessenta:60,setenta:70,oitenta:80,noventa:90,cem:100,cento:100,duzentos:200,trezentos:300,quatrocentos:400,quinhentos:500,seiscentos:600,setecentos:700,oitocentos:800,novecentos:900};

@@ -33,20 +33,35 @@ G.finResumo=function(){if(typeof finDiaDados!='function')return'';const hj=today
 /* ---------- 2) Desfazer ---------- */
 let UNDO=null,UNDOT=0;
 const snap=()=>JSON.stringify(db);
-G.desfazivel=function(fn,msg){const antes=snap(),tn=typeof TOASTN=='number'?TOASTN:0,vw={v:S.v,id:S.id,tab:S.tab};let r;try{r=fn()}catch(x){throw x}
+G.desfazivel=function(fn,msg,depois){const antes=snap(),tn=typeof TOASTN=='number'?TOASTN:0,vw={v:S.v,id:S.id,tab:S.tab};let r;try{r=fn()}catch(x){throw x}
  if(snap()===antes)return r;/* nada mudou (ex.: bloqueado) */
  const tt=$q('#toast .ttx'),txt=msg||(typeof TOASTN=='number'&&TOASTN!=tn&&tt?tt.childNodes[0]&&tt.childNodes[0].textContent:'')||'Apagado';
- UNDO={s:antes,...vw};mostraUndo(txt);return r};
+ UNDO={s:antes,...vw,depois};mostraUndo(txt);return r};
+/* 2.53: Desfazer de algo que não está no db (rascunho, janela com o que foi digitado) */
+G.desfazCom=function(msg,fn){if(typeof fn!='function')return;UNDO={fn};mostraUndo(msg)};
 function mostraUndo(txt){const o=$q('#toast');if(!o)return;if(typeof TOASTN=='number')TOASTN++;o.className='t-ok tundo';
  o.innerHTML=`<span class="tic">✓</span><span class="ttx">${e(txt)}</span><button type="button" class="tundob" onclick="desfaz()">Desfazer</button>`;o.style.display='flex';
  clearTimeout(typeof TOT!='undefined'?TOT:0);clearTimeout(UNDOT);UNDOT=setTimeout(()=>{if(o.classList.contains('tundo'))o.style.display='none';UNDO=null},7000)}
-G.desfaz=function(){if(!UNDO)return;const u=UNDO;UNDO=null;clearTimeout(UNDOT);const d=JSON.parse(u.s);
+G.desfaz=function(){if(!UNDO)return;const u=UNDO;UNDO=null;clearTimeout(UNDOT);if(u.fn){u.fn();toast('Desfeito');return}const d=JSON.parse(u.s);
  Object.keys(db).forEach(k=>{if(!(k in d))delete db[k]});Object.assign(db,d);save();
- if(['order','quote','recibo'].includes(u.v)&&u.id){S.v=u.v;S.id=u.id;S.tab=u.tab}closeM&&closeM(1);render();toast('Desfeito')};
+ if(['order','quote','recibo'].includes(u.v)&&u.id){S.v=u.v;S.id=u.id;S.tab=u.tab}
+ /* o orçamento aberto aponta para o objeto de antes: troca pelo restaurado */
+ if(S.q&&S.q.id&&!S.q.novo){const q=(db.quotes||[]).find(x=>x.id==S.q.id);if(q)S.q=q}
+ closeM&&closeM(1);render();if(typeof u.depois=='function')try{u.depois()}catch(x){}toast('Desfeito')};
 /* "Toque de novo para confirmar" vira apagar na hora com Desfazer.
-   Continua pedindo dois toques o que mexe fora dos dados da oficina (equipe, bloqueio, limpar tudo, estorno de nota). */
-const SEMDESF=/recusarReq|statusOf|limparSim|entDesfazer/;
+   Continua pedindo dois toques o que mexe fora dos dados da oficina (equipe, bloqueio, limpar tudo, estorno de nota).
+   2.53: "Remover" colaborador entrou na lista (antes saía com um toque só e sem Desfazer). */
+const SEMDESF=/recusarReq|removeColab|statusOf|limparSim|entDesfazer/;
 if(typeof confirmDel=='function'){const _cd=confirmDel;G.confirmDel=confirmDel=function(b,fn){if(SEMDESF.test(String(fn)))return _cd(b,fn);return desfazivel(fn)}}
+/* ---------- 2.53: remover sem perguntar, com Desfazer ---------- */
+/* orçamento: item e foto (o orçamento pode ainda não estar no db, então devolve no mesmo lugar) */
+G.qItemRm=function(n){const q=S.q;if(!q||!q.items||!q.items[n])return;const i=q.items.splice(n,1)[0];render();
+ desfazCom('Item tirado: '+(i.d||'item'),()=>{if(S.q!==q){S.q=q;go('quote')}q.items.splice(Math.min(n,q.items.length),0,i);render()})};
+G.qFotoRm=function(n){const q=S.q;if(!q||!q.fotos||!q.fotos[n])return;const f=q.fotos.splice(n,1)[0];render();
+ desfazCom('Foto tirada do orçamento',()=>{if(S.q!==q){S.q=q;go('quote')}q.fotos.splice(Math.min(n,q.fotos.length),0,f);render()})};
+/* O.S.: foto da vistoria e foto do laudo */
+G.osFotoRm=function(n){const o=od(S.id);if(!o||!o.fotos||!o.fotos[n])return;desfazivel(()=>{o.fotos.splice(n,1);save();render()},'Foto removida')};
+if(typeof lFotoDel=='function'){const _lf=lFotoDel;G.lFotoDel=lFotoDel=function(i){return desfazivel(()=>_lf(i),'Foto do laudo removida')}}
 if(typeof rmOS=='function'){const _rm=rmOS;G.rmOS=rmOS=function(n){const o=od(S.id),i=o&&o.items[n];return desfazivel(()=>_rm(n),i?'Item removido: '+i.d:'Item removido')}}
 if(typeof stMuda=='function'){const _sm=stMuda;G.stMuda=stMuda=function(id,v){const o=od(id),a=o&&o.status;if(!o||a==v)return _sm(id,v);return desfazivel(()=>_sm(id,v),'O.S. '+o.num+': '+a+' → '+v)}}
 

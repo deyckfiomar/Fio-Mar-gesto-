@@ -232,7 +232,8 @@ const _waQuote=G.waQuote;if(typeof _waQuote=='function')G.waQuote=waQuote=async 
 if(typeof render=='function'&&typeof SES!='undefined'&&SES)setTimeout(()=>{try{render()}catch(x){}},0);
 /* ---------- orçamento não se perde: ao sair da tela ele é guardado como rascunho ---------- */
 function qGuarda(){const q=S.q;if(S.v!='quote'||!q)return true;const tem=(q.items||[]).length||(q.obs||'').trim()||(q.fotos||[]).length;
- if(q.novo){if(!tem)return true;if(!q.cli)return confirm('Este orçamento ainda não tem cliente e vai ser perdido.\n\nSair mesmo assim?');
+ if(q.novo){if(!tem)return true;if(!q.cli){/* 2.53: sem pergunta; sai e oferece Desfazer, que volta ao orçamento como estava */
+   if(typeof desfazCom=='function')setTimeout(()=>desfazCom('Orçamento sem cliente descartado',()=>{S.q=q;go('quote')}),0);return true}
   _saveQuote(1);toast('Orçamento Nº '+q.n+' guardado como rascunho');return true}
  if(q.cli&&db.quotes.includes(q))save();return true}
 const _goQ=go;G.go=go=function(k,...r){if(S.v=='quote'&&!(k=='quote')&&!qGuarda())return;return _goQ(k,...r)};

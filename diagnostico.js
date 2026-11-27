@@ -744,7 +744,7 @@ const DG={
   const fab=added.find(x=>{const r=lookupV(x,vOf(o));return r&&r.auto=='fab'});
   if(fab){toast(fab+' é de fabricante: preenchi uma sugestão pelo tipo do código. Toque em Editar para ajustar');return}
   const n=$('#dgcode');if(n&&!c)n.focus();if(added.length)toast(added.length==1?'Código '+added[0]+' adicionado':added.length+' códigos adicionados');else if(ok.length)toast('Esse código já foi adicionado')},
- rmCode(c){const o=cur();if(!o)return;const d=dgOf(o);d.cod=d.cod.filter(x=>x!=c);commit(o);render()},
+ rmCode(c){const o=cur();if(!o)return;const d=dgOf(o),ir=()=>{d.cod=d.cod.filter(x=>x!=c);commit(o);render()};if(typeof desfazivel!='function')return ir();desfazivel(ir,'Código '+c+' tirado')},
  addSym(id){const o=cur();if(!o)return;const d=dgOf(o);if(!d.sin.includes(id))d.sin.push(id);UI.sym='';commit(o);render();toast('Sintoma adicionado: '+SYM[id].t)},
  tsym(id){const o=cur();if(!o)return;const d=dgOf(o);d.sin.includes(id)?d.sin=d.sin.filter(x=>x!=id):d.sin.push(id);commit(o);render()},
  tfil(k){UI.tf=k;render()},
@@ -778,9 +778,11 @@ const DG={
  tbPick(k,t){UI['tb'+k]='';if(k=='add')return DG.addTest(t);DG.set('tc',t);render();const el=document.getElementById('dgtcd');if(el&&!el.value)el.focus()},
  novoTeste(k){const n=String(UI['tb'+k]||'').trim().replace(/\s+/g,' ');if(n.length<3)return;const t={id:'u'+uid(),n:n[0].toUpperCase()+n.slice(1),como:'',esp:'',em:today()};meus().push(t);syncT();save();toast('Teste criado e salvo na oficina');DG.tbPick(k,t.id)},
  editTeste(id){const t=meus().find(x=>x.id==id);if(!t)return;modal('Teste da oficina',[['n','Nome do teste','text',null,1],['como','Como fazer (opcional)','area'],['esp','Valor ou resultado esperado (opcional)']],t,o=>{if(!String(o.n||'').trim())return toast('Informe o nome do teste');t.n=o.n.trim();t.como=String(o.como||'').trim();t.esp=String(o.esp||'').trim();syncT();save();render()})},
- delTeste(id){const t=meus().find(x=>x.id==id);if(!t)return;const n=db.orders.filter(o=>o.dg&&o.dg.t&&o.dg.t[id]&&o.dg.t[id].r).length;if(!confirm('Excluir o teste “'+t.n+'”?'+(n?'\n\nEle foi usado em '+plural(n,'carro','carros')+'. O resultado deixa de aparecer nesses diagnósticos.':'')))return;db.dtests=meus().filter(x=>x.id!=id);delete TESTS[id];db.orders.forEach(o=>{if(o.dg&&Array.isArray(o.dg.ext))o.dg.ext=o.dg.ext.filter(x=>x!=id)});save();render();toast('Teste excluído')},
+ delTeste(id){const t=meus().find(x=>x.id==id);if(!t)return;const n=db.orders.filter(o=>o.dg&&o.dg.t&&o.dg.t[id]&&o.dg.t[id].r).length;const ir=()=>{db.dtests=meus().filter(x=>x.id!=id);delete TESTS[id];db.orders.forEach(o=>{if(o.dg&&Array.isArray(o.dg.ext))o.dg.ext=o.dg.ext.filter(x=>x!=id)});save();render()};
+  /* 2.53: exclui na hora e oferece Desfazer (antes perguntava) */
+  const m='Teste “'+t.n+'” excluído'+(n?' · saiu de '+plural(n,'carro','carros'):'');if(typeof desfazivel!='function'){ir();return toast(m)}desfazivel(ir,m,()=>{syncT();render()})},
  addTest(t){const o=cur();if(!o||!t)return;const d=dgOf(o);if(!d.ext.includes(t))d.ext.push(t);UI.tf='todos';commit(o);render();toast('Teste adicionado à lista')},
- rmTest(t){const o=cur();if(!o)return;const d=dgOf(o);d.ext=d.ext.filter(x=>x!=t);d.t[t]=null;commit(o);render()},
+ rmTest(t){const o=cur();if(!o)return;const d=dgOf(o),ir=()=>{d.ext=d.ext.filter(x=>x!=t);d.t[t]=null;commit(o);render()};if(typeof desfazivel!='function')return ir();desfazivel(ir,'Teste tirado: '+((TESTS[t]&&TESTS[t].n)||t))},
  pick(def,sis,stay){const o=cur();if(!o)return;const d=dgOf(o);d.def=def;if(sis)d.sis=sis;commit(o);if(stay)render();else DG.step('def')},
  set(k,v){const o=cur();if(!o)return;dgOf(o)[k]=v;commit(o)},
  saveCase(force){const o=cur();if(!o)return;const d=dgOf(o);
@@ -847,7 +849,7 @@ const DG={
  tfoto(tid,inp){const F=[...(inp.files||[])].slice(0,6);inp.value='';const o=cur();if(!F.length||!o)return;o.fotos=o.fotos||[];let n=0;
   const um=k=>{if(k>=F.length){commit(o);render();return toast(n>1?n+' fotos guardadas no teste e nas fotos da O.S.':'Foto guardada no teste e nas fotos da O.S.')}
    picRef(F[k],ref=>{if(ref){const r=dgOf(o).t[tid]||{};o.fotos.push({id:uid(),t:'Teste: '+(TESTS[tid]?TESTS[tid].n:tid),src:ref,obs:r.v||'',tid});n++}um(k+1)})};um(0)},
- tfotoRm(i){const o=cur();if(!o||!o.fotos||!o.fotos[i])return;o.fotos.splice(i,1);commit(o);render()},
+ tfotoRm(i){const o=cur();if(!o||!o.fotos||!o.fotos[i])return;const ir=()=>{o.fotos.splice(i,1);commit(o);render()};if(typeof desfazivel!='function')return ir();desfazivel(ir,'Foto removida')},
  ffSet(k,v){const o=cur();if(!o)return;const d=dgOf(o);d.ff=Object.assign({},d.ff||{},{[k]:String(v).trim()});commit(o);const sm=document.querySelector('.dg-ff summary .muted');if(sm)sm.textContent=ffTxt(d.ff)||'freeze frame (opcional)'},
  orc(){const o=cur();if(!o)return;const d=dgOf(o),ex=db.quotes.find(x=>x.os==o.id&&x.dg);if(ex)return editQuote(ex.id);
   const fee=(o.items||[]).filter(i=>i.dgfee).map(i=>JSON.parse(JSON.stringify(i)));
