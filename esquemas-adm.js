@@ -270,7 +270,7 @@
         ${campo('tg', 'Etiquetas (separe por vírgula)', x && (x.tags || []).join(', '), { ph: 'Ex.: bico, sonda, bomba' })}
         <div class="esq-arq"><b>Arquivo</b><br>${x && x.arquivo_path ? `<span>Atual: ${e({ pdf: 'PDF', imagem: 'Imagem', svg: 'SVG' }[x.tipo] || 'arquivo')}${x.tipo == 'pdf' ? ' · ' + plural(x.paginas || 1, 'página', 'páginas') : ''}. Escolha outro só se quiser trocar.</span>` : '<span>PDF, foto (PNG ou JPG) ou SVG, até 25 MB. Pode tirar foto de um esquema em papel.</span>'}
           <input type="file" name="arq" accept=".pdf,.png,.jpg,.jpeg,.svg,application/pdf,image/png,image/jpeg,image/svg+xml" aria-label="Arquivo do esquema" onchange="esqArqVer(this)"><div id="esq-arqinfo" class="muted" style="font-size:15px;margin-top:6px"></div><div class="esq-prog" id="esq-prog" hidden><i></i></div></div>
-        <div class="bar">${x ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqEsqDel('${x.id}')">Apagar esquema</button>` : ''}<span class="sp"></span><button class="pr esq-bt">${x ? 'Salvar' : 'Salvar e enviar'}</button></div>
+        <div class="bar">${x ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqEsqDel('${x.id}')">Apagar esquema</button>${ESQ.pacoteDe(x) && cat().esquemas.filter((y) => (y.tags || []).includes('pacote:' + ESQ.pacoteDe(x))).length > 1 ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqPacoteDel('${e(ESQ.pacoteDe(x))}')">Apagar o pacote inteiro</button>` : ''}` : ''}<span class="sp"></span><button class="pr esq-bt">${x ? 'Salvar' : 'Salvar e enviar'}</button></div>
       </form>` : painelCon(x);
     return topo(x ? 'Editar esquema' : 'Enviar esquema', x ? "go('esqadm')" : (f.vv ? `go('esqadm',null,null,{car:'${f.vv}'})` : "go('esqadm')")) + `<div class="esq-box">
       ${x ? `<div class="esq-seg" role="tablist" style="grid-template-columns:1fr 1fr">${[['dados', 'Dados e arquivo'], ['con', 'Conectores e pinos']].map(([k, l]) => `<button type="button" role="tab" class="${aba == k ? 'on' : ''}" aria-selected="${aba == k}" onclick="S.f={...S.f,aba:'${k}'};render()">${l}</button>`).join('')}</div>
@@ -372,6 +372,42 @@
           cat().esquemas.splice(Math.min(i, cat().esquemas.length), 0, x); salvaCat(); if ((fav || []).some((z) => z.user_id == meu())) C.fav.add(id);
           if (offA) { await IDB.set('esq:arq:' + id, offA); C.off[id] = offI; IDB.set('esq:off:' + OF, C.off) }
           render();
+        } catch (z) { falhou(z, 'Não deu para desfazer') }
+      });
+    } catch (z) { falhou(z, 'Não apagou') }
+  };
+
+  /* 2.56.0: apagar um pacote inteiro (esquemas, conectores, pinos e os fusíveis do carro), com Desfazer */
+  G.esqPacoteDel = async function (chave) {
+    const tag = 'pacote:' + chave, L = cat().esquemas.filter((x) => (x.tags || []).includes(tag)).map((x) => ({ ...x }));
+    if (!L.length || precisaNet()) return;
+    const vid = L[0].veiculo_id, ids = L.map((x) => x.id);
+    try {
+      const con = await res(SB.from('esq_conectores').select('*').in('esquema_id', ids));
+      const pin = con.length ? await res(SB.from('esq_pinos').select('*').in('conector_id', con.map((c) => c.id))) : [];
+      const fav = await res(SB.from('esq_favoritos').select('*').in('esquema_id', ids)).catch(() => []);
+      const not = await res(SB.from('esq_anotacoes').select('*').in('esquema_id', ids)).catch(() => []);
+      const fus = await res(SB.from('esq_fusiveis').select('*').eq('veiculo_id', vid));
+      await res(SB.from('esq_esquemas').delete().in('id', ids));
+      if (fus.length) await res(SB.from('esq_fusiveis').delete().eq('veiculo_id', vid));
+      const offs = {};
+      for (const id of ids) { tira(cat().esquemas, id); C.fav.delete(id); delete C.det[id]; if (C.off[id]) { offs[id] = [C.off[id], await IDB.get('esq:arq:' + id)]; delete C.off[id]; IDB.del('esq:arq:' + id) } }
+      delete C.fus[vid]; IDB.del('esq:fus:' + vid); IDB.set('esq:off:' + OF, C.off); salvaCat();
+      let volta = false; const arqs = L.flatMap((x) => [x.arquivo_path, x.miniatura_path]).filter(Boolean);
+      const T = setTimeout(() => { if (!volta) SB.storage.from('esquemas').remove(arqs).catch(() => {}) }, 9000);
+      go('esqadm');
+      desfazCom('Pacote apagado: ' + plural(L.length, 'esquema', 'esquemas') + (fus.length ? ' e ' + plural(fus.length, 'fusível/relé', 'fusíveis/relés') : ''), async () => {
+        volta = true; clearTimeout(T);
+        try {
+          await res(SB.from('esq_esquemas').insert(L));
+          if (con.length) await res(SB.from('esq_conectores').insert(con));
+          for (let i = 0; i < pin.length; i += 200) await res(SB.from('esq_pinos').insert(pin.slice(i, i + 200)));
+          if (fav && fav.length) await res(SB.from('esq_favoritos').insert(fav)).catch(() => {});
+          if (not && not.length) await res(SB.from('esq_anotacoes').insert(not)).catch(() => {});
+          if (fus.length) { await res(SB.from('esq_fusiveis').insert(fus)); C.fus[vid] = fus }
+          L.forEach((x) => cat().esquemas.push(x)); (fav || []).forEach((f) => { if (f.user_id == meu()) C.fav.add(f.esquema_id) });
+          for (const id in offs) { C.off[id] = offs[id][0]; if (offs[id][1]) await IDB.set('esq:arq:' + id, offs[id][1]) } IDB.set('esq:off:' + OF, C.off);
+          salvaCat(); render();
         } catch (z) { falhou(z, 'Não deu para desfazer') }
       });
     } catch (z) { falhou(z, 'Não apagou') }

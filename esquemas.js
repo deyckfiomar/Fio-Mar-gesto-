@@ -693,12 +693,23 @@
     return painelPinos(x);
   }
   function repinta() { if (S.v != 'esqv') return; const x = esqm(S.id), p = $q('#esq-painel'); if (x && p) p.innerHTML = painel(x, (S.f || {}).vt || 'pin'); pinta() }
+  /* 2.56.0: apagar para trocar por um atualizado (dono) */
+  const pacoteDe = (x) => ((x.tags || []).find((t) => /^pacote:/.test(t)) || '').slice(7);
+  function botoesApagar(x) {
+    const k = pacoteDe(x), n = k ? cat().esquemas.filter((y) => (y.tags || []).includes('pacote:' + k)).length : 0;
+    return `<div class="bar" style="margin-top:12px"><button type="button" class="esq-bt" onclick="go('esqadm',null,null,{ed:'${x.id}'})">Editar no cadastro</button></div>
+      <div class="esq-h"><h2>Apagar</h2></div><p class="muted" style="font-size:15px;margin:0 0 8px">Para trocar por um atualizado: apague e adicione o novo.${k ? ' Pacote importado de novo (revisão nova) também atualiza sozinho.' : ''}</p>
+      <div class="bar"><button type="button" class="esq-bt" style="color:#B4472E" onclick="esqApaga('${x.id}')">Apagar este esquema</button>${n > 1 ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqApagaPac('${e(k)}')">Apagar o pacote inteiro (${n} esquemas)</button>` : ''}</div>`;
+  }
+  G.esqApaga = (id) => esqCarrega('esqadm').then(() => esqEsqDel(id)).catch(() => toast('Não deu para apagar agora. Confira a internet.', 'erro'));
+  G.esqApagaPac = (k) => esqCarrega('esqadm').then(() => esqPacoteDel(k)).catch(() => toast('Não deu para apagar agora. Confira a internet.', 'erro'));
+  ESQ.pacoteDe = pacoteDe;
   function painelInfo(x) {
     const v = veic(x.veiculo_id), s = sist(x.sistema_id);
     const L = [['Carro', vNome(v)], ['Anos', anos(v)], ['Combustível', v && v.combustivel], ['Sistema', s.nome], ['Arquivo', (TIPO[x.tipo] || 'Sem arquivo') + (x.tipo == 'pdf' ? ' · ' + plural(VW.id == x.id ? VW.n : x.paginas || 1, 'página', 'páginas') : '')], ['Etiquetas', (x.tags || []).filter((t) => !/^(pacote|item):/.test(t)).join(', ')], ['Descrição', x.descricao]].filter((r) => r[1]);
     return `<table class="esq-tab"><tbody>${L.map(([a, b]) => `<tr><th scope="row" style="width:34%">${a}</th><td style="white-space:pre-wrap;overflow-wrap:anywhere">${e(b)}</td></tr>`).join('')}</tbody></table>
       ${C.off[x.id] ? `<p class="muted" style="font-size:14px">Guardado no aparelho em ${e(new Date(C.off[x.id].em).toLocaleDateString('pt-BR'))}${C.off[x.id].tam ? ' · ' + (C.off[x.id].tam / 1048576).toFixed(1).replace('.', ',') + ' MB' : ''}.</p>` : ''}
-      ${DONO() ? `<div class="bar"><button type="button" class="esq-bt" onclick="go('esqadm',null,null,{ed:'${x.id}'})">Editar no cadastro</button></div>` : ''}`;
+      ${DONO() ? botoesApagar(x) : ''}`;
   }
   ESQ.monta = monta;
 
