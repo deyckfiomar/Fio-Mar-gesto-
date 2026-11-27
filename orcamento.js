@@ -106,4 +106,29 @@ details.qmore[open]>summary{color:var(--ink)}
   if (typeof qBack == 'function') { G.qBack = qBack = function () { const q = S.q; if (!q) return go('quotes'); if (q.novo && !q.items.length) return go('quotes'); if (!q.cli) return toast('Escolha o cliente: digite a placa, o nome ou o telefone'); auto(); saveQuote(1); go('quotes') } }
   /* novo orçamento: o desconto e a busca começam fechados */
   if (typeof editQuote == 'function') { const _e = editQuote; G.editQuote = editQuote = function () { window.__qdsc = 0; ULT = ''; const r = _e.apply(this, arguments); setTimeout(() => { const i = $q('#qbq'); if (i && S.v == 'quote') i.focus() }, 80); return r } }
+
+  /* ---------- 2.52.1: orçamento e O.S. com o mesmo cliente e o mesmo carro ---------- */
+  /* trocou o cliente ou o carro no orçamento → a O.S. ligada (e o agendamento dela) muda junto, na hora */
+  const qOS = (q) => { const o = q && q.os && od(q.os); return o && o.id ? o : null };
+  const NFAV = new Set();
+  G.qLeva = function (q) {
+    const o = qOS(q); if (!o || !q.cli || q.status == 'Recusado') return 0;
+    let veh = q.veh || '';
+    if (!veh && o.veh) { const vo = vh(o.veh); if (vo && vo.cli == q.cli) veh = o.veh }
+    if (o.cli == q.cli && (o.veh || '') == veh) return 0;
+    if (typeof qNF == 'function' && qNF(o)) { const k = o.id + '|' + q.cli + '|' + veh; if (!NFAV.has(k)) { NFAV.add(k); toast('A O.S. ' + o.num + ' tem nota fiscal emitida: o cliente e o carro dela não mudam.') } return 0 }
+    const troca = o.cli != q.cli; o.cli = q.cli; o.veh = veh;
+    (typeof AG == 'function' ? AG() : []).forEach((a) => { if (a.os == o.id) { a.cli = q.cli; a.veh = veh } });
+    save(); toast(troca ? 'O.S. ' + o.num + ' agora está no nome de ' + (cl(q.cli).nome || 'outro cliente') : 'O.S. ' + o.num + ': carro trocado para ' + (veh ? vlabel(vh(veh)) : 'sem veículo'));
+    return 1
+  };
+  if (typeof saveQuote == 'function') { const _sq = saveQuote; G.saveQuote = saveQuote = function () { const r = _sq.apply(this, arguments); try { const q = S.q; if (q && q.cli && !q.novo && db.quotes.includes(q)) qLeva(q) } catch (e) {} return r } }
+  /* itens: orçamento aprovado leva as mudanças para a O.S. ao sair da tela (quando não há risco: nota fiscal, O.S. fechada ou peça já baixada) */
+  const qLevaItens = function () {
+    const q = S.q, o = qOS(q); if (!o || q.status != 'Aprovado' || !db.quotes.includes(q) || typeof qDif != 'function') return;
+    const D = qDif(q, o); if (!D.tem) return;
+    const arrisca = qNF(o) || ['Concluída', 'Entregue'].includes(o.status) || D.alt.some(([x, n]) => x.baixa && (String(x.pid || '') !== String(n.pid || '') || (+x.q || 0) !== (+n.q || 0)));
+    if (arrisca) return; const antes = oTot(o); qSyncOk(); toast('O.S. ' + o.num + ' atualizada junto (' + R(antes) + ' → ' + R(oTot(o)) + ')')
+  };
+  { const _g = go; G.go = go = function (k) { try { if (S.v == 'quote' && k != 'quote' && S.q && S.q.cli) { auto(); qLevaItens() } } catch (e) {} return _g.apply(this, arguments) } }
 })(window);

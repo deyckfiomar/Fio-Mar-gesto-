@@ -258,7 +258,7 @@ G.addItem=addItem=function(w,pre){_addItem(w,pre);const f=$q('#modal form');if(!
 
 /* ---------- veículo da O.S.: colocar, editar (placa) ou trocar ---------- */
 function osPoeVeh(o,v){o.veh=v.id;if(!o.cli&&v.cli)o.cli=v.cli;
- AG().forEach(a=>{if(a.os==o.id&&!a.veh)a.veh=v.id});db.quotes.forEach(q=>{if(q.os==o.id&&!q.veh)q.veh=v.id});save();render()}
+ AG().forEach(a=>{if(a.os==o.id){a.veh=v.id;if(o.cli)a.cli=o.cli}});db.quotes.forEach(q=>{if((q.os==o.id||q.id==o.qid)&&q.status!='Recusado'){q.veh=v.id;if(o.cli)q.cli=o.cli}});/* 2.52.1: orçamento e agendamento ficam com o mesmo carro da O.S. */save();render()}
 G.osVeh=function(id){const o=od(id);if(!o||!o.id)return;const v=o.veh?vh(o.veh):null,vs=db.vehicles.filter(x=>o.cli&&x.cli==o.cli&&x.id!=o.veh);
  const novo=()=>editVeh(null,n=>{osPoeVeh(o,n);toast('Veículo colocado na O.S. '+o.num)},{cli:o.cli||''});
  if(!v&&!vs.length)return novo();
