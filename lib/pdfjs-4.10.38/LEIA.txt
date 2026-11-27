@@ -1,0 +1,3 @@
+pdf.js 4.10.38 (Mozilla, licença Apache 2.0) — legacy build, do pacote oficial
+https://github.com/mozilla/pdf.js/releases/tag/v4.10.38
+Usado só pelo visualizador de esquemas (esquemas.js), com isEvalSupported:false.

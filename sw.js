@@ -3,13 +3,15 @@
    A versão nova chega quando este arquivo muda: o app procura ao abrir/voltar, baixa tudo de novo
    em segundo plano e recarrega sozinho (index.html, 'controllerchange').
    Ao publicar uma versão nova, mude o número abaixo junto com o index.html. */
-const VERSAO = '2.53.0';
+const VERSAO = '2.54.0';
 const CACHE = 'fiomar-' + VERSAO;
-const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './ilustra.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './orcamento.js', './ordem.js', './teclado.js', './estoque.js', './finmes.js', './moderno.js', './jspdf.umd.min.js'];
+const BASE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png', './assistente.js', './ilustra.js', './diagnostico.js', './codigos-extra.json', './pratico.js', './patio.js', './backup.js', './avisos.js', './pedidos.js', './financas.js', './agenda.js', './barras.js', './mais.js', './pessoal.js', './forms.js', './ia.js', './nav.js', './puxar.js', './placa.js', './oficina.js', './orcamento.js', './ordem.js', './teclado.js', './estoque.js', './finmes.js', './esq.js', './esquemas.js', './esquemas-adm.js', './moderno.js', './jspdf.umd.min.js'];
 
 // biblioteca de fora com versão fixa (Supabase): guardada para o app abrir sem internet. O jsPDF fica no próprio app desde a 2.32.0
 const LIBS = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'];
 const LIBC = 'fiomar-libs-1';
+// 2.54.0: bibliotecas guardadas no próprio app em pasta com a versão no nome (ex.: lib/pdfjs-4.10.38/): ficam no mesmo cache fixo
+const LIBLOCAL = /\/lib\/[^/]+-\d[\w.]*\//;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(LIBC).then((c) => Promise.all(LIBS.map((u) => c.match(u).then((m) => m || c.add(new Request(u, { mode: 'cors' }))).catch(() => {})))));
@@ -55,6 +57,10 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (u.origin !== self.location.origin) return; // Supabase, fontes e o resto vão direto para a internet
+  if (LIBLOCAL.test(u.pathname)) { // pdf.js e afins: nunca mudam (a versão está no nome da pasta)
+    e.respondWith(caches.open(LIBC).then(async (c) => (await c.match(r.url, { ignoreSearch: true })) || fetch(r).then((res) => { if (res.ok) c.put(r.url, res.clone()).catch(() => {}); return res; })));
+    return;
+  }
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     // 1) cópia guardada desta versão: abre na hora
