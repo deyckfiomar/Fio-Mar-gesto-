@@ -110,10 +110,13 @@
       <div class="dois">${campo('mt', 'Motor', v && v.motor, { ph: 'Ex.: 1.0 8V' })}${campo('cb', 'Combustível', v && v.combustivel, { sel: COMB.map((c) => [c, c || '—']) })}</div>
       ${campo('vs', 'Versão', v && v.versao, { ph: 'Ex.: LT, Trendline (opcional)' })}
       <input type="hidden" name="id" value="${e(id || '')}">`,
-      'esqCarroSalva', v ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqCarroDel('${v.id}')">Apagar</button>` : '');
+      'esqCarroSalva', v ? `<button type="button" class="esq-bt" style="color:#B4472E" onclick="esqCarroDel('${v.id}')">Apagar${(() => { const n = cat().esquemas.filter((x) => x.veiculo_id == v.id).length; return n ? ' (com ' + plural(n, 'esquema', 'esquemas') + ')' : '' })()}</button>` : '');
   };
+  /* VW = Volkswagen, GM = Chevrolet…: a mesma marca não fica duplicada */
+  const APELIDO = { vw: 'volkswagen', volks: 'volkswagen', gm: 'chevrolet', chevy: 'chevrolet', mb: 'mercedes-benz', mercedes: 'mercedes-benz' };
+  const canon = (t) => { const n = nrm(t).trim(); return APELIDO[n] || n };
   async function achaMarca(nome) {
-    const n = nrm(nome); let x = cat().marcas.find((m) => nrm(m.nome) == n);
+    const n = canon(nome); let x = cat().marcas.find((m) => canon(m.nome) == n);
     if (!x) { x = await res(SB.from('esq_marcas').insert({ oficina_id: OF, nome }).select().single()); cat().marcas.push(x) }
     return x;
   }
@@ -150,22 +153,39 @@
       salvaCat();
     } catch (z) {}
   }
+  /* 2.56.1: apaga o carro com tudo o que tem dentro (esquemas, conectores, pinos, fusíveis), com Desfazer */
   G.esqCarroDel = async function (id) {
-    const v = veic(id); if (!v) return;
-    const ne = cat().esquemas.filter((x) => x.veiculo_id == id).length;
-    if (ne) return toast('Este carro tem ' + plural(ne, 'esquema', 'esquemas') + '. Apague ou mude os esquemas de carro antes.', 'erro');
-    if (precisaNet()) return;
+    const v = veic(id); if (!v || precisaNet()) return;
+    const nome = vNome(v), V0 = { ...v }, L = cat().esquemas.filter((x) => x.veiculo_id == id).map((x) => ({ ...x })), ids = L.map((x) => x.id);
     try {
+      const con = ids.length ? await res(SB.from('esq_conectores').select('*').in('esquema_id', ids)) : [];
+      const pin = con.length ? await res(SB.from('esq_pinos').select('*').in('conector_id', con.map((c) => c.id))) : [];
+      const fav = ids.length ? await res(SB.from('esq_favoritos').select('*').in('esquema_id', ids)).catch(() => []) : [];
+      const not = ids.length ? await res(SB.from('esq_anotacoes').select('*').in('esquema_id', ids)).catch(() => []) : [];
       const fus = await res(SB.from('esq_fusiveis').select('*').eq('veiculo_id', id));
-      const mo = modelo(v.modelo_id), ma = marca(mo.marca_id);
-      await res(SB.from('esq_veiculos').delete().eq('id', id)); tira(cat().veiculos, id); delete C.fus[id];
-      await limpaVazios(v.modelo_id); closeM(1); S.f = { aba: 'car' }; render();
-      desfazCom('Carro apagado: ' + vNome({ ...v }), async () => {
+      const mo = { ...modelo(v.modelo_id) }, ma = { ...marca(mo.marca_id) };
+      await res(SB.from('esq_veiculos').delete().eq('id', id)); /* o banco apaga junto (cascade) */
+      tira(cat().veiculos, id); delete C.fus[id]; IDB.del('esq:fus:' + id);
+      const offs = {};
+      for (const x of ids) { tira(cat().esquemas, x); C.fav.delete(x); delete C.det[x]; if (C.off[x]) { offs[x] = [C.off[x], await IDB.get('esq:arq:' + x)]; delete C.off[x]; IDB.del('esq:arq:' + x) } }
+      IDB.set('esq:off:' + OF, C.off);
+      await limpaVazios(v.modelo_id); closeM(1); S.f = { aba: 'car' }; if (S.v == 'esqadm') render(); else go('esqadm', null, null, { aba: 'car' });
+      let volta = false; const arqs = L.flatMap((x) => [x.arquivo_path, x.miniatura_path]).filter(Boolean);
+      const T = arqs.length ? setTimeout(() => { if (!volta) SB.storage.from('esquemas').remove(arqs).catch(() => {}) }, 9000) : 0;
+      desfazCom('Carro apagado: ' + nome + (L.length ? ' (com ' + plural(L.length, 'esquema', 'esquemas') + ')' : ''), async () => {
+        volta = true; clearTimeout(T);
         try {
-          if (!cat().marcas.some((x) => x.id == ma.id)) { await res(SB.from('esq_marcas').insert(ma)); cat().marcas.push(ma) }
-          if (!cat().modelos.some((x) => x.id == mo.id)) { await res(SB.from('esq_modelos').insert(mo)); cat().modelos.push(mo) }
-          await res(SB.from('esq_veiculos').insert(v)); cat().veiculos.push(v);
-          if (fus && fus.length) await res(SB.from('esq_fusiveis').insert(fus));
+          if (ma.id && !cat().marcas.some((x) => x.id == ma.id)) { await res(SB.from('esq_marcas').insert(ma)); cat().marcas.push(ma) }
+          if (mo.id && !cat().modelos.some((x) => x.id == mo.id)) { await res(SB.from('esq_modelos').insert(mo)); cat().modelos.push(mo) }
+          await res(SB.from('esq_veiculos').insert(V0)); cat().veiculos.push(V0);
+          if (L.length) await res(SB.from('esq_esquemas').insert(L));
+          if (con.length) await res(SB.from('esq_conectores').insert(con));
+          for (let i = 0; i < pin.length; i += 200) await res(SB.from('esq_pinos').insert(pin.slice(i, i + 200)));
+          if (fav && fav.length) await res(SB.from('esq_favoritos').insert(fav)).catch(() => {});
+          if (not && not.length) await res(SB.from('esq_anotacoes').insert(not)).catch(() => {});
+          if (fus.length) { await res(SB.from('esq_fusiveis').insert(fus)); C.fus[id] = fus }
+          L.forEach((x) => cat().esquemas.push(x)); (fav || []).forEach((f) => { if (f.user_id == meu()) C.fav.add(f.esquema_id) });
+          for (const x in offs) { C.off[x] = offs[x][0]; if (offs[x][1]) await IDB.set('esq:arq:' + x, offs[x][1]) } IDB.set('esq:off:' + OF, C.off);
           salvaCat(); render();
         } catch (z) { falhou(z, 'Não deu para desfazer') }
       });
@@ -182,6 +202,7 @@
     return topo(e(vNome(v)), "go('esqadm',null,null,{aba:'car'})") + `<div class="esq-box">
       <div class="esq-vcard">${svgi('vehicles')}<span style="flex:1"><b>${e(vNome(v))}</b><small>${e(vSub(v))}</small></span><button type="button" class="esq-bt" onclick="esqCarro('${v.id}')">Editar</button></div>
       <div class="bar" style="margin:0 0 6px"><button type="button" class="esq-bt" onclick="go('esqadm',null,null,{novo:1,vv:'${v.id}'})">+ Esquema deste carro</button><button type="button" class="esq-bt" onclick="go('esq',null,null,{vv:'${v.id}'})">Ver ${plural(ne, 'esquema', 'esquemas')}</button></div>
+      <div class="bar" style="margin:0 0 6px"><button type="button" class="esq-bt" style="color:#B4472E" onclick="esqCarroDel('${v.id}')">Apagar este carro${ne ? ' com ' + plural(ne, 'esquema', 'esquemas') : ''}</button></div>
       <div class="esq-h"><h2>Fusíveis e relés</h2><small>${L ? L.length : ''}</small></div>
       <div class="bar" style="margin:0 0 10px"><button type="button" class="pr esq-bt" onclick="esqFus('${v.id}')">+ Fusível ou relé</button></div>
       ${!L ? '<div class="card esq-load"><span class="esq-spin"></span>Carregando…</div>' : !L.length ? '<div class="esq-msg">Nenhum fusível ou relé cadastrado.</div>' :
