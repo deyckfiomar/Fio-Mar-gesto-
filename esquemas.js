@@ -234,6 +234,40 @@ body.esq-foco #main.vt{animation:none}
 .esq-vcard .esq-troca{min-height:44px;flex:none;width:auto;margin:0;padding:0 14px;font-size:15px}
 .esq-vcard .esq-ib.ok{color:#2E8B57}
 .esq-seg button small{margin-left:6px;font-weight:800;font-size:14px;opacity:.85}
+.esq-seg.rola{display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.esq-seg.rola::-webkit-scrollbar{display:none}
+.esq-seg.rola button{flex:1 0 auto;padding-left:14px;padding-right:14px;white-space:nowrap}
+/* 2.58: dados técnicos dos componentes */
+.esq-cps{display:grid;gap:10px;margin:0 0 14px}
+.esq-cp{border:1px solid var(--ln);border-radius:14px;background:var(--sf);overflow:hidden}
+.esq-cp[hidden]{display:none}
+.esq-cp>summary{list-style:none;display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 14px;cursor:pointer;font-size:16px;font-weight:700}
+.esq-cp>summary::-webkit-details-marker{display:none}
+.esq-cp>summary::after{content:'';width:9px;height:9px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);margin:-4px 4px 0 auto;flex:none;transition:transform .15s}
+.esq-cp[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+.esq-cp .sg{flex:none;min-width:54px;height:36px;padding:0 8px;border-radius:9px;background:#E67E22;color:#fff;font-family:'Barlow Condensed',Barlow,sans-serif;font-size:19px;font-weight:700;letter-spacing:.03em;display:inline-flex;align-items:center;justify-content:center}
+.esq-cp .sg.vz{background:rgba(230,126,34,.16);color:#E67E22}
+.esq-cp .sg svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+.esq-cp .nm{flex:1;min-width:0;line-height:1.25;overflow-wrap:anywhere}
+.esq-cp summary small{flex:none;font-size:14px;color:var(--mut);font-weight:600}
+.esq-cpb{padding:0 14px 14px}
+.esq-cpb h4{margin:12px 0 6px;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.esq-kv{border:1px solid var(--ln);border-radius:10px;overflow:hidden}
+.esq-kvl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 12px;align-items:center;min-height:46px;padding:7px 12px;border-top:1px solid var(--ln);font-size:16px;line-height:1.3}
+.esq-kvl:first-child{border-top:0}
+.esq-kvl span{overflow-wrap:anywhere}
+.esq-kvl b{color:#E67E22;font-weight:700;overflow-wrap:anywhere;text-align:right}
+.esq-vw .esq-kvl b{color:#F0A35C}
+.esq-kvl.hl,.esq-tbc tr.hl td{background:rgba(230,126,34,.16)}
+.esq-tbw{overflow-x:auto;border:1px solid var(--ln);border-radius:10px}
+.esq-tbc{width:100%;border-collapse:collapse;font-size:16px;font-variant-numeric:tabular-nums}
+.esq-tbc th{text-align:left;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px 10px;background:rgba(127,127,127,.06);white-space:nowrap}
+.esq-tbc td{padding:9px 10px;border-top:1px solid var(--ln);white-space:nowrap}
+.esq-tbc td:not(:first-child){color:#E67E22;font-weight:600}
+.esq-vw .esq-tbc td:not(:first-child){color:#F0A35C}
+.esq-cpn{margin:10px 0 0;font-size:15px;color:var(--mut);font-style:italic;line-height:1.35}
+.esq-cpf{margin-top:12px;min-height:44px}
+.esq-sgt{font-family:'Barlow Condensed',Barlow,sans-serif;font-weight:700;font-size:19px;color:#fff;background:#E67E22!important}
 .esq-casc select{min-height:50px}
 `;
     document.head.appendChild(st);
@@ -280,15 +314,16 @@ body.esq-foco #main.vt{animation:none}
       try {
         if (!online()) throw new Error('offline');
         const of = OF;
-        const [ma, mo, ve, si, es, fa] = await Promise.all([
+        const [ma, mo, ve, si, es, fa, cp] = await Promise.all([
           res(SB.from('esq_marcas').select('*').eq('oficina_id', of)),
           res(SB.from('esq_modelos').select('*').eq('oficina_id', of)),
           res(SB.from('esq_veiculos').select('*').eq('oficina_id', of)),
           res(SB.from('esq_sistemas').select('*')),
           res(SB.from('esq_esquemas').select('id,oficina_id,veiculo_id,sistema_id,titulo,descricao,arquivo_path,miniatura_path,tipo,paginas,tags,created_at').eq('oficina_id', of)),
           res(SB.from('esq_favoritos').select('esquema_id').eq('oficina_id', of)).catch(() => null),
+          res(SB.from('esq_componentes').select('*').eq('oficina_id', of)).catch(() => null),
         ]);
-        C.cat = { marcas: ma || [], modelos: mo || [], veiculos: ve || [], sistemas: (si || []).filter((s) => !s.oficina_id || s.oficina_id == of), esquemas: es || [] };
+        C.cat = { marcas: ma || [], modelos: mo || [], veiculos: ve || [], sistemas: (si || []).filter((s) => !s.oficina_id || s.oficina_id == of), esquemas: es || [], componentes: cp || (C.cat && C.cat.componentes) || [] };
         C.em = Date.now(); C.erro = ''; C.velha = false;
         if (fa) { C.fav = new Set(fa.map((x) => x.esquema_id)); IDB.set(KF(), [...C.fav]) }
         IDB.set(KC(), { ...C.cat, em: C.em });
@@ -305,7 +340,7 @@ body.esq-foco #main.vt{animation:none}
   ESQ.limpa = () => { C.cat = null; C.em = 0 };
 
   /* ---------- consultas do catálogo ---------- */
-  const cat = () => C.cat || { marcas: [], modelos: [], veiculos: [], sistemas: [], esquemas: [] };
+  const cat = () => C.cat || { marcas: [], modelos: [], veiculos: [], sistemas: [], esquemas: [], componentes: [] };
   const marca = (id) => cat().marcas.find((x) => x.id == id) || {};
   const modelo = (id) => cat().modelos.find((x) => x.id == id) || {};
   const veic = (id) => cat().veiculos.find((x) => x.id == id) || null;
@@ -435,7 +470,7 @@ body.esq-foco #main.vt{animation:none}
     try { if (!online() || C.velha) throw new Error('offline'); r = await res(SB.rpc('esq_buscar', { of: OF, q, lim: 40 })) }
     catch (x) { try { r = await buscaLocal(q); local = true } catch (z) { B.err = msgErro(x) } }
     if (n != B.n) return;
-    B.r = r || []; B.local = local; B.load = false; pintaBusca();
+    B.r = [...buscaComp(q), ...(r || [])]; B.local = local; B.load = false; pintaBusca();
   }
   G.esqBuscaLimpa = function () { clearTimeout(B.t); B.n++; B.q = ''; B.r = null; B.load = false; B.err = '' };
   G.esqBusca = function (q) { clearTimeout(B.t); B.t = setTimeout(() => busca(q), 320) };
@@ -448,6 +483,7 @@ body.esq-foco #main.vt{animation:none}
     if (!R0.length) return `<div class="esq-msg">Nada encontrado para “${e(B.q)}”.<br><small class="muted">Tente só o modelo (ex.: “gol”) ou o sistema (ex.: “injeção”).</small></div>`;
     return `<div class="esq-h"><h2>Resultados</h2><small>${plural(R0.length, 'item', 'itens')}${B.local ? ' · busca no aparelho' : ''}</small></div><div class="esq-lista">` + R0.map((r) => {
       if (r.tipo == 'esquema') { const x = esqm(r.esquema_id || r.id); if (x) return itEsq(x, { q: B.q }) }
+      if (r.tipo == 'componente') return `<button type="button" class="esq-it" onclick="S.f={};go('esq',null,null,{vv:'${r.veiculo_id}',tab:'comp',cp:'${r.id}',cq:${e(JSON.stringify(B.q))}});esqBuscaLimpa();render()"><span class="esq-th esq-sgt">${e(r.sigla || '')}${r.sigla ? '' : ICON('esqfio')}</span><span class="esq-tx"><span class="esq-res-tipo">Componente</span><b>${e(r.titulo)}</b><small>${e(r.detalhe || '')}</small></span></button>`;
       const fus = r.tipo == 'fusivel' || r.tipo == 'rele';
       return `<button type="button" class="esq-it" onclick="esqBuscaLimpa();go('esq',null,null,{vv:'${r.veiculo_id}',tab:'fus',hl:'${r.id}'})"><span class="esq-th">${ICON(fus ? 'esqfus' : 'esq')}</span><span class="esq-tx"><span class="esq-res-tipo">${fus ? (r.tipo == 'rele' ? 'Relé' : 'Fusível') : 'Esquema'}</span><b>${e(r.titulo)}</b><small>${e(r.detalhe || '')}</small></span></button>`;
     }).join('') + '</div>';
@@ -529,13 +565,14 @@ body.esq-foco #main.vt{animation:none}
   function telaCarro(v, f) {
     const tab = f.tab || 'esq', L = cat().esquemas.filter((x) => x.veiculo_id == v.id);
     const nf = (C.fus[v.id] || []).length, comArq = L.filter((x) => x.arquivo_path), falta = comArq.filter((x) => !C.off[x.id]).length;
-    const seg = [['esq', 'Esquemas', L.length], ['fus', 'Fusíveis', C.fus[v.id] ? nf : ''], ['cor', 'Cores', '']];
+    const ncp = compsDe(v.id).length, seg = [['esq', 'Esquemas', L.length], ...(ncp ? [['comp', 'Componentes', ncp]] : []), ['fus', 'Fusíveis', C.fus[v.id] ? nf : ''], ['cor', 'Cores', '']];
     const bx = !comArq.length ? '' : BXC == v.id ? `<button type="button" class="esq-ib" id="esq-bcarro" disabled aria-label="Baixando os esquemas deste carro"><span class="esq-spin" style="width:20px;height:20px"></span></button>`
       : `<button type="button" class="esq-ib${falta ? '' : ' ok'}" id="esq-bcarro" aria-label="${falta ? `Baixar ${plural(falta, 'esquema', 'esquemas')} deste carro para usar sem internet` : 'Todos os esquemas deste carro abrem sem internet'}" title="${falta ? 'Baixar o carro inteiro' : 'Tudo no aparelho'}" onclick="esqBaixaCarro('${v.id}')">${ICON(falta ? 'esqoff' : 'esqok')}</button>`;
     let h = `<div class="esq-vcard">${selo(v)}<span class="sp"><b>${e(vNome(v))}</b><small>${e(vSub(v))}</small></span>${bx}<button type="button" class="esq-troca" onclick="S.f={...S.f,lig:1};esqF('ma','')">Trocar</button></div>
-      <div class="esq-seg" role="tablist">${seg.map(([k, l, n]) => `<button type="button" role="tab" class="${tab == k ? 'on' : ''}" aria-selected="${tab == k}" onclick="S.f={...S.f,tab:'${k}'};render()">${l}${n !== '' ? `<small>${n}</small>` : ''}</button>`).join('')}</div>`;
+      <div class="esq-seg${seg.length > 3 ? ' rola' : ''}" role="tablist">${seg.map(([k, l, n]) => `<button type="button" role="tab" class="${tab == k ? 'on' : ''}" aria-selected="${tab == k}" onclick="S.f={...S.f,tab:'${k}',cp:'',cq:''};render()">${l}${n !== '' ? `<small>${n}</small>` : ''}</button>`).join('')}</div>`;
     if (tab == 'fus') return h + telaFus(v, f);
     if (tab == 'cor') return h + legenda();
+    if (tab == 'comp') return h + telaComp(v, f);
     if (!C.fus[v.id]) carregaFus(v.id, true);
     if (!L.length) return h + `<div class="esq-msg">Este carro ainda não tem esquema.${DONO() ? `<div class="bar"><button type="button" class="pr esq-bt" onclick="go('esqadm',null,null,{novo:1,vv:'${v.id}'})">Enviar esquema deste carro</button></div>` : ''}</div>`;
     const cs = {}; L.forEach((x) => { cs[x.sistema_id] = (cs[x.sistema_id] || 0) + 1 });
@@ -557,6 +594,73 @@ body.esq-foco #main.vt{animation:none}
     finally { delete C.fus['_' + vid]; if (!quieto || C.fus[vid]) redesenha() }
   }
   ESQ.carregaFus = carregaFus;
+  /* ---------- 2.58: dados técnicos dos componentes (por carro) ---------- */
+  const compsDe = (vid) => (cat().componentes || []).filter((c) => c.veiculo_id == vid).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || natural(a.nome, b.nome));
+  ESQ.compsDe = compsDe;
+  const PAL_FORA = new Set(['sensor', 'sensores', 'dados', 'tecnicos', 'componentes', 'pinos', 'pino', 'resistencia', 'valor', 'valores', 'interruptor', 'eletronico', 'eletronica', 'posicao', 'pressao', 'temperatura', 'sinal', 'motor', 'folha', 'esquema', 'completo', 'pelos', 'acionamento', 'comando']);
+  const palavrasC = (t) => nrm(t || '').split(/[^a-z0-9]+/).filter((w) => w.length >= 5 && !PAL_FORA.has(w));
+  /* componentes que aparecem nesta folha: pela sigla (CKP, MAP…) ou por palavra do nome (sonda, borboleta, embreagem…) */
+  function compsRel(x) {
+    const L = compsDe(x.veiculo_id); if (!L.length) return { rel: [], resto: [] };
+    const t = x.titulo || '', tn = nrm(t);
+    if ((x.tags || []).includes('item:completo') || /dados t[eé]cnicos|componentes/i.test(t)) return { rel: L, resto: [], todos: true };
+    const sig = new Set((t.match(/\b[A-Z][A-Z0-9]{1,5}\b/g) || []));
+    const tw = tn.split(/[^a-z0-9]+/).filter(Boolean);
+    const casa = (c) => (c.sigla && sig.has(c.sigla)) || palavrasC(c.nome).some((w) => tw.some((p) => p.length >= 5 && (p.slice(0, Math.min(7, w.length, p.length)) == w.slice(0, Math.min(7, w.length, p.length)) || (p.length >= 7 && w.includes(p.slice(0, 7))) || (w.length >= 7 && p.includes(w.slice(0, 7))))));
+    const rel = L.filter(casa); return { rel, resto: L.filter((c) => !rel.includes(c)) };
+  }
+  ESQ.compsRel = compsRel;
+  const chaveC = (c) => nrm([c.nome, c.sigla, ...(c.notas || []), ...(c.tabelas || []).flatMap((t) => [t.titulo, ...(t.colunas || []), ...(t.linhas || []).flat()])].join(' '));
+  /* palavras da busca que marcam linhas da tabela (sem as do carro) */
+  function marcaLin(q, vid) { const v = veic(vid), car = new Set(nrm(v ? vNome(v) + ' ' + vSub(v) : '').split(/[^a-z0-9]+/)); return nrm(q || '').split(/[\s,;/]+/).filter((w) => w.length >= 3 && !car.has(w)) }
+  function tabelaC(t, W) {
+    const dois = (t.colunas || []).length == 2;
+    const hl = (r) => W && W.length && W.some((w) => nrm(r.join(' ')).includes(w)) ? ' hl' : '';
+    if (dois) return `${t.titulo ? `<h4>${e(t.titulo)}</h4>` : ''}<div class="esq-kv" role="table">${t.linhas.map((r) => `<div class="esq-kvl${hl(r)}" role="row"><span role="cell">${e(r[0])}</span><b role="cell">${e(r[1] || '—')}</b></div>`).join('')}</div>`;
+    return `${t.titulo ? `<h4>${e(t.titulo)}</h4>` : ''}<div class="esq-tbw"><table class="esq-tbc"><thead><tr>${(t.colunas || []).map((c) => `<th scope="col">${e(c)}</th>`).join('')}</tr></thead><tbody>${t.linhas.map((r) => `<tr class="${hl(r).trim()}">${(t.colunas || r).map((_, i) => `<td>${e(r[i] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function cardComp(c, aberto, W) {
+    const nv = (c.tabelas || []).reduce((a, t) => a + (t.linhas || []).length, 0);
+    const sx = c.sigla && c.nome.includes(c.sigla) ? c.nome : c.nome;
+    const fo = c.folha && cat().esquemas.find((x) => x.veiculo_id == c.veiculo_id && (x.tags || []).includes('item:f' + String(c.folha).padStart(2, '0')));
+    return `<details class="esq-cp" id="cp-${c.id}" data-k="${e(chaveC(c))}" ${aberto ? 'open' : ''}><summary>${c.sigla ? `<span class="sg">${e(c.sigla)}</span>` : `<span class="sg vz">${ICON('esqfio')}</span>`}<span class="nm">${e(sx)}</span><small>${plural(nv, 'valor', 'valores')}</small></summary>
+      <div class="esq-cpb">${(c.tabelas || []).map((t) => tabelaC(t, W)).join('')}${(c.notas || []).map((n) => `<p class="esq-cpn">${e(n)}</p>`).join('')}${fo && S.v != 'esqv' ? `<button type="button" class="sm esq-cpf" onclick="go('esqv','${fo.id}')">Ver na folha ${c.folha}</button>` : ''}</div></details>`;
+  }
+  ESQ.cardComp = cardComp;
+  function filtroC(n) { return n > 3 ? `<div class="esq-pfil">${ICON('search')}<input id="esq-cf" type="search" autocomplete="off" enterkeyhint="search" placeholder="Filtrar: MAP, sonda, 90 °C…" aria-label="Filtrar componentes" oninput="esqCF(this.value)"></div>` : '' }
+  G.esqCF = function (q) {
+    const W = nrm(q || '').split(/[\s,;/]+/).filter(Boolean); let n = 0;
+    document.querySelectorAll('.esq-cp').forEach((d) => { const ok = W.every((w) => (d.dataset.k || '').includes(w)); d.hidden = !ok; if (ok) n++; if (W.length && ok) d.open = true });
+    const m = $q('#esq-cfn'); if (m) { m.hidden = !W.length || n > 0; m.textContent = 'Nenhum componente para “' + q + '”.' }
+  };
+  /* aba "Componentes" do carro */
+  function telaComp(v, f) {
+    const L = compsDe(v.id), W = f.cq ? marcaLin(f.cq, v.id) : null;
+    if (!L.length) return '<div class="esq-msg">Este carro ainda não tem dados de componentes. Eles entram pelo pacote (.zip) com as folhas "Dados técnicos".</div>';
+    if (f.cp) setTimeout(() => { const d = $q('#cp-' + f.cp); if (d) { d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }) } }, 60);
+    return filtroC(L.length) + `<div class="esq-cps">${L.map((c) => cardComp(c, c.id == f.cp || L.length <= 2, c.id == f.cp ? W : null)).join('')}</div><div class="esq-msg" id="esq-cfn" hidden></div>`;
+  }
+  /* aba "Componentes" do visualizador: os desta folha primeiro (abertos), depois os outros do carro */
+  function painelComp(x) {
+    const { rel, resto, todos } = compsRel(x), W = (S.f || {}).q ? marcaLin(S.f.q, x.veiculo_id) : null;
+    if (!rel.length && !resto.length) return '<div class="esq-msg">Este carro ainda não tem dados de componentes.</div>';
+    const n = rel.length + resto.length;
+    return filtroC(n) + (todos ? `<div class="esq-cps">${rel.map((c) => cardComp(c, rel.length <= 3, W)).join('')}</div>`
+      : (rel.length ? `<div class="esq-h" style="margin-top:0"><h2>Nesta folha</h2><small>${rel.length}</small></div><div class="esq-cps">${rel.map((c) => cardComp(c, rel.length <= 3, W)).join('')}</div>` : '<p class="muted" style="margin:0 0 10px">Nenhum componente desta folha tem dados técnicos.</p>') +
+        (resto.length ? `<div class="esq-h"><h2>Outros do carro</h2><small>${resto.length}</small></div><div class="esq-cps">${resto.map((c) => cardComp(c, false, W)).join('')}</div>` : '')) + '<div class="esq-msg" id="esq-cfn" hidden></div>';
+  }
+  /* busca: componentes ficam no catálogo (funciona sem internet) */
+  function buscaComp(q) {
+    const W = [...new Set(nrm(q).split(/[\s,;/]+/).filter(Boolean))]; if (!W.length) return [];
+    const out = [];
+    (cat().componentes || []).forEach((c) => {
+      const v = veic(c.veiculo_id), d = nrm(vNome(v) + ' ' + (v ? vSub(v) : '') + ' componente dados tecnicos ') + ' ' + chaveC(c);
+      let sc = 0, ok = true; W.forEach((w) => { if (d.includes(w)) sc += c.sigla && nrm(c.sigla) == w ? 3 : 1; else { const s = w.length >= 3 ? simPal(w, d) : 0; if (s >= 0.5) sc += s; else ok = false } });
+      if (ok) out.push({ tipo: 'componente', id: c.id, veiculo_id: c.veiculo_id, titulo: c.nome, sigla: c.sigla, detalhe: vNome(v), score: sc });
+    });
+    return out.sort((a, b) => b.score - a.score || natural(a.titulo, b.titulo)).slice(0, 8);
+  }
+  ESQ.buscaComp = buscaComp;
   function telaFus(v, f) {
     const L = C.fus[v.id];
     if (!L) { if (C.fus['!' + v.id]) return `<div class="esq-msg erro" role="alert">Não deu para carregar os fusíveis. ${e(C.fus['!' + v.id])}<div class="bar"><button type="button" class="pr esq-bt" onclick="delete ESQ.C.fus['!${v.id}'];ESQ.carregaFus('${v.id}')">Tentar de novo</button></div></div>`; carregaFus(v.id); return '<div class="card esq-load" role="status"><span class="esq-spin"></span>Carregando os fusíveis…</div>' }
@@ -868,9 +972,11 @@ body.esq-foco #main.vt{animation:none}
     novoVW(x);
     const v = veic(x.veiculo_id), s = sist(x.sistema_id), f = S.f || {}, fav = C.fav.has(x.id), off = !!C.off[x.id];
     const o = f.os && typeof od == 'function' && od(f.os), anex = o && (o.esqs || []).some((a) => a && a.id == x.id);
-    const vt = f.vt || 'pin', np = nPinos(x.id), nn = (C.nota[x.id] || []).length, nc = C.det[x.id] ? C.det[x.id].con.length : 0;
+    const np = nPinos(x.id), nn = (C.nota[x.id] || []).length, nc = C.det[x.id] ? C.det[x.id].con.length : 0, cr = compsRel(x), ncp = cr.rel.length + cr.resto.length;
+    /* folha sem pinos mas com componentes: abre direto nos componentes */
+    const vt = f.vt || (C.det[x.id] && !nc && ncp ? 'comp' : 'pin');
     setTimeout(monta, 0);
-    const tabs = [['pin', 'Conectores', nc || ''], ['not', 'Anotações', nn || ''], ['info', 'Sobre', '']];
+    const tabs = [['pin', 'Conectores', nc || ''], ...(ncp ? [['comp', 'Componentes', cr.todos ? ncp : cr.rel.length || '']] : []), ['not', 'Anotações', nn || ''], ['info', 'Sobre', '']];
     return `<div class="esq-vw${VW.gav ? ' gav' : ''}${VW.alto ? ' alto' : ''}${VW.limpo ? ' limpo' : ''}" id="esq-vw" data-noptr role="region" aria-label="Visualizador do esquema">
       <div class="esq-area">
         <div class="esq-stage${VW.noite ? ' noite' : ''}" id="esq-stage" aria-label="Esquema: um toque esconde as barras, dois toques aproximam, dois dedos dão zoom e um arrasta">
@@ -891,12 +997,12 @@ body.esq-foco #main.vt{animation:none}
           <span class="sp"></span>
           <button type="button" class="esq-ib${VW.noite ? ' on' : ''}" id="esq-bnoite" aria-pressed="${VW.noite}" aria-label="Modo noite: inverter as cores" onclick="esqNoite()">${ICON('esqlua')}</button>
           <button type="button" class="esq-ib" id="esq-bfull" aria-label="Tela cheia" onclick="esqCheia()">${ICON('esqfull')}</button>
-          <button type="button" class="esq-pbt" id="esq-bpainel" aria-expanded="${VW.gav}" aria-controls="esq-gav" aria-label="Conectores, pinos e anotações" onclick="esqGav()">${ICON('esqfio')}<span class="l">Pinos</span>${np ? `<small>${np}</small>` : ''}</button>
+          <button type="button" class="esq-pbt" id="esq-bpainel" aria-expanded="${VW.gav}" aria-controls="esq-gav" aria-label="Conectores, pinos e anotações" onclick="esqGav()">${ICON('esqfio')}<span class="l">${np || !ncp ? 'Pinos' : 'Dados'}</span>${np ? `<small>${np}</small>` : ncp && cr.rel.length ? `<small>${cr.rel.length}</small>` : ''}</button>
         </div>
       </div>
       <div class="esq-gav" id="esq-gav">
         <div class="esq-gav-h"><button type="button" class="pega" aria-label="Aumentar ou diminuir a gaveta" onclick="esqGavAlto()"></button>
-          <div class="esq-seg" role="tablist">${tabs.map(([k, l, n]) => `<button type="button" role="tab" class="${vt == k ? 'on' : ''}" aria-selected="${vt == k}" onclick="esqVT('${k}')">${l}${n !== '' ? `<small>${n}</small>` : ''}</button>`).join('')}</div>
+          <div class="esq-seg${tabs.length > 3 ? ' rola' : ''}" role="tablist">${tabs.map(([k, l, n]) => `<button type="button" role="tab" class="${vt == k ? 'on' : ''}" aria-selected="${vt == k}" onclick="esqVT('${k}')">${l}${n !== '' ? `<small>${n}</small>` : ''}</button>`).join('')}</div>
           <button type="button" class="esq-ib" aria-label="Fechar a gaveta" onclick="esqGav(false)">${ICON('esqx')}</button></div>
         <div class="esq-gav-b" id="esq-painel">${painel(x, vt)}</div>
       </div>
@@ -931,14 +1037,19 @@ body.esq-foco #main.vt{animation:none}
   function painel(x, k) {
     if (k == 'not') return painelNotas(x);
     if (k == 'info') return painelInfo(x);
+    if (k == 'comp') return painelComp(x);
     return painelPinos(x);
   }
   function repinta() {
     if (S.v != 'esqv') return; const x = esqm(S.id), p = $q('#esq-painel'); if (!x || !p) return;
+    const nc = C.det[x.id] ? C.det[x.id].con.length : 0, nn = (C.nota[x.id] || []).length, cr = compsRel(x), ncp = cr.rel.length + cr.resto.length;
+    /* folha sem pinos e com dados de componentes: a gaveta mostra os componentes */
+    if (!(S.f || {}).vt && C.det[x.id] && !nc && ncp) { S.f = { ...S.f, vt: 'comp' }; render(); return }
     p.innerHTML = painel(x, (S.f || {}).vt || 'pin'); pinta();
-    const np = nPinos(x.id), b = $q('#esq-bpainel'); if (b) { const sm = b.querySelector('small'); if (np && !sm) b.insertAdjacentHTML('beforeend', `<small>${np}</small>`); else if (sm) { if (np) sm.textContent = np; else sm.remove() } }
-    const nc = C.det[x.id] ? C.det[x.id].con.length : 0, nn = (C.nota[x.id] || []).length;
-    document.querySelectorAll('#esq-gav .esq-seg button').forEach((t) => { const k = (t.getAttribute('onclick').match(/'(\w+)'/) || [])[1], n = k == 'pin' ? nc : k == 'not' ? nn : 0; let sm = t.querySelector('small'); if (n) { if (!sm) { sm = document.createElement('small'); t.appendChild(sm) } sm.textContent = n } else if (sm) sm.remove() });
+    const np = nPinos(x.id), cnt = np || (ncp && !np ? cr.rel.length : 0), b = $q('#esq-bpainel');
+    if (b) { const l = b.querySelector('.l'); if (l) l.textContent = np || !ncp ? 'Pinos' : 'Dados'; let sm = b.querySelector('small'); if (cnt) { if (!sm) { sm = document.createElement('small'); b.appendChild(sm) } sm.textContent = cnt } else if (sm) sm.remove() }
+    const N = { pin: nc, not: nn, comp: cr.todos ? ncp : cr.rel.length };
+    document.querySelectorAll('#esq-gav .esq-seg button').forEach((t) => { const k = (t.getAttribute('onclick').match(/'(\w+)'/) || [])[1], n = N[k] || 0; let sm = t.querySelector('small'); if (n) { if (!sm) { sm = document.createElement('small'); t.appendChild(sm) } sm.textContent = n } else if (sm) sm.remove() });
     abreHl();
   }
   /* 2.56.0: apagar para trocar por um atualizado (dono) */

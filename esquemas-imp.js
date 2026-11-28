@@ -55,6 +55,67 @@
     if (c !== '' || r.length) { r.push(c); L.push(r) }
     const h = (L.shift() || []).map((x) => x.trim()); return L.map((r) => Object.fromEntries(h.map((k, i) => [k, (r[i] || '').trim()])));
   }
+  /* ---------- 2.58: dados técnicos dos componentes ----------
+     1) "componentes" no dados.json, no fiomar.json ou num componentes.json:
+        [{ nome, sigla, folha, tabelas: [{ titulo, colunas: [...], linhas: [[...]] }], notas: [...] }]
+     2) sem isso, lê as folhas "Dados técnicos dos componentes" (SVG): título vermelho em negrito = componente,
+        linha de cabeçalho com texto branco = colunas, textos da mesma altura = uma linha, itálico = observação. */
+  const SIGLA_RE = /\b[A-Z][A-Z0-9]{1,5}\b/g, SIGLA_FORA = new Set(['UCE', 'ECU', 'PMS', 'NTC', 'PTC', 'CO', 'OBS', 'AC', 'A', 'V', 'MΩ', 'KΩ']);
+  function siglaDe(t) {
+    const s = String(t || ''), d = s.split(/\s+[—–-]\s+/);
+    for (const p of [d[d.length - 1], d[0]]) { const m = (p || '').trim().match(/^([A-Z][A-Z0-9]{1,5})\b/); if (m && !SIGLA_FORA.has(m[1]) && d.length > 1) return m[1] }
+    const L = (s.match(SIGLA_RE) || []).filter((x) => !SIGLA_FORA.has(x)); return L[0] || '';
+  }
+  const celula = (t) => { const s = String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); return /^[—–-](\s*[—–-])*$/.test(s) ? '—' : s };
+  function compSvg(txt, folha) {
+    let doc; try { doc = new DOMParser().parseFromString(txt, 'image/svg+xml') } catch (z) { return [] }
+    const T = [...doc.querySelectorAll('text')].map((t) => ({ x: +t.getAttribute('x') || 0, y: +t.getAttribute('y') || 0, sz: +t.getAttribute('font-size') || 0, cor: (t.getAttribute('fill') || '').toLowerCase(),
+      b: /bold|[6-9]00/.test(t.getAttribute('font-weight') || ''), it: /italic/.test(t.getAttribute('font-style') || ''), t: (t.textContent || '').replace(/\s+/g, ' ').trim() })).filter((t) => t.t);
+    if (!T.length) return [];
+    /* o carimbo de baixo (Veículo / Folha / Revisão…) fica de fora */
+    const rot = T.filter((t) => /^(Ve[ií]culo|Folha|Revis[aã]o|Data|Tipo)\b/i.test(t.t) && t.y > 150).map((t) => t.y);
+    const corte = rot.length ? Math.min(...rot) - 3 : Infinity;
+    const branco = (c) => /^#?(fff|ffffff|white)$/.test(c);
+    const ehTit = (t) => t.b && t.sz >= 3 && t.sz < 3.9 && !branco(t.cor) && t.x < 60;
+    const L = T.filter((t) => t.y < corte).sort((a, b) => a.y - b.y || a.x - b.x);
+    const out = []; let cp = null, tb = null, lin = null, ly = null;
+    const fechaLin = () => { if (lin && tb && lin.some((c) => c)) tb.linhas.push(lin.map(celula)); lin = null; ly = null };
+    for (let i = 0; i < L.length; i++) {
+      const t = L[i];
+      if (ehTit(t)) {
+        fechaLin(); const sg = siglaDe(t.t);
+        /* "MAP — pressão × tensão" logo depois de "… — MAP": é outra tabela do mesmo componente */
+        const ant = out[out.length - 1], mesma = ant && sg && ant.sigla == sg && new RegExp('^' + sg + '\\b').test(t.t);
+        if (mesma) { cp = ant; tb = { titulo: t.t.replace(new RegExp('^' + sg + '\\s*[—–-]\\s*'), ''), colunas: [], linhas: [] }; cp.tabelas.push(tb) }
+        else { cp = { nome: t.t.slice(0, 200), sigla: sg, folha: folha || null, tabelas: [], notas: [] }; tb = { titulo: '', colunas: [], linhas: [] }; cp.tabelas.push(tb); out.push(cp) }
+        continue;
+      }
+      if (!cp) continue;
+      if (branco(t.cor) && t.b) {
+        /* cabeçalho: os textos brancos da mesma altura */
+        fechaLin(); const H = [t]; while (L[i + 1] && Math.abs(L[i + 1].y - t.y) < 0.6 && branco(L[i + 1].cor)) H.push(L[++i]);
+        if (tb.colunas.length || tb.linhas.length) { tb = { titulo: '', colunas: [], linhas: [] }; cp.tabelas.push(tb) }
+        tb.colunas = H.sort((a, b) => a.x - b.x).map((h) => h.t); tb.xs = H.map((h) => h.x); continue;
+      }
+      if (t.it) { fechaLin(); cp.notas.push(t.t); continue }
+      if (!tb.colunas.length) { fechaLin(); cp.notas.push(t.t); continue }
+      if (ly == null || Math.abs(t.y - ly) > 0.6) { fechaLin(); lin = tb.colunas.map(() => ''); ly = t.y }
+      let k = 0; tb.xs.forEach((x, j) => { if (t.x >= x - 1) k = j });
+      lin[k] = lin[k] ? lin[k] + ' ' + t.t : t.t;
+    }
+    fechaLin();
+    return out.map((c) => ({ ...c, tabelas: c.tabelas.filter((x) => x.linhas.length).map(({ titulo, colunas, linhas }) => ({ titulo, colunas, linhas })) })).filter((c) => c.tabelas.length || c.notas.length);
+  }
+  ESQ.compSvg = compSvg;
+  function compJson(L) {
+    return (Array.isArray(L) ? L : []).map((c, i) => {
+      const tabs = Array.isArray(c.tabelas) ? c.tabelas : c.colunas || c.linhas ? [{ titulo: '', colunas: c.colunas || [], linhas: c.linhas || [] }] : Array.isArray(c.valores) ? [{ titulo: '', colunas: ['Item', 'Valor'], linhas: c.valores.map((v) => Array.isArray(v) ? v : [v.item, v.valor]) }] : [];
+      return { nome: String(c.nome || c.componente || '').trim().slice(0, 200), sigla: String(c.sigla || siglaDe(c.nome || '')).trim().slice(0, 20), folha: +c.folha || null,
+        tabelas: tabs.map((t) => ({ titulo: String(t.titulo || ''), colunas: (t.colunas || []).map(String), linhas: (t.linhas || []).filter(Array.isArray).map((r) => r.map(celula)) })).filter((t) => t.linhas.length),
+        notas: (Array.isArray(c.notas) ? c.notas : c.notas ? [c.notas] : []).map((x) => String(x).trim()).filter(Boolean) };
+    }).filter((c) => c.nome && (c.tabelas.length || c.notas.length));
+  }
+  ESQ.compJson = compJson;
   async function pacote(file) {
     const Z = await lerZip(file), nomes = Object.keys(Z);
     const ach = (re) => nomes.filter((n) => re.test(n)).sort(natural);
@@ -97,9 +158,17 @@
     if (j0 >= 0) for (let i = j0 + 1; i < LL.length && LL[i].trim(); i++) cf.push(LL[i].trim());
     const conferir = cf.join('\n');
     const sistemaInj = (dados && dados.sistema) || (man && man.sistema) || '';
+    /* dados dos componentes: do JSON, se houver; senão, das folhas "Dados técnicos" */
+    let comp = compJson((dados && dados.componentes) || (man && man.componentes));
+    if (!comp.length) { const cj = ach(/componentes[^/]*\.json$/i)[0]; if (cj) { try { const j = JSON.parse(await texto(Z[cj])); comp = compJson(Array.isArray(j) ? j : j.componentes) } catch (z) {} } }
+    let compDe = comp.length ? 'json' : '';
+    if (!comp.length) for (const f of folhas.filter((x) => /dados t[eé]cnicos|componentes/i.test(x.titulo))) comp.push(...compSvg(await texto(Z[f.svg]), f.n));
+    if (!compDe && comp.length) compDe = 'folhas';
+    /* "TPS — resistência…" na folha seguinte continua o "… — TPS" de antes */
+    comp = comp.reduce((L, c) => { const a = L[L.length - 1]; if (a && c.sigla && a.sigla == c.sigla && new RegExp('^' + c.sigla + '\\b').test(c.nome)) { c.tabelas.forEach((t) => a.tabelas.push({ ...t, titulo: t.titulo || c.nome.replace(new RegExp('^' + c.sigla + '\\s*[—–-]\\s*'), '') })); a.notas.push(...c.notas) } else L.push(c); return L }, []);
     return { Z, file, chave, rev, carro, folhas, pdf: pdfN, png1: pngs[1] || pngs[Object.keys(pngs)[0]], paginas: npdf,
       con: ((dados && dados.conectores) || []).filter((p) => p.conector && p.pino), fus: ((dados && dados.fusiveis_reles) || []).filter((f) => f.posicao || f.circuito),
-      sistemaInj, obs: (dados && dados.observacao) || '', conferir, completo: { titulo: ((man && man.titulo) || ('Esquema completo' + (sistemaInj ? ' ' + sistemaInj.replace(/^Marelli\s+/i, '') : ''))), sistema: (man && man.sistema_app) || 'Injeção' } };
+      sistemaInj, comp, compDe, obs: (dados && dados.observacao) || '', conferir, completo: { titulo: ((man && man.titulo) || ('Esquema completo' + (sistemaInj ? ' ' + sistemaInj.replace(/^Marelli\s+/i, '') : ''))), sistema: (man && man.sistema_app) || 'Injeção' } };
   }
   ESQ.pacote = pacote;
 
@@ -132,7 +201,7 @@
     const rodando = EST.fase == 'indo';
     const ok = EST.fase == 'pronto';
     return h + `<div class="esq-box"><form class="esq-form esq-af" id="esq-imp" onsubmit="event.preventDefault();esqImpVai(this)">
-      ${ant ? `<div class="esq-msg" style="margin:0 0 12px;border-style:solid;border-color:#E67E22">Este pacote já foi importado${revDe(ant.tags) ? ' (Rev. ' + e(revDe(ant.tags)) + ')' : ''}. Importar agora <b>atualiza</b> para a Rev. ${e(P.rev)}: favoritos e anotações continuam; conectores, pinos e os fusíveis deste carro são trocados pelos do pacote.</div>` : ''}
+      ${ant ? `<div class="esq-msg" style="margin:0 0 12px;border-style:solid;border-color:#E67E22">Este pacote já foi importado${revDe(ant.tags) ? ' (Rev. ' + e(revDe(ant.tags)) + ')' : ''}. Importar agora <b>atualiza</b> para a Rev. ${e(P.rev)}: favoritos e anotações continuam; conectores, pinos, fusíveis e dados dos componentes deste carro são trocados pelos do pacote.</div>` : ''}
       <div class="esq-h" style="margin-top:0"><h2>Carro</h2><small>Rev. ${e(P.rev)}</small></div>
       <div class="dois"><label>Marca<input name="ma" value="${e(c.marca)}" required></label><label>Modelo<input name="mo" value="${e(c.modelo)}" required></label></div>
       <div class="dois"><label>Ano inicial<input name="a1" inputmode="numeric" maxlength="4" value="${e(c.ano_inicio || '')}"></label><label>Ano final<input name="a2" inputmode="numeric" maxlength="4" value="${e(c.ano_fim || '')}"></label></div>
@@ -140,6 +209,7 @@
       <div class="esq-h"><h2>O que vai entrar</h2></div>
       ${P.pdf ? `<div class="esq-row"><span class="tx"><b>${e(P.completo.titulo)} (Rev. ${e(P.rev)})</b><small>PDF completo · ${P.paginas ? plural(P.paginas, 'folha', 'folhas') + ' · ' : ''}${plural(new Set(P.con.map((x) => x.conector)).size, 'conector', 'conectores')} e ${plural(P.con.length, 'pino', 'pinos')}</small></span><select name="sc" aria-label="Sistema do esquema completo" style="max-width:44%">${opS(P.completo.sistema)}</select></div>` : ''}
       ${P.folhas.map((f, i) => `<div class="esq-row"><label style="flex-direction:row;align-items:center;gap:10px;margin:0;flex:1;min-width:0;font-weight:400"><input type="checkbox" name="u${i}" ${f.usar ? 'checked' : ''} style="width:24px;min-height:24px;flex:none"><span class="tx"><b>Folha ${f.n}</b> · ${e(f.titulo)}</span></label><select name="s${i}" aria-label="Sistema da folha ${f.n}" style="max-width:44%">${opS(f.sistema)}</select></div>`).join('')}
+      ${P.comp.length ? `<div class="esq-row"><span class="tx"><b>Dados dos componentes</b><small>${plural(P.comp.length, 'componente', 'componentes')} · ${plural(P.comp.reduce((a, c) => a + c.tabelas.reduce((b, t) => b + t.linhas.length, 0), 0), 'valor', 'valores')}${P.compDe == 'folhas' ? ' · lidos das folhas ' + [...new Set(P.comp.map((c) => c.folha).filter(Boolean))].join(', ') : ''}</small></span></div>` : ''}
       <div class="esq-row"><span class="tx"><b>Fusíveis e relés</b><small>${plural(P.fus.filter((x) => !/rel/i.test(x.tipo || '')).length, 'fusível', 'fusíveis')} e ${plural(P.fus.filter((x) => /rel/i.test(x.tipo || '')).length, 'relé', 'relés')}</small></span></div>
       ${P.conferir ? `<details style="margin-top:8px"><summary style="min-height:44px;display:flex;align-items:center">Pontos a conferir no carro (do pacote)</summary><p style="white-space:pre-wrap;font-size:15px">${e(P.conferir)}</p></details>` : ''}
       ${rodando || ok || EST.erro ? `<div class="esq-msg${EST.erro ? ' erro' : ''}" role="status" aria-live="polite" style="margin-top:12px">${EST.erro ? e(EST.erro) : e(EST.msg)}<div class="esq-prog"${rodando ? '' : ' hidden'}><i style="width:${Math.round(EST.p * 100)}%"></i></div></div>` : ''}
@@ -221,10 +291,23 @@
           return { oficina_id: OF, veiculo_id: vid, tipo: /rel/i.test(x.tipo || '') ? 'rele' : 'fusivel', caixa: !cx || /^n\/?i$/i.test(cx) ? 'Caixa não informada no manual' : cx, localizacao_caixa: (x.localizacao_caixa || x.localizacao || '').trim() || null, posicao: String(x.posicao || '').trim() || null, amperagem: a ? +a : null, circuito: (x.circuito || '').trim() || null } });
         await res(SB.from('esq_fusiveis').insert(L)); delete C.fus[vid]; IDB.del('esq:fus:' + vid);
       }
+      /* 4b) dados técnicos dos componentes (só os deste pacote são trocados) */
+      let compOk = '';
+      if (P.comp.length) {
+        passo(0.93, 'Gravando os dados dos componentes…');
+        try {
+          await res(SB.from('esq_componentes').delete().eq('veiculo_id', vid).eq('pacote', P.chave));
+          const rows = P.comp.map((c, i) => ({ oficina_id: OF, veiculo_id: vid, ordem: i, nome: c.nome, sigla: c.sigla || null, tabelas: c.tabelas, notas: c.notas, folha: c.folha, pacote: P.chave }));
+          const ins = await res(SB.from('esq_componentes').insert(rows).select());
+          const CL = cat().componentes || (C.cat.componentes = []);
+          for (let i = CL.length - 1; i >= 0; i--) if (CL[i].veiculo_id == vid && CL[i].pacote == P.chave) CL.splice(i, 1);
+          CL.push(...ins);
+        } catch (z) { compOk = ' Os dados dos componentes não foram gravados (' + msgErro(z) + ').' }
+      }
       /* 5) arquivos da revisão anterior saem do servidor */
       const fora = velhos.filter(Boolean); if (fora.length) st.remove(fora).catch(() => {});
       IDB.set('esq:cat:' + OF, { ...cat(), em: Date.now() });
-      EST = { fase: 'pronto', p: 1, msg: `Pronto: ${plural(itens.length, 'esquema', 'esquemas')}, ${plural(P.con.length, 'pino', 'pinos')} e ${plural(P.fus.length, 'fusível/relé', 'fusíveis/relés')} do ${carro.marca} ${carro.modelo} (Rev. ${P.rev}).`, erro: '', vv: vid };
+      EST = { fase: 'pronto', p: 1, msg: `Pronto: ${plural(itens.length, 'esquema', 'esquemas')}, ${plural(P.con.length, 'pino', 'pinos')} ${P.comp.length && !compOk ? ', ' + plural(P.fus.length, 'fusível/relé', 'fusíveis/relés') + ' e ' + plural(P.comp.length, 'componente', 'componentes') : ' e ' + plural(P.fus.length, 'fusível/relé', 'fusíveis/relés')} do ${carro.marca} ${carro.modelo} (Rev. ${P.rev}).${compOk}`, erro: '', vv: vid };
       ANT = await res(SB.from('esq_esquemas').select('id,veiculo_id,tags,arquivo_path,miniatura_path,titulo').eq('oficina_id', OF).contains('tags', ['pacote:' + P.chave])).catch(() => ANT);
       toast('Pacote importado');
     } catch (z) {

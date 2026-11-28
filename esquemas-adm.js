@@ -163,9 +163,11 @@
       const fav = ids.length ? await res(SB.from('esq_favoritos').select('*').in('esquema_id', ids)).catch(() => []) : [];
       const not = ids.length ? await res(SB.from('esq_anotacoes').select('*').in('esquema_id', ids)).catch(() => []) : [];
       const fus = await res(SB.from('esq_fusiveis').select('*').eq('veiculo_id', id));
+      const cps = (cat().componentes || []).filter((c) => c.veiculo_id == id).map((c) => ({ ...c }));
       const mo = { ...modelo(v.modelo_id) }, ma = { ...marca(mo.marca_id) };
       await res(SB.from('esq_veiculos').delete().eq('id', id)); /* o banco apaga junto (cascade) */
       tira(cat().veiculos, id); delete C.fus[id]; IDB.del('esq:fus:' + id);
+      if (cat().componentes) C.cat.componentes = cat().componentes.filter((c) => c.veiculo_id != id);
       const offs = {};
       for (const x of ids) { tira(cat().esquemas, x); C.fav.delete(x); delete C.det[x]; if (C.off[x]) { offs[x] = [C.off[x], await IDB.get('esq:arq:' + x)]; delete C.off[x]; IDB.del('esq:arq:' + x) } }
       IDB.set('esq:off:' + OF, C.off);
@@ -184,6 +186,7 @@
           if (fav && fav.length) await res(SB.from('esq_favoritos').insert(fav)).catch(() => {});
           if (not && not.length) await res(SB.from('esq_anotacoes').insert(not)).catch(() => {});
           if (fus.length) { await res(SB.from('esq_fusiveis').insert(fus)); C.fus[id] = fus }
+          if (cps.length) { await res(SB.from('esq_componentes').insert(cps)); (C.cat.componentes = cat().componentes || []).push(...cps) }
           L.forEach((x) => cat().esquemas.push(x)); (fav || []).forEach((f) => { if (f.user_id == meu()) C.fav.add(f.esquema_id) });
           for (const x in offs) { C.off[x] = offs[x][0]; if (offs[x][1]) await IDB.set('esq:arq:' + x, offs[x][1]) } IDB.set('esq:off:' + OF, C.off);
           salvaCat(); render();
@@ -409,15 +412,17 @@
       const fav = await res(SB.from('esq_favoritos').select('*').in('esquema_id', ids)).catch(() => []);
       const not = await res(SB.from('esq_anotacoes').select('*').in('esquema_id', ids)).catch(() => []);
       const fus = await res(SB.from('esq_fusiveis').select('*').eq('veiculo_id', vid));
+      const cps = (cat().componentes || []).filter((c) => c.veiculo_id == vid && c.pacote == chave).map((c) => ({ ...c }));
       await res(SB.from('esq_esquemas').delete().in('id', ids));
       if (fus.length) await res(SB.from('esq_fusiveis').delete().eq('veiculo_id', vid));
+      if (cps.length) { await res(SB.from('esq_componentes').delete().eq('veiculo_id', vid).eq('pacote', chave)); C.cat.componentes = cat().componentes.filter((c) => !(c.veiculo_id == vid && c.pacote == chave)) }
       const offs = {};
       for (const id of ids) { tira(cat().esquemas, id); C.fav.delete(id); delete C.det[id]; if (C.off[id]) { offs[id] = [C.off[id], await IDB.get('esq:arq:' + id)]; delete C.off[id]; IDB.del('esq:arq:' + id) } }
       delete C.fus[vid]; IDB.del('esq:fus:' + vid); IDB.set('esq:off:' + OF, C.off); salvaCat();
       let volta = false; const arqs = L.flatMap((x) => [x.arquivo_path, x.miniatura_path]).filter(Boolean);
       const T = setTimeout(() => { if (!volta) SB.storage.from('esquemas').remove(arqs).catch(() => {}) }, 9000);
       go('esqadm');
-      desfazCom('Pacote apagado: ' + plural(L.length, 'esquema', 'esquemas') + (fus.length ? ' e ' + plural(fus.length, 'fusível/relé', 'fusíveis/relés') : ''), async () => {
+      desfazCom('Pacote apagado: ' + [plural(L.length, 'esquema', 'esquemas'), fus.length ? plural(fus.length, 'fusível/relé', 'fusíveis/relés') : '', cps.length ? plural(cps.length, 'componente', 'componentes') : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' e $1'), async () => {
         volta = true; clearTimeout(T);
         try {
           await res(SB.from('esq_esquemas').insert(L));
@@ -426,6 +431,7 @@
           if (fav && fav.length) await res(SB.from('esq_favoritos').insert(fav)).catch(() => {});
           if (not && not.length) await res(SB.from('esq_anotacoes').insert(not)).catch(() => {});
           if (fus.length) { await res(SB.from('esq_fusiveis').insert(fus)); C.fus[vid] = fus }
+          if (cps.length) { await res(SB.from('esq_componentes').insert(cps)); (C.cat.componentes = cat().componentes || []).push(...cps) }
           L.forEach((x) => cat().esquemas.push(x)); (fav || []).forEach((f) => { if (f.user_id == meu()) C.fav.add(f.esquema_id) });
           for (const id in offs) { C.off[id] = offs[id][0]; if (offs[id][1]) await IDB.set('esq:arq:' + id, offs[id][1]) } IDB.set('esq:off:' + OF, C.off);
           salvaCat(); render();

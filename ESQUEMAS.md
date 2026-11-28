@@ -62,6 +62,28 @@ Só criações; nenhuma tabela existente foi alterada. O SQL fica no kit de test
   - **O.S.:** "Ver esquemas elétricos" no ⋯. O esquema pode ser anexado à O.S. (`o.esqs`), e aparece no Resumo.
 - **Apagar:** acontece na hora, com Desfazer (regra da 2.53). O arquivo só sai do servidor depois do tempo do Desfazer.
 
+## Dados técnicos dos componentes (2.58)
+- Tabela `esq_componentes` (migration `esquemas_componentes`, só cria): um componente por linha, ligado ao carro.
+  - Campos: `nome`, `sigla`, `tabelas` (jsonb: `[{titulo, colunas, linhas}]`), `notas`, `folha` e `pacote`.
+  - RLS igual ao dos fusíveis: a oficina lê e só o dono grava. Apagar o carro leva junto (cascade).
+- **De onde vêm, ao importar o pacote:**
+  1. `"componentes"` no dados.json, no fiomar.json ou num `componentes.json`:
+     `[{"nome":"Sensor de pressão absoluta — MAP","sigla":"MAP","folha":13,"tabelas":[{"titulo":"","colunas":["Item","Valor"],"linhas":[["Pino 62","Sinal"]]}],"notas":["…"]}]`
+  2. Sem isso, das folhas cujo título tem "Dados técnicos" ou "Componentes" (SVG):
+     - título vermelho em negrito = componente;
+     - textos brancos em negrito = colunas;
+     - textos da mesma altura = uma linha;
+     - itálico = observação;
+     - o carimbo de baixo fica de fora.
+     - "MAP — pressão × tensão" logo depois do "… — MAP" vira outra tabela do mesmo componente, até na folha seguinte.
+  - A revisão nova troca só os componentes daquele pacote.
+- **No app:**
+  - aba **Componentes** no carro: cada componente fechado, com a sigla, e filtro;
+  - no visualizador, a gaveta mostra **"Nesta folha"** (pela sigla no título da folha ou por palavra do nome) e **"Outros do carro"**;
+  - folha sem pinos e com componentes: o botão vira **Dados** e a gaveta abre nos componentes;
+  - a busca acha os componentes (ex.: "MAP marcha lenta") e abre o carro com o componente aberto e a linha destacada;
+  - ficam no catálogo, então funcionam sem internet.
+
 ## Permissões (conferidas no banco e na tela)
 | Ação | Dono | Mecânico | Outra oficina |
 |---|---|---|---|
@@ -70,6 +92,7 @@ Só criações; nenhuma tabela existente foi alterada. O SQL fica no kit de test
 | Cadastrar, mudar ou apagar catálogo e arquivos | ✔ | ✘ | ✘ |
 
 ## Testes
+- `e2e-comp258.js` (kit): dados dos componentes, com pacotes fictícios (2.58).
 - `e2e-esq257.js` (kit): modo foco, pinos em tabela, tela inicial e velocidade (2.57).
 - `e2e-esq254.js` (kit): o módulo inteiro, com dados **fictícios** (`esq-seed.js` e `esq-teste/`, gerados por `gera_esq_teste.py`). Esses dados vão só para o Supabase falso dos testes, nunca para o banco real.
 - `sql/teste_esquemas_rls.sql`: regras do banco com usuários de teste. Roda e desfaz tudo no fim.
